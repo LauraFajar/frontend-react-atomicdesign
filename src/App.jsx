@@ -10,14 +10,24 @@ import './App.css'
 
 // Componente para rutas protegidas
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated } = useAuth()
-  return isAuthenticated ? children : <Navigate to="/login" />
+  const { isAuthenticated, loading } = useAuth()
+  
+  if (loading) {
+    return <div>Cargando...</div>;
+  }
+  
+  return isAuthenticated ? children : <Navigate to="/login" replace />
 }
 
 // Componente para redireccionar si ya está autenticado
 const PublicRoute = ({ children }) => {
-  const { isAuthenticated } = useAuth()
-  return !isAuthenticated ? children : <Navigate to="/dashboard" />
+  const { isAuthenticated, loading } = useAuth()
+  
+  if (loading) {
+    return <div>Cargando...</div>;
+  }
+  
+  return !isAuthenticated ? children : <Navigate to="/dashboard" replace />
 }
 
 function App() {

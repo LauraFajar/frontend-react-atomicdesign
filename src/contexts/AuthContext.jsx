@@ -20,11 +20,10 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-      setIsAuthenticated(true)
-    }
+    localStorage.removeItem('token')
+    delete axios.defaults.headers.common['Authorization']
+    setUser(null)
+    setIsAuthenticated(false)
     setLoading(false)
   }, [])
 
