@@ -1,0 +1,22 @@
+.fitosanitario-tabs {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.fitosanitario-tab {
+  padding: 0.7rem 2rem;
+  border: none;
+  border-radius: 8px;
+  background: #e5e7eb;
+  color: #222;
+  font-weight: 500;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.fitosanitario-tab.active {
+  background: #22c55e;
+  color: #fff;
+}
