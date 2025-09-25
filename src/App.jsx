@@ -6,6 +6,7 @@ import DashboardPage from './components/pages/DashboardPage/DashboardPage';
 import ForgotPassword from './components/pages/Auth/ForgotPassword';
 import ResetPassword from './components/pages/Auth/ResetPassword';
 import Register from './components/pages/Auth/Register';
+import CropsPage from './components/pages/CropsPage/CropsPage';
 import './App.css'
 
 // Componente para rutas protegidas
@@ -75,6 +76,14 @@ function App() {
                 <PublicRoute>
                   <Register />
                 </PublicRoute>
+              } 
+            />
+            <Route 
+              path="/cultivos" 
+              element={
+                <ProtectedRoute>
+                  <CropsPage />
+                </ProtectedRoute>
               } 
             />
             <Route path="*" element={<Navigate to="/" />} />

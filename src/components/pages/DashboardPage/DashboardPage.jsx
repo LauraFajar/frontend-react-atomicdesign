@@ -1,23 +1,24 @@
-import React, { useState, useEffect, useRef } from 'react'
-import Sidebar from '../../organisms/Sidebar/Sidebar'
-import Header from '../../organisms/Header/Header'
-import './DashboardPage.css'
+import React, { useState, useEffect, useRef } from 'react';
+import Sidebar from '../../organisms/Sidebar/Sidebar';
+import Header from '../../organisms/Header/Header';
+import CropsPage from '../CropsPage/CropsPage';
+import './DashboardPage.css';
 
 const DashboardPage = () => {
-  const [activeSection, setActiveSection] = useState('inicio')
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [currentSlide, setCurrentSlide] = useState(0)
-  const slideInterval = useRef()
+  const [activeSection, setActiveSection] = useState('inicio');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const slideInterval = useRef();
 
   const toggleSidebar = () => {
-    setSidebarCollapsed(!sidebarCollapsed)
-  }
+    setSidebarCollapsed(!sidebarCollapsed);
+  };
 
   useEffect(() => {
     const images = [
-      "./images/img-campesino-1.jpg",
-      "./images/img-campesino-2.jpg",
-      "./images/img-campesino-3.jpeg"
+      "/images/img-campesino-1.jpg",
+      "/images/img-campesino-2.jpg",
+      "/images/img-campesino-3.jpeg"
     ];
 
     images.forEach(src => {
@@ -28,7 +29,7 @@ const DashboardPage = () => {
     const startCarousel = () => {
       slideInterval.current = setInterval(() => {
         setCurrentSlide(prev => (prev === 2 ? 0 : prev + 1));
-      }, 3000);
+      }, 4000);
     };
     
     startCarousel();
@@ -36,29 +37,12 @@ const DashboardPage = () => {
   }, []);
 
   const getSlideClass = (index) => {
-    return `carousel-item ${index === currentSlide ? 'active' : ''}`
-  }
-
-  const goToSlide = (index) => {
-    setCurrentSlide(index);
-
-    clearInterval(slideInterval.current);
-    slideInterval.current = setInterval(() => {
-      setCurrentSlide(prev => (prev === 2 ? 0 : prev + 1));
-    }, 4000);
-  };
-
-  const nextSlide = () => {
-    goToSlide(currentSlide === 2 ? 0 : currentSlide + 1);
-  };
-
-  const prevSlide = () => {
-    goToSlide(currentSlide === 0 ? 2 : currentSlide - 1);
+    return `carousel-item ${index === currentSlide ? 'active' : ''}`;
   };
 
   const handleSectionChange = (sectionId) => {
-    setActiveSection(sectionId)
-  }
+    setActiveSection(sectionId);
+  };
 
   const renderContent = () => {
     switch (activeSection) {
@@ -74,7 +58,6 @@ const DashboardPage = () => {
                     Conectamos a productores, proveedores y expertos para mejorar la eficiencia y 
                     productividad en el campo.
                   </p>
-                  
                   <div className="objectives-section">
                     <h3 className="objectives-title">Nuestro objetivo</h3>
                     <ul className="objectives-list">
@@ -85,81 +68,77 @@ const DashboardPage = () => {
                     </ul>
                   </div>
                 </div>
-                
                 <div className="welcome-image">
                   <div className="image-carousel">
                     <div className="carousel-inner">
                       <div className={getSlideClass(0)}>
                         <img 
-                          src="./images/img-campesino-1.jpg" 
-                          alt="SENA Agrícola 1" 
+                          src="/images/img-campesino-1.jpg" 
+                          alt="Campesino trabajando en cultivo" 
                           className="carousel-image"
                         />
                       </div>
                       <div className={getSlideClass(1)}>
                         <img 
-                          src="./images/img-campesino-2.jpg" 
-                          alt="SENA Agrícola 2" 
+                          src="/images/img-campesino-2.jpg" 
+                          alt="Cultivo agrícola" 
                           className="carousel-image"
                         />
                       </div>
                       <div className={getSlideClass(2)}>
                         <img 
-                          src="./images/img-campesino-3.jpeg" 
-                          alt="SENA Agrícola 3" 
+                          src="/images/img-campesino-3.jpeg" 
+                          alt="Manos de agricultor con tierra" 
                           className="carousel-image"
                         />
                       </div>
                     </div>
                   </div>
                 </div>
+
               </div>
             </div>
           </div>
-        )
+        );
+      
+      case 'cultivos':
+        return <CropsPage />;
       case 'iot':
         return (
           <div className="dashboard-content">
             <h2>Módulo IoT</h2>
             <p>Monitoreo de sensores en tiempo real</p>
           </div>
-        )
-      case 'cultivos':
-        return (
-          <div className="dashboard-content">
-            <h2>Gestión de Cultivos</h2>
-            <p>Administra tus cultivos de plátano, cacao y cilantro</p>
-          </div>
-        )
+        );
       case 'fitosanitario':
         return (
           <div className="dashboard-content">
             <h2>Control Fitosanitario</h2>
             <p>Gestión de enfermedades, plagas y arvenses</p>
           </div>
-        )
+        );
       case 'finanzas':
         return (
           <div className="dashboard-content">
             <h2>Gestión Financiera</h2>
             <p>Control de ingresos, egresos y rentabilidad</p>
           </div>
-        )
+        );
       case 'inventario':
         return (
           <div className="dashboard-content">
             <h2>Control de Inventario</h2>
             <p>Gestión de insumos, herramientas y stock</p>
           </div>
-        )
+        );
       default:
         return (
           <div className="dashboard-content">
             <h2>Sección no encontrada</h2>
           </div>
-        )
+        );
     }
-  }
+  };
 
   return (
     <div className="dashboard-page">
@@ -178,7 +157,7 @@ const DashboardPage = () => {
         </main>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default DashboardPage
+export default DashboardPage;
