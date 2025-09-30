@@ -3,6 +3,7 @@ import Sidebar from '../../organisms/Sidebar/Sidebar';
 import Header from '../../organisms/Header/Header';
 import CropsPage from '../CropsPage/CropsPage';
 import ActivitiesPage from '../ActivitiesPage/ActivitiesPage';
+import CalendarPage from '../CalendarPage/CalendarPage';
 import './DashboardPage.css';
 
 const DashboardPage = () => {
@@ -58,67 +59,70 @@ const DashboardPage = () => {
   };
 
   const renderContent = () => {
-    if (activeSection === 'inicio' || !activeSection) {
-      return (
-        <div className="dashboard-content">
-          <div className="welcome-section">
-            <div className="welcome-card">
-              <div className="welcome-text">
-                <h2 className="welcome-title">AgroTic</h2>
-                <p className="welcome-description">
-                  Bienvenido a AgroTic, la plataforma líder en tecnología para el sector agrícola.
-                  Conectamos a productores, proveedores y expertos para mejorar la eficiencia y
-                  productividad en el campo.
-                </p>
-                <div className="objectives-section">
-                  <h3 className="objectives-title">Nuestro objetivo</h3>
-                  <ul className="objectives-list">
-                    <li>Mejorar la productividad y competitividad</li>
-                    <li>Acceder a innovaciones y tecnologías emergentes</li>
-                    <li>Conectar con la comunidad agrícola</li>
-                    <li>Optimizar procesos y reducir costos</li>
-                  </ul>
+    switch (activeSection) {
+      case 'inicio':
+        return (
+          <div className="dashboard-content">
+            <div className="welcome-section">
+              <div className="welcome-card">
+                <div className="welcome-text">
+                  <h2 className="welcome-title">AgroTic</h2>
+                  <p className="welcome-description">
+                    Bienvenido a AgroTic, la plataforma líder en tecnología para el sector agrícola.
+                    Conectamos a productores, proveedores y expertos para mejorar la eficiencia y
+                    productividad en el campo.
+                  </p>
+                  <div className="objectives-section">
+                    <h3 className="objectives-title">Nuestro objetivo</h3>
+                    <ul className="objectives-list">
+                      <li>Mejorar la productividad y competitividad</li>
+                      <li>Acceder a innovaciones y tecnologías emergentes</li>
+                      <li>Conectar con la comunidad agrícola</li>
+                      <li>Optimizar procesos y reducir costos</li>
+                    </ul>
+                  </div>
                 </div>
-              </div>
-              <div className="welcome-image">
-                <div className="image-carousel">
-                  <div className="carousel-inner">
-                    <div className={getSlideClass(0)}>
-                      <img
-                        src="/images/img-campesino-1.jpg"
-                        alt="Campesino trabajando en cultivo"
-                        className="carousel-image"
-                      />
-                    </div>
-                    <div className={getSlideClass(1)}>
-                      <img
-                        src="/images/img-campesino-2.jpg"
-                        alt="Cultivo agrícola"
-                        className="carousel-image"
-                      />
-                    </div>
-                    <div className={getSlideClass(2)}>
-                      <img
-                        src="/images/img-campesino-3.jpeg"
-                        alt="Manos de agricultor con tierra"
-                        className="carousel-image"
-                      />
+                <div className="welcome-image">
+                  <div className="image-carousel">
+                    <div className="carousel-inner">
+                      <div className={getSlideClass(0)}>
+                        <img
+                          src="/images/img-campesino-1.jpg"
+                          alt="Campesino trabajando en cultivo"
+                          className="carousel-image"
+                        />
+                      </div>
+                      <div className={getSlideClass(1)}>
+                        <img
+                          src="/images/img-campesino-2.jpg"
+                          alt="Cultivo agrícola"
+                          className="carousel-image"
+                        />
+                      </div>
+                      <div className={getSlideClass(2)}>
+                        <img
+                          src="/images/img-campesino-3.jpeg"
+                          alt="Manos de agricultor con tierra"
+                          className="carousel-image"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
+              </div>
             </div>
           </div>
-        </div>
-      );
-    }
+        );
 
-    switch (activeSection) {
+      case 'calendario':
+        return <CalendarPage />;
       case 'cultivos-lista':
         return <CropsPage />;
       case 'cultivos-actividades':
         return <ActivitiesPage />;
+      case 'cultivos-calendario':
+        return <CalendarPage />;
       case 'iot':
         return (
           <div className="dashboard-content">

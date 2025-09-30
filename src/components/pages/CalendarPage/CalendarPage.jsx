@@ -1,0 +1,406 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../../contexts/AuthContext';
+import Calendar from 'react-calendar';
+import 'react-calendar/dist/Calendar.css';
+import axios from 'axios';
+import {
+  Box,
+  Typography,
+  Container,
+  Paper,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  TextField,
+  Button,
+  Grid,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Chip,
+  CircularProgress,
+  Tooltip
+} from '@mui/material';
+import { FilterList, DateRange, Agriculture, Grass, Event } from '@mui/icons-material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import es from 'date-fns/locale/es';
+import calendarService from '../../../services/calendarService';
+import './CalendarPage.css';
+
+const CalendarPage = () => {
+  const { user } = useAuth();
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [events, setEvents] = useState([]);
+  const [filteredEvents, setFilteredEvents] = useState([]);
+  const [crops, setCrops] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const [selectedCrop, setSelectedCrop] = useState('');
+  const [dateFrom, setDateFrom] = useState(null);
+  const [dateTo, setDateTo] = useState(null);
+
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [openEventModal, setOpenEventModal] = useState(false);
+
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  useEffect(() => {
+    applyFilters();
+  }, [events, selectedCrop, dateFrom, dateTo]);
+
+  const loadInitialData = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      const cropsResponse = await axios.get('http://localhost:3001/cultivos');
+      const cropsData = cropsResponse.data;
+      setCrops(Array.isArray(cropsData) ? cropsData : []);
+
+      const threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+      await loadEvents(threeMonthsAgo, new Date());
+
+    } catch (error) {
+      console.error('Error cargando datos iniciales:', error);
+      setError('Error al cargar los datos del calendario');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadEvents = async (startDate, endDate) => {
+    try {
+      const eventsData = await calendarService.getCalendarEvents(
+        formatDate(startDate),
+        formatDate(endDate)
+      );
+      setEvents(eventsData);
+    } catch (error) {
+      console.error('Error cargando eventos:', error);
+      setError('Error al cargar los eventos del calendario');
+    }
+  };
+
+  const formatDate = (date) => {
+    return date.toISOString().split('T')[0];
+  };
+
+  const applyFilters = () => {
+    let filtered = [...events];
+
+    if (selectedCrop) {
+      filtered = filtered.filter(event => event.id_cultivo === selectedCrop);
+    }
+
+    if (dateFrom) {
+      filtered = filtered.filter(event => new Date(event.fecha) >= dateFrom);
+    }
+
+    if (dateTo) {
+      filtered = filtered.filter(event => new Date(event.fecha) <= dateTo);
+    }
+
+    setFilteredEvents(filtered);
+  };
+
+  const handleDateChange = (date) => {
+    setSelectedDate(date);
+  };
+
+  const handleCropFilter = (event) => {
+    setSelectedCrop(event.target.value);
+  };
+
+  const handleEventClick = (event) => {
+    setSelectedEvent(event);
+    setOpenEventModal(true);
+  };
+
+  const getEventColor = (eventType) => {
+    switch (eventType) {
+      case 'siembra':
+        return '#4caf50';
+      case 'cosecha':
+        return '#ff9800'; 
+      case 'actividad':
+        return '#2196f3'; 
+      default:
+        return '#9e9e9e'; 
+    }
+  };
+
+  const getEventIcon = (eventType) => {
+    switch (eventType) {
+      case 'siembra':
+        return <Grass />;
+      case 'cosecha':
+        return <Agriculture />;
+      case 'actividad':
+        return <Event />;
+      default:
+        return <Event />;
+    }
+  };
+
+  const getEventsForDate = (date) => {
+    const dateStr = formatDate(date);
+    return filteredEvents.filter(event => event.fecha === dateStr);
+  };
+
+  const tileContent = ({ date, view }) => {
+    if (view === 'month') {
+      const dayEvents = getEventsForDate(date);
+      if (dayEvents.length > 0) {
+        return (
+          <div className="calendar-tile-events">
+            {dayEvents.slice(0, 3).map((event, index) => (
+              <Tooltip key={index} title={event.titulo || event.tipo_actividad}>
+                <div
+                  className="calendar-event-dot"
+                  style={{ backgroundColor: getEventColor(event.tipo) }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEventClick(event);
+                  }}
+                />
+              </Tooltip>
+            ))}
+            {dayEvents.length > 3 && (
+              <div className="calendar-more-events">
+                +{dayEvents.length - 3}
+              </div>
+            )}
+          </div>
+        );
+      }
+    }
+    return null;
+  };
+
+  const resetFilters = () => {
+    setSelectedCrop('');
+    setDateFrom(null);
+    setDateTo(null);
+  };
+
+  if (loading) {
+    return (
+      <div className="loading-container">
+        <CircularProgress className="loading-spinner" />
+      </div>
+    );
+  }
+
+  return (
+    <Container maxWidth="lg" className="calendar-page">
+      <div className="calendar-header">
+        <h1 className="calendar-title">Calendario de Cultivos y Actividades</h1>
+      </div>
+
+      {/* Filtros */}
+      <div className="filters-container">
+        <Grid container spacing={3} className="filters-grid">
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl fullWidth>
+              <InputLabel>C</InputLabel>
+              <Select
+                value={selectedCrop}
+                onChange={handleCropFilter}
+                label="C"
+              >
+                <MenuItem value="">
+                  <em>Todos los cultivos</em>
+                </MenuItem>
+                {crops.map(crop => (
+                  <MenuItem key={crop.id} value={crop.id}>
+                    {crop.tipo_cultivo}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
+              <DatePicker
+                label="Fecha desde"
+                value={dateFrom}
+                onChange={setDateFrom}
+                renderInput={(params) => <TextField {...params} fullWidth />}
+              />
+            </LocalizationProvider>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
+              <DatePicker
+                label="Fecha hasta"
+                value={dateTo}
+                onChange={setDateTo}
+                renderInput={(params) => <TextField {...params} fullWidth />}
+              />
+            </LocalizationProvider>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <Button
+              variant="outlined"
+              onClick={resetFilters}
+              fullWidth
+              className="reset-filters-button"
+            >
+              Limpiar Filtros
+            </Button>
+          </Grid>
+        </Grid>
+
+        <div className="filters-summary">
+          <Typography variant="body2" color="text.secondary">
+            Mostrando {filteredEvents.length} eventos
+            {selectedCrop && ` para el cultivo seleccionado`}
+            {dateFrom && dateTo && ` entre ${formatDate(dateFrom)} y ${formatDate(dateTo)}`}
+          </Typography>
+        </div>
+      </div>
+
+      {/* Calendario */}
+      <div className="calendar-container">
+        <Calendar
+          onChange={handleDateChange}
+          value={selectedDate}
+          tileContent={tileContent}
+          locale="es"
+          className="react-calendar-custom"
+        />
+      </div>
+
+      {/* Referencia de colores */}
+      <div className="legend-container">
+        <Typography variant="h6" gutterBottom>Referencia de colores</Typography>
+        <Box className="legend-items">
+          <Box className="legend-item">
+            <div
+              className="legend-color"
+              style={{ backgroundColor: '#4caf50' }}
+            />
+            <Typography variant="body2">Siembra</Typography>
+          </Box>
+          <Box className="legend-item">
+            <div
+              className="legend-color"
+              style={{ backgroundColor: '#ff9800' }}
+            />
+            <Typography variant="body2">Cosecha</Typography>
+          </Box>
+          <Box className="legend-item">
+            <div
+              className="legend-color"
+              style={{ backgroundColor: '#2196f3' }}
+            />
+            <Typography variant="body2">Actividades</Typography>
+          </Box>
+        </Box>
+      </div>
+
+      {/* Modal de detalles del evento */}
+      <Dialog
+        open={openEventModal}
+        onClose={() => setOpenEventModal(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        {selectedEvent && (
+          <>
+            <DialogTitle>
+              <Box display="flex" alignItems="center" gap={1}>
+                {getEventIcon(selectedEvent.tipo)}
+                <Typography variant="h6">
+                  {selectedEvent.titulo || selectedEvent.tipo_actividad}
+                </Typography>
+                <Chip
+                  label={selectedEvent.tipo}
+                  style={{ backgroundColor: getEventColor(selectedEvent.tipo) }}
+                  size="small"
+                />
+              </Box>
+            </DialogTitle>
+            <DialogContent>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Fecha
+                  </Typography>
+                  <Typography variant="body1">
+                    {new Date(selectedEvent.fecha).toLocaleDateString('es-ES')}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Cultivo
+                  </Typography>
+                  <Typography variant="body1">
+                    {crops.find(c => c.id === selectedEvent.id_cultivo)?.tipo_cultivo || 'N/A'}
+                  </Typography>
+                </Grid>
+                {selectedEvent.descripcion && (
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Descripción
+                    </Typography>
+                    <Typography variant="body1">
+                      {selectedEvent.descripcion}
+                    </Typography>
+                  </Grid>
+                )}
+                {selectedEvent.estado && (
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Estado
+                    </Typography>
+                    <Typography variant="body1">
+                      {selectedEvent.estado}
+                    </Typography>
+                  </Grid>
+                )}
+                {selectedEvent.responsable && (
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Responsable
+                    </Typography>
+                    <Typography variant="body1">
+                      {selectedEvent.responsable}
+                    </Typography>
+                  </Grid>
+                )}
+              </Grid>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                onClick={() => setOpenEventModal(false)}
+                sx={{
+                  color: 'var(--primary-green) !important',
+                  '& .MuiButton-label': {
+                    color: 'white !important'
+                  }
+                }}
+              >
+                Cerrar
+              </Button>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
+    </Container>
+  );
+};
+
+export default CalendarPage;

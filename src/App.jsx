@@ -8,6 +8,7 @@ import ResetPassword from './components/pages/Auth/ResetPassword';
 import Register from './components/pages/Auth/Register';
 import CropsPage from './components/pages/CropsPage/CropsPage';
 import ActivitiesPage from './components/pages/ActivitiesPage/ActivitiesPage';
+import CalendarPage from './components/pages/CalendarPage/CalendarPage';
 import RestrictedAccess from './components/pages/RestrictedAccess/RestrictedAccess';
 import './App.css'
 
@@ -100,6 +101,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <ActivitiesPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/calendario" 
+              element={
+                <ProtectedRoute>
+                  <CalendarPage />
                 </ProtectedRoute>
               } 
             />
