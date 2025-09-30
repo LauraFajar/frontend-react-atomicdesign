@@ -15,20 +15,12 @@ const Register = () => {
     confirmPassword: '',
     tipo_documento: 'C.C.',
     numero_documento: '',
-    id_rol: '2' 
+    id_rol: '5' 
   });
-  
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  
-  const roles = [
-    { id: 4, name: 'Administrador' },
-    { id: 1, name: 'Instructor' },
-    { id: 2, name: 'Aprendiz' },
-    { id: 3, name: 'Pasante' }
-  ];
   
   const documentTypes = [
     { value: 'C.C.', label: 'Cédula de Ciudadanía (C.C.)' },
@@ -63,12 +55,12 @@ const Register = () => {
     
     try {
       // Crear objeto con los datos a enviar (sin confirmPassword)
-      const { confirmPassword, ...userData } = formData;
-      
-      // Convertir id_rol a número
+      const userData = { ...formData };
+      delete userData.confirmPassword;
+
       const userDataToSend = {
         ...userData,
-        id_rol: Number(userData.id_rol)
+        id_rol: 5
       };
       
       console.log('Enviando datos al servidor:', userDataToSend);
@@ -79,10 +71,6 @@ const Register = () => {
       setShowSuccessModal(true);
       console.log('showSuccessModal actualizado a:', true);
       
-      // para mantener la lógica condicional:
-      // if (response.data.success) {
-      //   setShowSuccessModal(true);
-      // }
     } catch (error) {
       console.error('Error en el registro:', error);
       setError(error.response?.data?.message || 'Error al registrar el usuario. Por favor, inténtalo de nuevo.');
@@ -197,23 +185,7 @@ const Register = () => {
             />
           </div>
           
-          <div className="form-group">
-            <label htmlFor="id_rol">Rol</label>
-            <select
-              id="id_rol"
-              name="id_rol"
-              value={formData.id_rol}
-              onChange={handleChange}
-              className="form-input"
-              required
-            >
-              {roles.map((rol) => (
-                <option key={rol.id} value={rol.id}>
-                  {rol.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <input type="hidden" name="id_rol" value={formData.id_rol} />
           
           <div className="form-group">
             <label htmlFor="password">Contraseña</label>

@@ -7,28 +7,44 @@ import ForgotPassword from './components/pages/Auth/ForgotPassword';
 import ResetPassword from './components/pages/Auth/ResetPassword';
 import Register from './components/pages/Auth/Register';
 import CropsPage from './components/pages/CropsPage/CropsPage';
+import RestrictedAccess from './components/pages/RestrictedAccess/RestrictedAccess';
 import './App.css'
 
 // Componente para rutas protegidas
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth()
-  
+const ProtectedRoute = ({ children, allowGuest = false }) => {
+  const { isAuthenticated, loading, user } = useAuth()
+
+  const isGuest = user?.role === 'invitado' || user?.roleId === 5
+
   if (loading) {
     return <div>Cargando...</div>;
   }
   
-  return isAuthenticated ? children : <Navigate to="/login" replace />
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+
+  if (!allowGuest && isGuest) {
+    return <Navigate to="/acceso-restringido" replace />
+  }
+
+  return children
 }
 
-// Componente para redireccionar si ya está autenticado
 const PublicRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth()
-  
+  const { isAuthenticated, loading, user } = useAuth()
+
   if (loading) {
     return <div>Cargando...</div>;
   }
   
-  return !isAuthenticated ? children : <Navigate to="/dashboard" replace />
+  if (!isAuthenticated) {
+    return children
+  }
+
+  const isGuest = user?.role === 'invitado' || user?.roleId === 5
+
+  return <Navigate to={isGuest ? '/acceso-restringido' : '/dashboard'} replace />
 }
 
 function App() {
@@ -83,6 +99,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <CropsPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/acceso-restringido" 
+              element={
+                <ProtectedRoute allowGuest>
+                  <RestrictedAccess />
                 </ProtectedRoute>
               } 
             />
