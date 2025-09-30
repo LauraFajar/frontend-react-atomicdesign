@@ -7,6 +7,7 @@ import ForgotPassword from './components/pages/Auth/ForgotPassword';
 import ResetPassword from './components/pages/Auth/ResetPassword';
 import Register from './components/pages/Auth/Register';
 import CropsPage from './components/pages/CropsPage/CropsPage';
+import ActivitiesPage from './components/pages/ActivitiesPage/ActivitiesPage';
 import RestrictedAccess from './components/pages/RestrictedAccess/RestrictedAccess';
 import './App.css'
 
@@ -95,18 +96,10 @@ function App() {
               } 
             />
             <Route 
-              path="/cultivos" 
+              path="/actividades" 
               element={
                 <ProtectedRoute>
-                  <CropsPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/acceso-restringido" 
-              element={
-                <ProtectedRoute allowGuest>
-                  <RestrictedAccess />
+                  <ActivitiesPage />
                 </ProtectedRoute>
               } 
             />

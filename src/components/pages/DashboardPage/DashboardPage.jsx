@@ -2,11 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from '../../organisms/Sidebar/Sidebar';
 import Header from '../../organisms/Header/Header';
 import CropsPage from '../CropsPage/CropsPage';
+import ActivitiesPage from '../ActivitiesPage/ActivitiesPage';
 import './DashboardPage.css';
 
 const DashboardPage = () => {
   const [activeSection, setActiveSection] = useState('inicio');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [expandedItems, setExpandedItems] = useState({ 'cultivos': true });
   const [currentSlide, setCurrentSlide] = useState(0);
   const slideInterval = useRef();
 
@@ -40,69 +42,83 @@ const DashboardPage = () => {
     return `carousel-item ${index === currentSlide ? 'active' : ''}`;
   };
 
-  const handleSectionChange = (sectionId) => {
+  const handleSectionChange = (sectionId, parentId = null) => {
+    // Si es un módulo padre, solo expandirlo
+    if (parentId === null && (sectionId === 'cultivos' || sectionId === 'iot' || sectionId === 'fitosanitario' || sectionId === 'finanzas' || sectionId === 'inventario')) {
+      setExpandedItems(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
+      return;
+    }
+
+    // Si es un submódulo o módulo independiente, cambiar la sección activa
     setActiveSection(sectionId);
+    
+    if (parentId) {
+      setExpandedItems(prev => ({ ...prev, [parentId]: true }));
+    }
   };
 
   const renderContent = () => {
-    switch (activeSection) {
-      case 'inicio':
-        return (
-          <div className="dashboard-content">
-            <div className="welcome-section">
-              <div className="welcome-card">
-                <div className="welcome-text">
-                  <h2 className="welcome-title">AgroTic</h2>
-                  <p className="welcome-description">
-                    Bienvenido a AgroTic, la plataforma líder en tecnología para el sector agrícola. 
-                    Conectamos a productores, proveedores y expertos para mejorar la eficiencia y 
-                    productividad en el campo.
-                  </p>
-                  <div className="objectives-section">
-                    <h3 className="objectives-title">Nuestro objetivo</h3>
-                    <ul className="objectives-list">
-                      <li>Mejorar la productividad y competitividad</li>
-                      <li>Acceder a innovaciones y tecnologías emergentes</li>
-                      <li>Conectar con la comunidad agrícola</li>
-                      <li>Optimizar procesos y reducir costos</li>
-                    </ul>
-                  </div>
+    if (activeSection === 'inicio' || !activeSection) {
+      return (
+        <div className="dashboard-content">
+          <div className="welcome-section">
+            <div className="welcome-card">
+              <div className="welcome-text">
+                <h2 className="welcome-title">AgroTic</h2>
+                <p className="welcome-description">
+                  Bienvenido a AgroTic, la plataforma líder en tecnología para el sector agrícola.
+                  Conectamos a productores, proveedores y expertos para mejorar la eficiencia y
+                  productividad en el campo.
+                </p>
+                <div className="objectives-section">
+                  <h3 className="objectives-title">Nuestro objetivo</h3>
+                  <ul className="objectives-list">
+                    <li>Mejorar la productividad y competitividad</li>
+                    <li>Acceder a innovaciones y tecnologías emergentes</li>
+                    <li>Conectar con la comunidad agrícola</li>
+                    <li>Optimizar procesos y reducir costos</li>
+                  </ul>
                 </div>
-                <div className="welcome-image">
-                  <div className="image-carousel">
-                    <div className="carousel-inner">
-                      <div className={getSlideClass(0)}>
-                        <img 
-                          src="/images/img-campesino-1.jpg" 
-                          alt="Campesino trabajando en cultivo" 
-                          className="carousel-image"
-                        />
-                      </div>
-                      <div className={getSlideClass(1)}>
-                        <img 
-                          src="/images/img-campesino-2.jpg" 
-                          alt="Cultivo agrícola" 
-                          className="carousel-image"
-                        />
-                      </div>
-                      <div className={getSlideClass(2)}>
-                        <img 
-                          src="/images/img-campesino-3.jpeg" 
-                          alt="Manos de agricultor con tierra" 
-                          className="carousel-image"
-                        />
-                      </div>
+              </div>
+              <div className="welcome-image">
+                <div className="image-carousel">
+                  <div className="carousel-inner">
+                    <div className={getSlideClass(0)}>
+                      <img
+                        src="/images/img-campesino-1.jpg"
+                        alt="Campesino trabajando en cultivo"
+                        className="carousel-image"
+                      />
+                    </div>
+                    <div className={getSlideClass(1)}>
+                      <img
+                        src="/images/img-campesino-2.jpg"
+                        alt="Cultivo agrícola"
+                        className="carousel-image"
+                      />
+                    </div>
+                    <div className={getSlideClass(2)}>
+                      <img
+                        src="/images/img-campesino-3.jpeg"
+                        alt="Manos de agricultor con tierra"
+                        className="carousel-image"
+                      />
                     </div>
                   </div>
                 </div>
-
               </div>
+
             </div>
           </div>
-        );
-      
-      case 'cultivos':
+        </div>
+      );
+    }
+
+    switch (activeSection) {
+      case 'cultivos-lista':
         return <CropsPage />;
+      case 'cultivos-actividades':
+        return <ActivitiesPage />;
       case 'iot':
         return (
           <div className="dashboard-content">
@@ -142,12 +158,13 @@ const DashboardPage = () => {
 
   return (
     <div className="dashboard-page">
-      <Sidebar 
-        activeItem={activeSection} 
-        onItemClick={handleSectionChange} 
+      <Sidebar
+        activeItem={activeSection}
+        onItemClick={handleSectionChange}
         collapsed={sidebarCollapsed}
+        expandedItems={expandedItems}
       />
-      <div 
+      <div
         className={`main-content ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}
         onClick={() => sidebarCollapsed && setSidebarCollapsed(false)}
       >
