@@ -1,0 +1,102 @@
+.lot-form-modal .MuiDialog-paper {
+  border-radius: var(--border-radius, 12px) !important;
+  padding: var(--spacing-sm, 8px) !important;
+}
+
+.lot-form-modal .MuiDialogTitle-root {
+  padding: var(--spacing-xl, 20px) var(--spacing-xl, 24px) var(--spacing-lg, 16px) !important;
+  color: var(--gray-700, #2c3e50) !important;
+  font-weight: 600 !important;
+}
+
+.lot-form-modal .MuiDialogContent-root {
+  padding: 0 var(--spacing-xl, 24px) var(--spacing-xl, 20px) !important;
+}
+
+.lot-form-modal .form-field {
+  margin-bottom: var(--spacing-xl, 20px) !important;
+}
+
+.lot-form-modal .MuiTextField-root {
+  margin-bottom: var(--spacing-sm, 8px) !important;
+}
+
+.lot-form-modal .MuiFormControlLabel-root {
+  margin-top: var(--spacing-sm, 8px) !important;
+}
+
+.lot-form-modal .MuiDialogActions-root {
+  padding: var(--spacing-lg, 16px) var(--spacing-xl, 24px) var(--spacing-xl, 20px) !important;
+  gap: var(--spacing-sm, 8px) !important;
+}
+
+.lot-form-modal .MuiButton-root {
+  font-weight: 500 !important;
+  text-transform: none !important;
+  border-radius: var(--border-radius, 8px) !important;
+}
+
+.lot-form-modal .MuiButton-contained {
+  box-shadow: none !important;
+}
+
+.lot-form-modal .MuiButton-contained:hover {
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3) !important;
+  transition: all 0.3s ease !important;
+}
+
+.lot-form-modal .MuiButton-contained:hover {
+  box-shadow: var(--shadow-lg, 0 4px 12px rgba(76, 175, 80, 0.4)) !important;
+  transform: translateY(-1px) !important;
+}
+
+.lot-form-modal .MuiButton-text {
+  color: var(--gray-600, #666) !important;
+}
+
+.lot-form-modal .MuiButton-text:hover {
+  background-color: var(--gray-50, #f5f5f5) !important;
+}
+
+.lot-form-modal .MuiCircularProgress-root {
+  color: var(--primary-green, #4CAF50) !important;
+}
+
+.lot-form-modal .MuiFormControlLabel-root .MuiSwitch-root {
+  margin-right: var(--spacing-sm, 8px) !important;
+}
+
+.lot-form-modal .Mui-error {
+  color: var(--error-main, #d32f2f) !important;
+}
+
+.lot-form-modal .MuiFormHelperText-root.Mui-error {
+  margin-left: 0 !important;
+  margin-top: 4px !important;
+}
+
+@media (max-width: 600px) {
+  .lot-form-modal .MuiDialog-paper {
+    margin: var(--spacing-lg, 16px) !important;
+    width: calc(100% - 32px) !important;
+  }
+
+  .lot-form-modal .MuiDialogTitle-root {
+    padding: var(--spacing-lg, 16px) var(--spacing-xl, 20px) var(--spacing-sm, 12px) !important;
+    font-size: 1.25rem !important;
+  }
+
+  .lot-form-modal .MuiDialogContent-root {
+    padding: 0 var(--spacing-xl, 20px) var(--spacing-lg, 16px) !important;
+  }
+
+  .lot-form-modal .MuiDialogActions-root {
+    padding: var(--spacing-sm, 12px) var(--spacing-xl, 20px) var(--spacing-lg, 16px) !important;
+    flex-direction: column-reverse !important;
+  }
+
+  .lot-form-modal .MuiButton-root {
+    width: 100% !important;
+    margin-bottom: var(--spacing-sm, 8px) !important;
+  }
+}

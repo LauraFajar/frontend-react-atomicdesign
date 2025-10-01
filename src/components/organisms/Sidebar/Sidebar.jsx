@@ -1,5 +1,5 @@
 import React from 'react'
-import { FiHome, FiZap, FiPackage, FiDroplet, FiDollarSign, FiBox, FiActivity, FiChevronDown, FiChevronRight, FiCalendar } from 'react-icons/fi'
+import { FiHome, FiZap, FiPackage, FiDroplet, FiDollarSign, FiBox, FiActivity, FiChevronDown, FiChevronRight, FiCalendar, FiMapPin } from 'react-icons/fi'
 import { Link } from 'react-router-dom'
 import './Sidebar.css'
 
@@ -13,6 +13,7 @@ const Sidebar = ({ activeItem = 'inicio', onItemClick, expandedItems = {} }) => 
       icon: <FiDroplet size={20} />,
       submodules: [
         { id: 'cultivos-lista', label: 'Gestión de Cultivos', icon: <FiDroplet size={16} /> },
+        { id: 'cultivos-lotes', label: 'Lotes', icon: <FiMapPin size={16} /> },
         { id: 'cultivos-actividades', label: 'Actividades', icon: <FiActivity size={16} /> },
         { id: 'cultivos-calendario', label: 'Calendario', icon: <FiCalendar size={16} /> }
       ]

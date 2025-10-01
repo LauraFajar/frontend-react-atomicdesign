@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from '../../organisms/Sidebar/Sidebar';
 import Header from '../../organisms/Header/Header';
 import CropsPage from '../CropsPage/CropsPage';
+import LotsPage from '../CropsPage/LotsPage';
 import ActivitiesPage from '../ActivitiesPage/ActivitiesPage';
 import CalendarPage from '../CalendarPage/CalendarPage';
 import './DashboardPage.css';
@@ -119,6 +120,8 @@ const DashboardPage = () => {
         return <CalendarPage />;
       case 'cultivos-lista':
         return <CropsPage />;
+      case 'cultivos-lotes':
+        return <LotsPage />;
       case 'cultivos-actividades':
         return <ActivitiesPage />;
       case 'cultivos-calendario':

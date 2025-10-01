@@ -18,6 +18,34 @@
   --dark-gray: #757575;
   --text-dark: #212121;
   
+  --gray-50: #f8f9fa;
+  --gray-100: #f5f5f5;
+  --gray-200: #e9ecef;
+  --gray-300: #dee2e6;
+  --gray-400: #ced4da;
+  --gray-500: #adb5bd;
+  --gray-600: #6c757d;
+  --gray-700: #495057;
+  --gray-800: #343a40;
+  --gray-900: #212529;
+  
+  --success-light: #e8f5e9;
+  --success-main: #4caf50;
+  --success-dark: #2e7d32;
+  
+  --error-light: #ffebee;
+  --error-main: #f44336;
+  --error-dark: #c62828;
+  
+  /* Estados de información */
+  --info-light: #e3f2fd;
+  --info-main: #2196f3;
+  --info-dark: #1976d2;
+  
+  --warning-light: #fff3e0;
+  --warning-main: #ff9800;
+  --warning-dark: #ef6c00;
+  
   /* Tipografía */
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   --font-size-sm: 0.875rem;
