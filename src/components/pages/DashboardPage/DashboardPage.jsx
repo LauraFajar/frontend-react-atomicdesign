@@ -5,6 +5,7 @@ import CropsPage from '../CropsPage/CropsPage';
 import LotsPage from '../CropsPage/LotsPage';
 import ActivitiesPage from '../ActivitiesPage/ActivitiesPage';
 import CalendarPage from '../CalendarPage/CalendarPage';
+import UsersPage from '../UsersPage/UsersPage';
 import { useAuth } from '../../../contexts/AuthContext';
 import './DashboardPage.css';
 
@@ -47,21 +48,34 @@ const DashboardPage = () => {
   };
 
   const handleSectionChange = (sectionId, parentId = null) => {
+    console.log('[Dashboard] Section change:', sectionId, 'Parent:', parentId);
+    console.log('[Dashboard] Current activeSection:', activeSection);
+
+    // Si es el módulo de usuarios, cambiar directamente la sección activa
+    if (sectionId === 'usuarios') {
+      console.log('[Dashboard] Setting usuarios as active section');
+      setActiveSection('usuarios');
+      return;
+    }
+
     // Si es un módulo padre, solo expandirlo
     if (parentId === null && (sectionId === 'cultivos' || sectionId === 'iot' || sectionId === 'fitosanitario' || sectionId === 'finanzas' || sectionId === 'inventario')) {
+      console.log('[Dashboard] Expanding module:', sectionId);
       setExpandedItems(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
       return;
     }
 
-    // Si es un submódulo o módulo independiente, cambiar la sección activa
+    console.log('[Dashboard] Setting active section to:', sectionId);
     setActiveSection(sectionId);
-    
+
     if (parentId) {
       setExpandedItems(prev => ({ ...prev, [parentId]: true }));
     }
   };
 
   const renderContent = () => {
+    console.log('[Dashboard] Rendering content for section:', activeSection);
+
     switch (activeSection) {
       case 'inicio':
         return (
@@ -156,6 +170,8 @@ const DashboardPage = () => {
             <p>Gestión de insumos, herramientas y stock</p>
           </div>
         );
+      case 'usuarios':
+        return <UsersPage />;
       default:
         return (
           <div className="dashboard-content">

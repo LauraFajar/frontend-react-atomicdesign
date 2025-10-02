@@ -1,5 +1,5 @@
 import React from 'react'
-import { FiHome, FiZap, FiPackage, FiDroplet, FiDollarSign, FiBox, FiActivity, FiChevronDown, FiChevronRight, FiCalendar, FiMapPin } from 'react-icons/fi'
+import { FiHome, FiZap, FiPackage, FiDroplet, FiDollarSign, FiBox, FiActivity, FiChevronDown, FiChevronRight, FiCalendar, FiMapPin, FiUsers } from 'react-icons/fi';
 import { Link } from 'react-router-dom'
 import './Sidebar.css'
 
@@ -21,19 +21,32 @@ const Sidebar = ({ activeItem = 'inicio', onItemClick, expandedItems = {}, user 
       },
       { id: 'fitosanitario', label: 'Fitosanitario', icon: <FiPackage size={20} /> },
       { id: 'finanzas', label: 'Finanzas', icon: <FiDollarSign size={20} /> },
-      { id: 'inventario', label: 'Inventario', icon: <FiBox size={20} /> }
+      { id: 'inventario', label: 'Inventario', icon: <FiBox size={20} /> },
+      {
+        id: 'usuarios',
+        label: 'Usuarios',
+        icon: <FiUsers size={20} />,
+        adminOnly: true
+      }
     ];
 
-    if (!user) return allMenuItems.filter(item => item.id === 'inicio');
+    if (!user) {
+      console.log('[Sidebar] No user, returning only inicio');
+      return allMenuItems.filter(item => item.id === 'inicio');
+    }
 
     const userRole = user.role;
     const roleId = user.roleId;
 
+    console.log('[Sidebar] User role:', userRole, 'Role ID:', roleId);
+
     if (roleId === 5 || userRole === 'invitado') {
+      console.log('[Sidebar] Guest user, returning only inicio');
       return allMenuItems.filter(item => item.id === 'inicio');
     }
 
     if (roleId === 2 || userRole === 'aprendiz') {
+      console.log('[Sidebar] Apprentice user, filtering modules');
       return allMenuItems.filter(item =>
         item.id === 'inicio' || 
         item.id === 'iot' ||
@@ -43,6 +56,7 @@ const Sidebar = ({ activeItem = 'inicio', onItemClick, expandedItems = {}, user 
     }
 
     if (roleId === 3 || userRole === 'pasante') {
+      console.log('[Sidebar] Intern user, filtering modules');
       return allMenuItems.filter(item =>
         item.id === 'inicio' ||
         item.id === 'iot' ||
@@ -51,17 +65,25 @@ const Sidebar = ({ activeItem = 'inicio', onItemClick, expandedItems = {}, user 
       );
     }
 
-    return allMenuItems;
+    console.log('[Sidebar] Admin/Instructor user, showing all modules');
+    return allMenuItems.filter(item => !item.adminOnly || roleId === 4 || userRole === 'administrador');
   };
 
   const menuItems = getFilteredMenuItems();
 
+  console.log('[Sidebar] User:', user);
+  console.log('[Sidebar] Filtered menu items:', menuItems.map(item => ({ id: item.id, label: item.label, adminOnly: item.adminOnly })));
+
   const handleItemClick = (itemId, parentId = null) => {
+    console.log('[Sidebar] Item clicked:', itemId, 'Parent:', parentId);
+
     if (onItemClick) {
       const item = menuItems.find(item => item.id === itemId);
       if (item && item.submodules) {
+        console.log('[Sidebar] Item has submodules, calling onItemClick with parent');
         onItemClick(itemId, null);
       } else {
+        console.log('[Sidebar] Item is standalone, calling onItemClick');
         onItemClick(itemId, parentId);
       }
     }

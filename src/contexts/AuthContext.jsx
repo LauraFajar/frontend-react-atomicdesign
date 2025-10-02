@@ -171,6 +171,26 @@ export const AuthProvider = ({ children }) => {
     setLoading(false)
   }, [])
 
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) {
+          console.log('[AuthContext] 401 error detected, logging out user')
+          logout()
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login'
+          }
+        }
+        return Promise.reject(error)
+      }
+    )
+
+    return () => {
+      axios.interceptors.response.eject(interceptor)
+    }
+  }, [])
+
   const login = async (credentials) => {
     try {
       const response = await axios.post('/auth/login', credentials)
@@ -189,6 +209,11 @@ export const AuthProvider = ({ children }) => {
       return { success: true }
     } catch (error) {
       console.error('Error en login:', error)
+
+      if (error.response?.status === 401) {
+        logout()
+      }
+
       return {
         success: false,
         message: error.response?.data?.message || 'Error al iniciar sesión'

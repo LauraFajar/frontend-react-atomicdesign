@@ -9,8 +9,7 @@ import Register from './components/pages/Auth/Register';
 import CropsPage from './components/pages/CropsPage/CropsPage';
 import ActivitiesPage from './components/pages/ActivitiesPage/ActivitiesPage';
 import CalendarPage from './components/pages/CalendarPage/CalendarPage';
-import RestrictedAccess from './components/pages/RestrictedAccess/RestrictedAccess';
-import './App.css'
+import UsersPage from './components/pages/UsersPage/UsersPage';
 
 // Componente para rutas protegidas
 const ProtectedRoute = ({ children, allowGuest = false }) => {
@@ -97,6 +96,14 @@ function App() {
               } 
             />
             <Route 
+              path="/cultivos" 
+              element={
+                <ProtectedRoute>
+                  <CropsPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path="/actividades" 
               element={
                 <ProtectedRoute>
@@ -109,6 +116,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <CalendarPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/usuarios" 
+              element={
+                <ProtectedRoute>
+                  <UsersPage />
                 </ProtectedRoute>
               } 
             />
