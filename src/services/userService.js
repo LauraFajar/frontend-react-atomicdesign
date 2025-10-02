@@ -8,10 +8,13 @@ const getAuthHeader = () => {
 };
 
 const mapUser = (u) => {
-  let nombreRol = u.nombre_rol || '';
-  if (nombreRol && typeof nombreRol === 'object') {
-    nombreRol = nombreRol.nombre || nombreRol.name || String(nombreRol);
-    console.log('[mapUser] Object nombre_rol converted:', u.nombre_rol, '->', nombreRol);
+  let idRol = u.id_rol;
+  let nombreRol = '';
+
+  if (idRol && typeof idRol === 'object') {
+    nombreRol = idRol.nombre_rol || '';
+    idRol = idRol.id_rol || idRol;
+    console.log('[mapUser] Object id_rol:', u.id_rol, '-> id:', idRol, 'nombre:', nombreRol);
   }
 
   const mappedUser = {
@@ -20,8 +23,8 @@ const mapUser = (u) => {
     email: u.email,
     tipo_documento: u.tipo_documento,
     numero_documento: u.numero_documento,
-    id_rol: u.id_rol,
-    nombre_rol: nombreRol,
+    id_rol: idRol,
+    nombre_rol: nombreRol || u.nombre_rol || '',
     estado: u.estado || 'activo',
     createdAt: u.createdAt,
     updatedAt: u.updatedAt,
@@ -29,12 +32,12 @@ const mapUser = (u) => {
   };
 
   console.log('[mapUser] Input user:', u);
-  console.log('[mapUser] Available ID fields:');
-  console.log('  - id:', u.id, 'type:', typeof u.id);
-  console.log('  - id_usuario:', u.id_usuario, 'type:', typeof u.id_usuario);
-  console.log('  - id_usuarios:', u.id_usuarios, 'type:', typeof u.id_usuarios);
-  console.log('[mapUser] Selected ID:', mappedUser.id, 'type:', typeof mappedUser.id);
-  console.log('[mapUser] nombre_rol:', nombreRol, 'type:', typeof nombreRol);
+  console.log('[mapUser] Mapped user:', {
+    id: mappedUser.id,
+    nombres: mappedUser.nombres,
+    id_rol: mappedUser.id_rol,
+    nombre_rol: mappedUser.nombre_rol
+  });
 
   return mappedUser;
 };

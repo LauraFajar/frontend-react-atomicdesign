@@ -44,20 +44,10 @@ const UsersPage = () => {
     filterUsers();
   }, [searchTerm, users]);
 
-  useEffect(() => {
-    if (users.length > 0) {
-      console.log('[UsersPage] Users enriched with roles from /rol endpoint');
-    }
-  }, [users]);
-
   const loadData = async () => {
     try {
       setLoading(true);
       setError('');
-
-      console.log('[UsersPage] Loading users and roles from /rol endpoint...');
-      console.log('[UsersPage] Can view:', canView);
-      console.log('[UsersPage] User:', user);
 
       if (!canView) {
         console.log('[UsersPage] User cannot view users');
@@ -66,6 +56,7 @@ const UsersPage = () => {
 
       const [usersData, rolesData] = await Promise.all([
         userService.getUsers().catch(error => {
+          console.error('Error loading users:', error);
           return [];
         }),
         userService.getRoles().catch(error => {
@@ -78,34 +69,32 @@ const UsersPage = () => {
       if (rolesData && Array.isArray(rolesData)) {
         rolesData.forEach(role => {
           console.log('[UsersPage] Processing role:', role, 'Type:', typeof role);
-          if (role && (role.id || role.id_rol)) {
-            const roleId = role.id || role.id_rol;
-            const roleName = role.nombre || role.name || role.rol_nombre || String(role);
-            rolesMap[roleId] = roleName;
-            console.log(`[UsersPage] Role mapped: ${roleId} -> ${roleName}`);
+          if (role && role.id_rol && role.nombre_rol) {
+            rolesMap[role.id_rol] = role.nombre_rol;
+            console.log(`[UsersPage] Role mapped: ${role.id_rol} -> ${role.nombre_rol}`);
           }
         });
       }
-      console.log('[UsersPage] Final rolesMap:', rolesMap);
 
       const enrichedUsers = usersData?.map(user => {
-        const userRoleId = user.id_rol;
-        const roleName = rolesMap[userRoleId];
+        console.log(`[UsersPage] Processing user: ${user.nombres}`);
+        console.log(`[UsersPage] User id_rol:`, user.id_rol, 'Type:', typeof user.id_rol);
 
         let finalRoleName;
-        if (typeof roleName === 'string' && roleName.trim()) {
-          finalRoleName = roleName.trim();
-        } else if (typeof user.nombre_rol === 'string' && user.nombre_rol.trim()) {
+
+        if (user.id_rol && typeof user.id_rol === 'object' && user.id_rol.nombre_rol) {
+          finalRoleName = user.id_rol.nombre_rol;
+        }
+        else if (user.nombre_rol && typeof user.nombre_rol === 'string' && user.nombre_rol.trim()) {
           finalRoleName = user.nombre_rol.trim();
-        } else if (user.nombre_rol && typeof user.nombre_rol === 'object') {
-          finalRoleName = user.nombre_rol.nombre || user.nombre_rol.name || String(user.nombre_rol);
-          console.log(`[UsersPage] Object role converted:`, user.nombre_rol, '->', finalRoleName);
-        } else {
-          finalRoleName = `Rol ${userRoleId || 'desconocido'}`;
+        }
+        else {
+          const userRoleId = typeof user.id_rol === 'object' ? user.id_rol.id_rol : user.id_rol;
+          const roleName = rolesMap[userRoleId];
+          finalRoleName = roleName || `Rol ${userRoleId || 'desconocido'}`;
         }
 
-        console.log(`[UsersPage] User ${user.nombres}: id_rol=${userRoleId}, roleName=${roleName}, user.nombre_rol=${user.nombre_rol}, final=${finalRoleName}`);
-        console.log(`[UsersPage] User ID: ${user.id}, type: ${typeof user.id}`);
+        console.log(`[UsersPage] User ${user.nombres} final role: ${finalRoleName}`);
 
         return {
           ...user,
@@ -118,13 +107,10 @@ const UsersPage = () => {
       console.log('[UsersPage] State updated - users:', enrichedUsers.length, 'roles:', rolesData.length);
     } catch (error) {
       console.error('Error al cargar los datos:', error);
-      console.error('Error details:', error.response?.data?.message || error.message);
-      console.error('Error status:', error.response?.status);
-
       if (error.message.includes('Sesión expirada')) {
         setError('Tu sesión ha expirada. Por favor inicia sesión nuevamente.');
       } else if (error.message.includes('No tienes permisos')) {
-        setError('No tienes permisos para ver los usuarios. Contacta al administrador si crees que esto es un error.');
+        setError('No tienes permisos para ver los usuarios.');
       } else {
         setError('Error al cargar los usuarios. Por favor intenta de nuevo más tarde.');
       }
@@ -182,9 +168,9 @@ const UsersPage = () => {
       if (error.message.includes('Sesión expirada')) {
         setError('Tu sesión ha expirado. Por favor inicia sesión nuevamente.');
       } else if (error.message?.includes('No tienes permisos')) {
-        setError('No tienes permisos para realizar esta acción. Contacta al administrador si crees que esto es un error.');
+        setError('No tienes permisos para realizar esta acción.');
       } else {
-        setError(error.response?.data?.message || 'Error al guardar el usuario. Por favor intenta de nuevo más tarde.');
+        setError('Error al guardar el usuario. Por favor intenta de nuevo más tarde.');
       }
     }
   };
@@ -194,12 +180,10 @@ const UsersPage = () => {
 
     console.log('[UsersPage] handleDeleteUser called');
     console.log('[UsersPage] userToDelete:', userToDelete);
-    console.log('[UsersPage] userToDelete.id:', userToDelete.id);
 
     if (!userToDelete.id) {
       console.error('[UsersPage] User has no ID:', userToDelete);
-      console.error('[UsersPage] Available user fields:', Object.keys(userToDelete));
-      setError(`Error: El usuario seleccionado no tiene un ID válido. Campos disponibles: ${Object.keys(userToDelete).join(', ')}`);
+      setError(`Error: El usuario seleccionado no tiene un ID válido.`);
       setOpenConfirmModal(false);
       setUserToDelete(null);
       return;
@@ -220,7 +204,6 @@ const UsersPage = () => {
     } catch (error) {
       console.error('=== DELETE USER COMPONENT ERROR DEBUG ===');
       console.error('Error object:', error);
-      console.error('Error name:', error.name);
       console.error('Error message:', error.message);
       console.error('Error response:', error.response);
       console.error('Error status:', error.response?.status);
@@ -229,19 +212,19 @@ const UsersPage = () => {
       if (error.message.includes('Sesión expirada')) {
         setError('Tu sesión ha expirada. Por favor inicia sesión nuevamente.');
       } else if (error.response?.status === 404) {
-        setError(`El usuario "${userToDelete.nombres}" no fue encontrado. Puede que ya haya sido eliminado.`);
+        setError(`El usuario "${userToDelete.nombres}" no fue encontrado.`);
       } else if (error.response?.status === 403) {
-        setError('No tienes permisos para eliminar usuarios. Contacta al administrador si crees que esto es un error.');
+        setError('No tienes permisos para eliminar usuarios.');
       } else if (error.response?.status >= 500) {
         setError('Error del servidor. Por favor intenta de nuevo más tarde.');
       } else if (error.message.includes('conexión') || error.message.includes('red')) {
         setError('Error de conexión. Verifica tu conexión a internet.');
       } else if (error.message.includes('CORS')) {
-        setError('Error de configuración del servidor. Contacta al administrador.');
+        setError('Error de configuración del servidor.');
       } else if (error.message.includes('servidor')) {
-        setError('No se pudo conectar con el servidor. Verifica que esté corriendo en el puerto correcto.');
+        setError('No se pudo conectar con el servidor.');
       } else if (error.message.includes('undefined') || error.message.includes('null')) {
-        setError('Error con el ID del usuario. Verifica los datos del usuario en la consola.');
+        setError('Error con el ID del usuario.');
       } else {
         setError(`Error al eliminar el usuario: ${error.message || 'Error desconocido'}`);
       }
@@ -252,8 +235,6 @@ const UsersPage = () => {
 
   const openDeleteConfirm = (userData) => {
     console.log('[UsersPage] Opening delete confirmation for user:', userData);
-    console.log('[UsersPage] User ID:', userData?.id);
-    console.log('[UsersPage] User ID type:', typeof userData?.id);
 
     if (!userData) {
       console.error('[UsersPage] Cannot delete user - no user data provided');
@@ -350,21 +331,20 @@ const UsersPage = () => {
                     <Chip
                       label={(() => {
                         const roleLabel = userData.nombre_rol;
-                        console.log(`[UsersPage] Rendering role for ${userData.nombres}:`, roleLabel, 'Type:', typeof roleLabel);
+                        console.log(`[UsersPage] Rendering role for ${userData.nombres}:`, roleLabel);
 
                         if (typeof roleLabel === 'string') {
                           return roleLabel;
                         } else if (roleLabel && typeof roleLabel === 'object') {
                           const extractedName = roleLabel.nombre || roleLabel.name || String(roleLabel);
-                          console.log(`[UsersPage] Object role in table:`, roleLabel, '->', extractedName);
                           return extractedName.replace('[object Object]', 'Rol desconocido');
                         } else {
-                          return `Rol ${userData.id_rol || 'desconocido'}`;
+                          return `Rol ${userData.id_rol?.id_rol || userData.id_rol || 'desconocido'}`;
                         }
                       })()}
                       sx={{
-                        backgroundColor: roleConfig[userData.id_rol]?.bgColor || '#f5f5f5',
-                        color: roleConfig[userData.id_rol]?.color || '#757575',
+                        backgroundColor: roleConfig[userData.id_rol?.id_rol || userData.id_rol]?.bgColor || '#f5f5f5',
+                        color: roleConfig[userData.id_rol?.id_rol || userData.id_rol]?.color || '#757575',
                         fontSize: '0.75rem'
                       }}
                     />
