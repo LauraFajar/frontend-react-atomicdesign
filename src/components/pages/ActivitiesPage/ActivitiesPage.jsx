@@ -52,7 +52,7 @@ const ActivitiesPage = () => {
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'administrador';
   const isInstructor = user?.role === 'instructor';
   const canView = Boolean(user);
   const canCreate = isAdmin || isInstructor;
@@ -180,9 +180,19 @@ const ActivitiesPage = () => {
       console.log('Actividad eliminada exitosamente');
     } catch (error) {
       console.error('Error al eliminar la actividad:', error);
-      setError(error.message?.includes('No tienes permisos')
-        ? 'No tienes permisos para eliminar actividades. Contacta al administrador si crees que esto es un error.'
-        : 'Error al eliminar la actividad. Por favor intenta de nuevo más tarde.');
+      if (error.response?.status === 404) {
+        setError(`La actividad "${activityToDelete.tipo_actividad}" no fue encontrada. Puede que ya haya sido eliminada.`);
+      } else if (error.response?.status === 403) {
+        setError('No tienes permisos para eliminar actividades. Contacta al administrador si crees que esto es un error.');
+      } else if (error.response?.status >= 500) {
+        setError('Error del servidor. Por favor intenta de nuevo más tarde.');
+      } else if (error.code === 'NETWORK_ERROR' || error.message?.includes('Network Error')) {
+        setError('Error de conexión. Verifica tu conexión a internet e intenta de nuevo.');
+      } else {
+        setError(`Error al eliminar la actividad: ${error.message || 'Error desconocido'}`);
+      }
+      setOpenConfirmModal(false);
+      setActivityToDelete(null);
     }
   };
 

@@ -5,9 +5,11 @@ import CropsPage from '../CropsPage/CropsPage';
 import LotsPage from '../CropsPage/LotsPage';
 import ActivitiesPage from '../ActivitiesPage/ActivitiesPage';
 import CalendarPage from '../CalendarPage/CalendarPage';
+import { useAuth } from '../../../contexts/AuthContext';
 import './DashboardPage.css';
 
 const DashboardPage = () => {
+  const { user } = useAuth();
   const [activeSection, setActiveSection] = useState('inicio');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [expandedItems, setExpandedItems] = useState({ 'cultivos': true });
@@ -170,6 +172,7 @@ const DashboardPage = () => {
         onItemClick={handleSectionChange}
         collapsed={sidebarCollapsed}
         expandedItems={expandedItems}
+        user={user}
       />
       <div
         className={`main-content ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}

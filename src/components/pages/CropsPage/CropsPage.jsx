@@ -4,6 +4,7 @@ import cropService from '../../../services/cropService';
 import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, IconButton, Chip, CircularProgress } from '@mui/material';
 import { Add, Edit, Delete, Search } from '@mui/icons-material';
 import CropFormModal from './CropFormModal';
+import ConfirmModal from '../../molecules/ConfirmModal/ConfirmModal';
 import './CropsPage.css';
 
 const statusConfig = {
@@ -32,10 +33,12 @@ const CropsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [openModal, setOpenModal] = useState(false);
+  const [openConfirmModal, setOpenConfirmModal] = useState(false);
   const [selectedCrop, setSelectedCrop] = useState(null);
+  const [cropToDelete, setCropToDelete] = useState(null);
   const [error, setError] = useState('');
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'administrador';
   const isInstructor = user?.role === 'instructor';
   const canView = Boolean(user);
   const canCreate = isAdmin || isInstructor;
@@ -110,25 +113,37 @@ const CropsPage = () => {
     }
   };
 
-  const handleDeleteCrop = async (id) => {
-    if (!canDelete) {
-      setError('No tienes permisos para eliminar cultivos');
-      return;
-    }
+  const handleDeleteCrop = async () => {
+    if (!cropToDelete || !canDelete) return;
 
-    if (window.confirm('¿Está seguro de eliminar este cultivo? Esta acción no se puede deshacer.')) {
-      try {
-        setError('');
-        await cropService.deleteCrop(id);
-        await loadCrops();
-        console.log('Cultivo eliminado exitosamente');
-      } catch (error) {
-        console.error('Error al eliminar el cultivo:', error);
-        setError(error.message?.includes('No tienes permisos')
-          ? 'No tienes permisos para eliminar cultivos. Contacta al administrador si crees que esto es un error.'
-          : 'Error al eliminar el cultivo. Por favor intenta de nuevo más tarde.');
+    try {
+      setError('');
+      await cropService.deleteCrop(cropToDelete.id);
+      await loadCrops();
+      setOpenConfirmModal(false);
+      setCropToDelete(null);
+      console.log('Cultivo eliminado exitosamente');
+    } catch (error) {
+      console.error('Error al eliminar el cultivo:', error);
+      if (error.response?.status === 404) {
+        setError(`El cultivo "${cropToDelete.tipo_cultivo}" no fue encontrado. Puede que ya haya sido eliminado.`);
+      } else if (error.response?.status === 403) {
+        setError('No tienes permisos para eliminar cultivos. Contacta al administrador si crees que esto es un error.');
+      } else if (error.response?.status >= 500) {
+        setError('Error del servidor. Por favor intenta de nuevo más tarde.');
+      } else if (error.code === 'NETWORK_ERROR' || error.message?.includes('Network Error')) {
+        setError('Error de conexión. Verifica tu conexión a internet e intenta de nuevo.');
+      } else {
+        setError(`Error al eliminar el cultivo: ${error.message || 'Error desconocido'}`);
       }
+      setOpenConfirmModal(false);
+      setCropToDelete(null);
     }
+  };
+
+  const openDeleteConfirm = (crop) => {
+    setCropToDelete(crop);
+    setOpenConfirmModal(true);
   };
 
   const formatDate = (dateString) => {
@@ -215,7 +230,7 @@ const CropsPage = () => {
                     )}
                     {canDelete && (
                       <IconButton
-                        onClick={() => handleDeleteCrop(crop.id)}
+                        onClick={() => openDeleteConfirm(crop)}
                         className="action-button delete-button"
                       >
                         <Delete />
@@ -234,6 +249,18 @@ const CropsPage = () => {
         onClose={handleCloseModal}
         onSave={handleSaveCrop}
         crop={selectedCrop}
+      />
+
+      <ConfirmModal
+        isOpen={openConfirmModal}
+        onClose={() => setOpenConfirmModal(false)}
+        onConfirm={handleDeleteCrop}
+        title="Eliminar Cultivo"
+        message={`¿Estás seguro de eliminar el cultivo "${cropToDelete?.tipo_cultivo}"? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        type="danger"
+        loading={loading}
       />
     </div>
   );

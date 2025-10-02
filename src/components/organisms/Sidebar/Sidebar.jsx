@@ -3,25 +3,58 @@ import { FiHome, FiZap, FiPackage, FiDroplet, FiDollarSign, FiBox, FiActivity, F
 import { Link } from 'react-router-dom'
 import './Sidebar.css'
 
-const Sidebar = ({ activeItem = 'inicio', onItemClick, expandedItems = {} }) => {
-  const menuItems = [
-    { id: 'inicio', label: 'Inicio', icon: <FiHome size={20} /> },
-    { id: 'iot', label: 'IoT', icon: <FiZap size={20} /> },
-    {
-      id: 'cultivos',
-      label: 'Cultivos',
-      icon: <FiDroplet size={20} />,
-      submodules: [
-        { id: 'cultivos-lista', label: 'Gestión de Cultivos', icon: <FiDroplet size={16} /> },
-        { id: 'cultivos-lotes', label: 'Lotes', icon: <FiMapPin size={16} /> },
-        { id: 'cultivos-actividades', label: 'Actividades', icon: <FiActivity size={16} /> },
-        { id: 'cultivos-calendario', label: 'Calendario', icon: <FiCalendar size={16} /> }
-      ]
-    },
-    { id: 'fitosanitario', label: 'Fitosanitario', icon: <FiPackage size={20} /> },
-    { id: 'finanzas', label: 'Finanzas', icon: <FiDollarSign size={20} /> },
-    { id: 'inventario', label: 'Inventario', icon: <FiBox size={20} /> }
-  ]
+const Sidebar = ({ activeItem = 'inicio', onItemClick, expandedItems = {}, user }) => {
+  const getFilteredMenuItems = () => {
+    const allMenuItems = [
+      { id: 'inicio', label: 'Inicio', icon: <FiHome size={20} /> },
+      { id: 'iot', label: 'IoT', icon: <FiZap size={20} /> },
+      {
+        id: 'cultivos',
+        label: 'Cultivos',
+        icon: <FiDroplet size={20} />,
+        submodules: [
+          { id: 'cultivos-lista', label: 'Gestión de Cultivos', icon: <FiDroplet size={16} /> },
+          { id: 'cultivos-lotes', label: 'Lotes', icon: <FiMapPin size={16} /> },
+          { id: 'cultivos-actividades', label: 'Actividades', icon: <FiActivity size={16} /> },
+          { id: 'cultivos-calendario', label: 'Calendario', icon: <FiCalendar size={16} /> }
+        ]
+      },
+      { id: 'fitosanitario', label: 'Fitosanitario', icon: <FiPackage size={20} /> },
+      { id: 'finanzas', label: 'Finanzas', icon: <FiDollarSign size={20} /> },
+      { id: 'inventario', label: 'Inventario', icon: <FiBox size={20} /> }
+    ];
+
+    if (!user) return allMenuItems.filter(item => item.id === 'inicio');
+
+    const userRole = user.role;
+    const roleId = user.roleId;
+
+    if (roleId === 5 || userRole === 'invitado') {
+      return allMenuItems.filter(item => item.id === 'inicio');
+    }
+
+    if (roleId === 2 || userRole === 'aprendiz') {
+      return allMenuItems.filter(item =>
+        item.id === 'inicio' || 
+        item.id === 'iot' ||
+        item.id === 'cultivos' ||
+        item.id === 'fitosanitario'
+      );
+    }
+
+    if (roleId === 3 || userRole === 'pasante') {
+      return allMenuItems.filter(item =>
+        item.id === 'inicio' ||
+        item.id === 'iot' ||
+        item.id === 'cultivos' ||
+        item.id === 'fitosanitario'
+      );
+    }
+
+    return allMenuItems;
+  };
+
+  const menuItems = getFilteredMenuItems();
 
   const handleItemClick = (itemId, parentId = null) => {
     if (onItemClick) {

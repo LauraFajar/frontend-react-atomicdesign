@@ -4,6 +4,7 @@ import lotService from '../../../services/lotService';
 import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, IconButton, Chip, CircularProgress } from '@mui/material';
 import { Add, Edit, Delete, Search } from '@mui/icons-material';
 import LotFormModal from './LotFormModal';
+import ConfirmModal from '../../molecules/ConfirmModal/ConfirmModal';
 import './LotsPage.css';
 
 const LotsPage = () => {
@@ -13,10 +14,12 @@ const LotsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [openModal, setOpenModal] = useState(false);
+  const [openConfirmModal, setOpenConfirmModal] = useState(false);
   const [selectedLot, setSelectedLot] = useState(null);
+  const [lotToDelete, setLotToDelete] = useState(null);
   const [error, setError] = useState('');
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'administrador';
   const isInstructor = user?.role === 'instructor';
   const canView = Boolean(user);
   const canCreate = isAdmin || isInstructor;
@@ -106,25 +109,37 @@ const LotsPage = () => {
     }
   };
 
-  const handleDeleteLot = async (id) => {
-    if (!canDelete) {
-      setError('No tienes permisos para eliminar lotes');
-      return;
-    }
+  const handleDeleteLot = async () => {
+    if (!lotToDelete || !canDelete) return;
 
-    if (window.confirm('¿Está seguro de eliminar este lote? Esta acción no se puede deshacer.')) {
-      try {
-        setError('');
-        await lotService.deleteLot(id);
-        await loadLots();
-        console.log('Lote eliminado exitosamente');
-      } catch (error) {
-        console.error('Error al eliminar el lote:', error);
-        setError(error.message?.includes('No tienes permisos')
-          ? 'No tienes permisos para eliminar lotes. Contacta al administrador si crees que esto es un error.'
-          : 'Error al eliminar el lote. Por favor intenta de nuevo más tarde.');
+    try {
+      setError('');
+      await lotService.deleteLot(lotToDelete.id);
+      await loadLots();
+      setOpenConfirmModal(false);
+      setLotToDelete(null);
+      console.log('Lote eliminado exitosamente');
+    } catch (error) {
+      console.error('Error al eliminar el lote:', error);
+      if (error.response?.status === 404) {
+        setError(`El lote "${lotToDelete.nombre}" no fue encontrado. Puede que ya haya sido eliminado.`);
+      } else if (error.response?.status === 403) {
+        setError('No tienes permisos para eliminar lotes. Contacta al administrador si crees que esto es un error.');
+      } else if (error.response?.status >= 500) {
+        setError('Error del servidor. Por favor intenta de nuevo más tarde.');
+      } else if (error.code === 'NETWORK_ERROR' || error.message?.includes('Network Error')) {
+        setError('Error de conexión. Verifica tu conexión a internet e intenta de nuevo.');
+      } else {
+        setError(`Error al eliminar el lote: ${error.message || 'Error desconocido'}`);
       }
+      setOpenConfirmModal(false);
+      setLotToDelete(null);
     }
+  };
+
+  const openDeleteConfirm = (lot) => {
+    setLotToDelete(lot);
+    setOpenConfirmModal(true);
   };
 
   if (loading) {
@@ -205,7 +220,7 @@ const LotsPage = () => {
                       )}
                       {canDelete && (
                         <IconButton
-                          onClick={() => handleDeleteLot(lot.id)}
+                          onClick={() => openDeleteConfirm(lot)}
                           className="action-button delete-button"
                         >
                           <Delete />
@@ -232,6 +247,18 @@ const LotsPage = () => {
         onSave={handleSaveLot}
         lot={selectedLot}
         key={selectedLot ? selectedLot.id : 'new'}
+      />
+
+      <ConfirmModal
+        isOpen={openConfirmModal}
+        onClose={() => setOpenConfirmModal(false)}
+        onConfirm={handleDeleteLot}
+        title="Eliminar Lote"
+        message={`¿Estás seguro de eliminar el lote "${lotToDelete?.nombre}"? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        type="danger"
+        loading={loading}
       />
     </div>
   );

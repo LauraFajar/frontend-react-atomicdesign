@@ -102,6 +102,15 @@ const cropService = {
       if (error.response?.status === 403) {
         throw new Error('No tienes permisos para eliminar cultivos');
       }
+      if (error.response?.status === 404) {
+        throw new Error(`El cultivo con ID ${id} no fue encontrado`);
+      }
+      if (error.response?.status >= 500) {
+        throw new Error('Error del servidor al eliminar el cultivo');
+      }
+      if (error.code === 'NETWORK_ERROR' || error.message?.includes('Network Error')) {
+        throw new Error('Error de conexión de red');
+      }
       throw error;
     }
   },
