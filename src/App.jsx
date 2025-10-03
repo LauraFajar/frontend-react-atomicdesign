@@ -10,17 +10,16 @@ import CropsPage from './components/pages/CropsPage/CropsPage';
 import ActivitiesPage from './components/pages/ActivitiesPage/ActivitiesPage';
 import CalendarPage from './components/pages/CalendarPage/CalendarPage';
 import UsersPage from './components/pages/UsersPage/UsersPage';
+import RestrictedAccess from './components/pages/RestrictedAccess/RestrictedAccess'; 
 
-// Componente para rutas protegidas
 const ProtectedRoute = ({ children, allowGuest = false }) => {
   const { isAuthenticated, loading, user } = useAuth()
-
   const isGuest = user?.role === 'invitado' || user?.roleId === 5
 
   if (loading) {
     return <div>Cargando...</div>;
   }
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
   }
@@ -33,19 +32,22 @@ const ProtectedRoute = ({ children, allowGuest = false }) => {
 }
 
 const PublicRoute = ({ children }) => {
-  const { isAuthenticated, loading, user } = useAuth()
+  const { isAuthenticated, loading, user } = useAuth();
+  const isGuest = user?.role === 'invitado' || user?.roleId === 5;
 
   if (loading) {
     return <div>Cargando...</div>;
   }
-  
+
   if (!isAuthenticated) {
-    return children
+    return children;
   }
 
-  const isGuest = user?.role === 'invitado' || user?.roleId === 5
+  if (isGuest && window.location.pathname !== '/acceso-restringido') {
+    return <Navigate to="/acceso-restringido" replace />;
+  }
 
-  return <Navigate to={isGuest ? '/acceso-restringido' : '/dashboard'} replace />
+  return <Navigate to="/dashboard" replace />;
 }
 
 function App() {
@@ -54,79 +56,53 @@ function App() {
       <Router>
         <div className="App">
           <Routes>
-            <Route 
-              path="/login" 
-              element={
-                <PublicRoute>
-                  <LoginPage />
-                </PublicRoute>
-              } 
-            />
-            <Route 
-              path="/dashboard" 
-              element={
-                <ProtectedRoute>
-                  <DashboardPage />
-                </ProtectedRoute>
-              } 
-            />
+            <Route path="/login" element={
+              <PublicRoute>
+                <LoginPage />
+              </PublicRoute>
+            } />
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            } />
             <Route path="/" element={<Navigate to="/login" />} />
-            <Route 
-              path="/forgot-password" 
-              element={
-                <PublicRoute>
-                  <ForgotPassword />
-                </PublicRoute>
-              } 
-            />
-            <Route 
-              path="/reset-password" 
-              element={
-                <PublicRoute>
-                  <ResetPassword />
-                </PublicRoute>
-              } 
-            />
-            <Route 
-              path="/register" 
-              element={
-                <PublicRoute>
-                  <Register />
-                </PublicRoute>
-              } 
-            />
-            <Route 
-              path="/cultivos" 
-              element={
-                <ProtectedRoute>
-                  <CropsPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/actividades" 
-              element={
-                <ProtectedRoute>
-                  <ActivitiesPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/calendario" 
-              element={
-                <ProtectedRoute>
-                  <CalendarPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/usuarios" 
-              element={
-                <ProtectedRoute>
-                  <UsersPage />
-                </ProtectedRoute>
-              } 
-            />
+            <Route path="/forgot-password" element={
+              <PublicRoute>
+                <ForgotPassword />
+              </PublicRoute>
+            } />
+            <Route path="/reset-password" element={
+              <PublicRoute>
+                <ResetPassword />
+              </PublicRoute>
+            } />
+            <Route path="/register" element={
+              <PublicRoute>
+                <Register />
+              </PublicRoute>
+            } />
+            <Route path="/cultivos" element={
+              <ProtectedRoute>
+                <CropsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/actividades" element={
+              <ProtectedRoute>
+                <ActivitiesPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/calendario" element={
+              <ProtectedRoute>
+                <CalendarPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/usuarios" element={
+              <ProtectedRoute>
+                <UsersPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/acceso-restringido" element={<RestrictedAccess />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </div>
@@ -135,4 +111,4 @@ function App() {
   )
 }
 
-export default App
+export default App;
