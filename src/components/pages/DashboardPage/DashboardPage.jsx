@@ -3,6 +3,7 @@ import Sidebar from '../../organisms/Sidebar/Sidebar';
 import Header from '../../organisms/Header/Header';
 import CropsPage from '../CropsPage/CropsPage';
 import LotsPage from '../CropsPage/LotsPage';
+import SublotsPage from '../SublotsPage/SublotsPage';
 import ActivitiesPage from '../ActivitiesPage/ActivitiesPage';
 import CalendarPage from '../CalendarPage/CalendarPage';
 import UsersPage from '../UsersPage/UsersPage';
@@ -51,7 +52,6 @@ const DashboardPage = () => {
     console.log('[Dashboard] Section change:', sectionId, 'Parent:', parentId);
     console.log('[Dashboard] Current activeSection:', activeSection);
 
-    // Si es el módulo de usuarios, cambiar directamente la sección activa
     if (sectionId === 'usuarios') {
       console.log('[Dashboard] Setting usuarios as active section');
       setActiveSection('usuarios');
@@ -138,6 +138,8 @@ const DashboardPage = () => {
         return <CropsPage />;
       case 'cultivos-lotes':
         return <LotsPage />;
+      case 'cultivos-sublotes':
+        return <SublotsPage />;
       case 'cultivos-actividades':
         return <ActivitiesPage />;
       case 'cultivos-calendario':
