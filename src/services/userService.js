@@ -25,7 +25,7 @@ const mapUser = (u) => {
     numero_documento: u.numero_documento,
     id_rol: idRol,
     nombre_rol: nombreRol || u.nombre_rol || '',
-    estado: u.estado || 'activo',
+    imagen_url: u.imagen_url || '',
     createdAt: u.createdAt,
     updatedAt: u.updatedAt,
     raw: u
@@ -90,7 +90,6 @@ const userService = {
 
   createUser: async (userData) => {
     try {
-      console.log('[userService] POST /usuarios payload:', userData);
 
       const payload = {
         nombres: userData.nombres,
@@ -128,26 +127,36 @@ const userService = {
     try {
       console.log('[userService] PATCH /usuarios/' + id + ' payload:', userData);
 
+      if (userData instanceof FormData) {
+        const response = await axios.patch(`${API_URL}/usuarios/${id}`, userData, {
+          headers: {
+            ...getAuthHeader(),
+          }
+        })
+        console.log('[userService] Update user (FormData) response:', response.data)
+        return mapUser(response.data)
+      }
       const payload = {
         nombres: userData.nombres,
         email: userData.email,
         tipo_documento: userData.tipo_documento,
         numero_documento: userData.numero_documento,
-        id_rol: userData.id_rol
-      };
-
-      if (userData.password && userData.password.trim()) {
-        payload.password = userData.password;
+        id_rol: userData.id_rol,
+        imagen_url: userData.imagen_url
       }
 
-      console.log('[userService] PATCH /usuarios/' + id + ' final payload:', payload);
+      if (userData.password && userData.password.trim()) {
+        payload.password = userData.password
+      }
+
+      console.log('[userService] PATCH /usuarios/' + id + ' final payload:', payload)
 
       const response = await axios.patch(`${API_URL}/usuarios/${id}`, payload, {
         headers: getAuthHeader()
-      });
+      })
 
-      console.log('[userService] Update user response:', response.data);
-      return mapUser(response.data);
+      console.log('[userService] Update user response:', response.data)
+      return mapUser(response.data)
     } catch (error) {
       console.error('Error al actualizar el usuario:', error);
       if (error.response?.status === 401) {

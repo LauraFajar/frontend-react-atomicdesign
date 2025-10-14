@@ -120,8 +120,8 @@ const normalizeUser = (rawUser) => {
   return {
     id: rawUser.id || rawUser.id_usuarios || null,
     nombres: rawUser.nombres || rawUser.nombre || '',
-    apellidos: rawUser.apellidos || '',
     email: rawUser.email || rawUser.correo || '',
+    imagen_url: rawUser.imagen_url || '',
     raw: rawUser,
     role,
     roleId,

@@ -10,7 +10,8 @@ import CropsPage from './components/pages/CropsPage/CropsPage';
 import ActivitiesPage from './components/pages/ActivitiesPage/ActivitiesPage';
 import CalendarPage from './components/pages/CalendarPage/CalendarPage';
 import UsersPage from './components/pages/UsersPage/UsersPage';
-import RestrictedAccess from './components/pages/RestrictedAccess/RestrictedAccess'; 
+import RestrictedAccess from './components/pages/RestrictedAccess/RestrictedAccess';
+import ProfilePage from './components/pages/ProfilePage/ProfilePage';
 
 const ProtectedRoute = ({ children, allowGuest = false }) => {
   const { isAuthenticated, loading, user } = useAuth()
@@ -100,6 +101,11 @@ function App() {
             <Route path="/usuarios" element={
               <ProtectedRoute>
                 <UsersPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/perfil" element={
+              <ProtectedRoute>
+                <ProfilePage />
               </ProtectedRoute>
             } />
             <Route path="/acceso-restringido" element={<RestrictedAccess />} />

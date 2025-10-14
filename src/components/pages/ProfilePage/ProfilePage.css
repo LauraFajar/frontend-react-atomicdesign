@@ -1,0 +1,27 @@
+.profile-page {
+  padding: var(--spacing-lg);
+  background-color: var(--light-gray);
+  min-height: calc(100vh - 64px);
+}
+
+.profile-container {
+  max-width: 800px;
+  margin: 0 auto;
+  background-color: var(--white);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
+  padding: var(--spacing-xl);
+}
+
+@media (max-width: 600px) {
+  .profile-page {
+    padding: var(--spacing-md);
+  }
+
+  .profile-container {
+    padding: var(--spacing-lg);
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
