@@ -1,0 +1,87 @@
+.MuiDialog-paper {
+  border-radius: 8px !important;
+  box-shadow: var(--shadow-lg) !important;
+  max-width: 480px !important;
+  width: 95% !important;
+  margin: var(--spacing-md) auto !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+}
+
+.MuiDialogTitle-root {
+  background-color: var(--primary-green) !important;
+  color: var(--white) !important;
+  padding: var(--spacing-md) !important;
+  font-size: var(--font-size-lg) !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1 !important;
+}
+
+.MuiDialogContent-root {
+  padding: var(--spacing-md) !important;
+  background-color: var(--white);
+  display: flex !important;
+  flex-direction: column !important;
+  gap: var(--spacing-sm) !important;
+  overflow-y: auto !important;
+}
+
+.detail-section {
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm);
+  background-color: var(--light-gray-bg);
+  border-radius: 8px;
+}
+
+.detail-label {
+  color: var(--dark-gray) !important;
+  margin-bottom: var(--spacing-xs) !important;
+  font-weight: 600 !important;
+  font-size: 1rem !important;
+}
+
+.detail-value {
+  color: var(--text-color);
+  font-size: 0.95rem !important;
+  line-height: 1.5 !important;
+}
+
+.detail-chip {
+  font-weight: 500 !important;
+  padding: 4px 8px !important;
+}
+
+.image-container {
+  margin-top: var(--spacing-xs);
+  text-align: center;
+}
+
+.detail-image {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+.no-image-container {
+  margin-top: var(--spacing-xs);
+  padding: var(--spacing-md);
+  background-color: var(--light-gray);
+  border-radius: 4px;
+  text-align: center;
+}
+
+.dialog-actions {
+  padding: var(--spacing-md) !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+
+.btn-save {
+  background-color: var(--primary-green) !important;
+  color: var(--white) !important;
+  min-width: 120px !important;
+}

@@ -1,0 +1,206 @@
+.epas-page {
+  padding: var(--spacing-lg);
+  background-color: var(--white);
+  min-height: calc(100vh - 64px);
+}
+
+.epas-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+@media (min-width: 600px) {
+  .epas-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+.epas-title {
+  color: var(--primary-green);
+  font-size: var(--font-size-2xl);
+  font-weight: 600;
+  margin: 0;
+}
+
+.new-epa-button {
+  background-color: var(--primary-green) !important;
+  border-radius: var(--border-radius) !important;
+  padding: var(--spacing-sm) var(--spacing-xl) !important;
+  font-size: var(--font-size-base) !important;
+  text-transform: none !important;
+  box-shadow: var(--shadow-md) !important;
+  transition: all 0.3s ease !important;
+}
+
+.new-epa-button:hover {
+  background-color: var(--dark-green) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.search-container {
+  background-color: var(--white);
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--spacing-xl);
+}
+
+.search-input {
+  border-color: var(--medium-gray);
+}
+
+.search-input .MuiOutlinedInput-root {
+  transition: all 0.3s ease;
+}
+
+.search-input .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: var(--primary-green);
+}
+
+.search-input .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: var(--primary-green);
+  border-width: 2px;
+  box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.1);
+}
+
+.epas-table-container {
+  background-color: var(--white);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  width: 100%;
+}
+
+.epas-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.epas-table th {
+  background-color: var(--light-gray);
+  color: var(--primary-green);
+  font-weight: 600;
+  padding: var(--spacing-md);
+  text-align: left;
+  border-bottom: 2px solid var(--medium-gray);
+}
+
+.epas-table td {
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--medium-gray);
+}
+
+.epas-table tr:hover {
+  background-color: var(--light-gray);
+}
+
+.status-chip {
+  font-weight: 500 !important;
+  font-size: var(--font-size-sm) !important;
+  padding: var(--spacing-xs) var(--spacing-sm) !important;
+}
+
+.type-chip {
+  font-weight: 500 !important;
+  font-size: var(--font-size-sm) !important;
+  padding: var(--spacing-xs) var(--spacing-sm) !important;
+}
+
+.action-buttons {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+}
+
+.loading-spinner {
+  color: var(--primary-color) !important;
+}
+
+.epa-modal {
+  border-radius: var(--border-radius-lg) !important;
+  overflow: hidden;
+}
+
+.modal-header {
+  background-color: var(--primary-green);
+  color: var(--white);
+  padding: var(--spacing-lg) var(--spacing-xl);
+}
+
+.modal-content {
+  padding: var(--spacing-xl);
+}
+
+.modal-form-field {
+  margin-bottom: var(--spacing-lg) !important;
+}
+
+.modal-form-field label.Mui-focused {
+  color: var(--primary-green);
+}
+
+.modal-form-field .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: var(--primary-green);
+}
+
+.modal-form-field .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: var(--primary-green);
+}
+
+.modal-actions {
+  padding: var(--spacing-lg) var(--spacing-xl);
+  background-color: var(--light-gray);
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-md);
+}
+
+.modal-cancel-button {
+  color: var(--dark-gray) !important;
+}
+
+.modal-save-button {
+  background-color: var(--primary-green) !important;
+  color: var(--white) !important;
+  padding: var(--spacing-sm) var(--spacing-xl) !important;
+}
+
+.modal-save-button:hover {
+  background-color: var(--dark-green) !important;
+}
+
+@media (max-width: 768px) {
+  .epas-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .new-epa-button {
+    margin-top: 10px;
+  }
+  
+  .modal-content {
+    padding: var(--spacing-lg);
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+    padding: var(--spacing-lg);
+  }
+
+  .modal-cancel-button,
+  .modal-save-button {
+    width: 100%;
+  }
+}

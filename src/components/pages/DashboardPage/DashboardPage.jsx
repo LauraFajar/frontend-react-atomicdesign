@@ -7,6 +7,7 @@ import SublotsPage from '../SublotsPage/SublotsPage';
 import ActivitiesPage from '../ActivitiesPage/ActivitiesPage';
 import CalendarPage from '../CalendarPage/CalendarPage';
 import UsersPage from '../UsersPage/UsersPage';
+import EpasPage from '../EpasPage/EpasPage';
 import { useAuth } from '../../../contexts/AuthContext';
 import './DashboardPage.css';
 
@@ -158,6 +159,8 @@ const DashboardPage = () => {
             <p>Gestión de enfermedades, plagas y arvenses</p>
           </div>
         );
+      case 'fitosanitario-epas':
+        return <EpasPage />;
       case 'finanzas':
         return (
           <div className="dashboard-content">

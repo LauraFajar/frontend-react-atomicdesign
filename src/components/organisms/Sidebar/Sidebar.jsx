@@ -20,7 +20,14 @@ const Sidebar = ({ activeItem = 'inicio', onItemClick, expandedItems = {}, user 
           { id: 'cultivos-calendario', label: 'Calendario', icon: <FiCalendar size={16} /> }
         ]
       },
-      { id: 'fitosanitario', label: 'Fitosanitario', icon: <FiPackage size={20} /> },
+      {
+        id: 'fitosanitario',
+        label: 'Fitosanitario',
+        icon: <FiPackage size={20} />,
+        submodules: [
+          { id: 'fitosanitario-epas', label: 'Gestión de EPA', icon: <FiPackage size={16} /> }
+        ]
+      },
       { id: 'finanzas', label: 'Finanzas', icon: <FiDollarSign size={20} /> },
       { id: 'inventario', label: 'Inventario', icon: <FiBox size={20} /> },
       {
