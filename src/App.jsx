@@ -9,6 +9,7 @@ import Register from './components/pages/Auth/Register';
 import CropsPage from './components/pages/CropsPage/CropsPage';
 import ActivitiesPage from './components/pages/ActivitiesPage/ActivitiesPage';
 import CalendarPage from './components/pages/CalendarPage/CalendarPage';
+import TratamientosPage from './components/pages/TratamientosPage/TratamientosPage';
 import UsersPage from './components/pages/UsersPage/UsersPage';
 import RestrictedAccess from './components/pages/RestrictedAccess/RestrictedAccess';
 import ProfilePage from './components/pages/ProfilePage/ProfilePage';
@@ -91,6 +92,11 @@ function App() {
             <Route path="/actividades" element={
               <ProtectedRoute>
                 <ActivitiesPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/tratamientos" element={
+              <ProtectedRoute>
+                <TratamientosPage />
               </ProtectedRoute>
             } />
             <Route path="/calendario" element={

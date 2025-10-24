@@ -1,5 +1,5 @@
 import React from 'react'
-import { FiHome, FiZap, FiPackage, FiDroplet, FiDollarSign, FiBox, FiActivity, FiChevronDown, FiChevronRight, FiCalendar, FiMapPin, FiUsers, FiLayers } from 'react-icons/fi';
+import { FiHome, FiZap, FiPackage, FiDroplet, FiDollarSign, FiBox, FiActivity, FiChevronDown, FiChevronRight, FiCalendar, FiMapPin, FiUsers, FiLayers, FiShield } from 'react-icons/fi';
 import { Link } from 'react-router-dom'
 import './Sidebar.css'
 
@@ -25,7 +25,8 @@ const Sidebar = ({ activeItem = 'inicio', onItemClick, expandedItems = {}, user 
         label: 'Fitosanitario',
         icon: <FiPackage size={20} />,
         submodules: [
-          { id: 'fitosanitario-epas', label: 'Gestión de EPA', icon: <FiPackage size={16} /> }
+          { id: 'fitosanitario-epas', label: 'Gestión de EPA', icon: <FiPackage size={16} /> },
+          { id: 'fitosanitario-tratamientos', label: 'Tratamientos', icon: <FiShield size={16} /> }
         ]
       },
       { id: 'finanzas', label: 'Finanzas', icon: <FiDollarSign size={20} /> },

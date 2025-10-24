@@ -1,0 +1,109 @@
+.MuiDialog-paper {
+  border-radius: 8px !important;
+  box-shadow: var(--shadow-lg) !important;
+  max-width: 480px !important;
+  width: 95% !important;
+  margin: var(--spacing-md) auto !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+}
+
+.MuiDialogTitle-root {
+  background-color: var(--primary-green) !important;
+  color: var(--white) !important;
+  padding: var(--spacing-md) !important;
+  font-size: var(--font-size-lg) !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1 !important;
+}
+
+.MuiDialogContent-root {
+  padding: var(--spacing-md) !important;
+  background-color: var(--white);
+  display: flex !important;
+  flex-direction: column !important;
+  gap: var(--spacing-sm) !important;
+  overflow-y: auto !important;
+}
+
+.modal-form-field {
+  margin-bottom: var(--spacing-lg) !important;
+}
+
+.modal-form-field .MuiInputLabel-root {
+  font-size: 0.9rem !important;
+}
+
+.modal-form-field .MuiOutlinedInput-root {
+  font-size: 0.9rem !important;
+  min-height: 45px !important;
+}
+
+.modal-form-field .MuiOutlinedInput-root .MuiOutlinedInput-input {
+  padding: 10px 14px !important;
+}
+
+.modal-form-field .MuiFormControl-root {
+  margin: 0 !important;
+}
+
+.modal-form-field textarea {
+  min-height: 40px !important;
+  max-height: 80px !important;
+}
+
+.modal-form-field label {
+  color: var(--dark-gray);
+}
+
+.modal-form-field label.Mui-focused {
+  color: var(--primary-green);
+}
+
+.modal-form-field .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline {
+  border-color: var(--medium-gray);
+}
+
+.modal-form-field .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: var(--primary-green);
+}
+
+.dialog-actions {
+  padding: var(--spacing-md) !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: var(--spacing-sm) !important;
+  background-color: var(--light-gray) !important;
+}
+
+.btn-cancel {
+  color: var(--dark-gray) !important;
+  border-color: var(--medium-gray) !important;
+}
+
+.btn-save {
+  background-color: var(--primary-green) !important;
+  color: var(--white) !important;
+}
+
+.form-error {
+  background-color: #ffebee;
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.required {
+  color: #f44336;
+}
+
+.tipo-biologico {
+  color: var(--primary-green);
+}
+
+.tipo-quimico {
+  color: #d32f2f;
+}

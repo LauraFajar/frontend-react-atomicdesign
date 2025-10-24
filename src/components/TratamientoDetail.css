@@ -1,0 +1,83 @@
+.MuiDialog-paper {
+  border-radius: 8px !important;
+  box-shadow: var(--shadow-lg) !important;
+  max-width: 480px !important;
+  width: 95% !important;
+  margin: var(--spacing-md) auto !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+}
+
+.MuiDialogTitle-root {
+  background-color: var(--primary-green) !important;
+  color: var(--white) !important;
+  padding: var(--spacing-md) !important;
+  font-size: var(--font-size-lg) !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1 !important;
+}
+
+.MuiDialogContent-root {
+  padding: var(--spacing-md) !important;
+  background-color: var(--white);
+  display: flex !important;
+  flex-direction: column !important;
+  gap: var(--spacing-sm) !important;
+  overflow-y: auto !important;
+}
+
+.dialog-actions {
+  padding: var(--spacing-md) !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: var(--spacing-sm) !important;
+  background-color: var(--light-gray) !important;
+}
+
+.btn-cancel {
+  color: var(--dark-gray) !important;
+  border-color: var(--medium-gray) !important;
+}
+
+.detail-section {
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm);
+  border-bottom: 1px solid var(--light-gray);
+}
+
+.detail-section:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  font-weight: 600 !important;
+  color: var(--gray-700) !important;
+  margin-bottom: var(--spacing-xs) !important;
+  font-size: 1rem !important;
+}
+
+.detail-value {
+  color: var(--gray-900) !important;
+}
+
+.detail-chip {
+  margin-top: var(--spacing-xs) !important;
+}
+
+.tipo-chip.biologico {
+  background-color: #E8F5E9 !important;
+  color: var(--primary-green) !important;
+}
+
+.tipo-chip.quimico {
+  background-color: #FFEBEE !important;
+  color: #d32f2f !important;
+}
+
+.epa-chip {
+  background-color: #E3F2FD !important;
+  color: #1976D2 !important;
+}

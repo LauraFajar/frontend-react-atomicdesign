@@ -7,6 +7,7 @@ import ConfirmModal from '../../molecules/ConfirmModal/ConfirmModal';
 import SuccessModal from '../../molecules/SuccessModal/SuccessModal';
 import EpaForm from './EpaForm';
 import EpaDetail from './EpaDetail';
+import epaService from '../../../services/epaService';
 import './EpasPage.css';
 
 const statusConfig = {
@@ -74,20 +75,10 @@ const EpasPage = () => {
   const loadEpas = async () => {
     setLoading(true);
     try {
-      const mockEpas = [
-        { id: 1, nombre: 'Roya del café', descripcion: 'Enfermedad fúngica que afecta las hojas del café', tipo: 'enfermedad', estado: 'activo', imagen: null },
-        { id: 2, nombre: 'Gorgojo del maíz', descripcion: 'Plaga que afecta los granos de maíz almacenados', tipo: 'plaga', estado: 'activo', imagen: null },
-        { id: 3, nombre: 'Cuscuta', descripcion: 'Planta parásita que afecta diversos cultivos', tipo: 'arvense', estado: 'activo', imagen: null },
-        { id: 4, nombre: 'Sigatoka negra', descripcion: 'Enfermedad fúngica que afecta las hojas del plátano', tipo: 'enfermedad', estado: 'inactivo', imagen: null }
-      ];
+      const data = await epaService.getEpas();
       
-      // En producción, usar:
-      // const response = await fetch('/api/epa');
-      // const data = await response.json();
-      // setEpas(data);
-      
-      setEpas(mockEpas);
-      setFilteredEpas(mockEpas);
+      setEpas(data);
+      setFilteredEpas(data);
       setLoading(false);
     } catch (error) {
       console.error('Error al cargar EPAs:', error);
@@ -98,9 +89,9 @@ const EpasPage = () => {
 
   const filterEpas = () => {
     const results = epas.filter(epa =>
-      epa.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      epa.tipo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      epa.estado.toLowerCase().includes(searchTerm.toLowerCase())
+      (epa.nombre?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (epa.tipo?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (epa.estado?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     );
     setFilteredEpas(results);
   };
@@ -139,17 +130,16 @@ const EpasPage = () => {
     setLoading(true);
     try {
       if (epaData.id) {
+        // Actualizar EPA existente
+        const updatedEpa = await epaService.updateEpa(epaData.id, epaData);
         const updatedEpas = epas.map(epa => 
-          epa.id === epaData.id ? { ...epa, ...epaData } : epa
+          epa.id === updatedEpa.id ? updatedEpa : epa
         );
         setEpas(updatedEpas);
         setSuccessMessage('EPA actualizada correctamente');
       } else {
-        const newEpa = {
-          ...epaData,
-          id: epas.length + 1,
-          estado: epaData.estado || 'activo'
-        };
+        // Crear nueva EPA
+        const newEpa = await epaService.createEpa(epaData);
         setEpas([...epas, newEpa]);
         setSuccessMessage('EPA creada correctamente');
       }
@@ -170,8 +160,16 @@ const EpasPage = () => {
     setLoading(true);
     try {
       const newStatus = epaToChangeStatus.estado === 'activo' ? 'inactivo' : 'activo';
+      
+      // Actualizar el estado de la EPA en la API
+      const updatedEpa = await epaService.updateEpa(epaToChangeStatus.id, {
+        ...epaToChangeStatus,
+        estado: newStatus
+      });
+      
+      // Actualizar el estado local
       const updatedEpas = epas.map(epa => 
-        epa.id === epaToChangeStatus.id ? { ...epa, estado: newStatus } : epa
+        epa.id === updatedEpa.id ? updatedEpa : epa
       );
       
       setEpas(updatedEpas);

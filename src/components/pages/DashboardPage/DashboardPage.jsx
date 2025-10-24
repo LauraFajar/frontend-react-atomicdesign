@@ -8,6 +8,7 @@ import ActivitiesPage from '../ActivitiesPage/ActivitiesPage';
 import CalendarPage from '../CalendarPage/CalendarPage';
 import UsersPage from '../UsersPage/UsersPage';
 import EpasPage from '../EpasPage/EpasPage';
+import TratamientosPage from '../TratamientosPage/TratamientosPage';
 import { useAuth } from '../../../contexts/AuthContext';
 import './DashboardPage.css';
 
@@ -161,6 +162,8 @@ const DashboardPage = () => {
         );
       case 'fitosanitario-epas':
         return <EpasPage />;
+      case 'fitosanitario-tratamientos':
+        return <TratamientosPage currentUser={user} />;
       case 'finanzas':
         return (
           <div className="dashboard-content">
