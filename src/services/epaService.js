@@ -17,10 +17,17 @@ const mapEpa = (e) => ({
 });
 
 const epaService = {
-  getEpas: async () => {
+  getEpas: async (page = 1, limit = 10) => {
     const response = await axios.get(`${API_URL}/epa`, {
+      params: { page, limit },
       headers: getAuthHeader()
     });
+    if (response.data && response.data.items) {
+      return {
+        items: response.data.items.map(mapEpa),
+        meta: response.data.meta
+      };
+    }
     const data = response.data;
     return Array.isArray(data) ? data.map(mapEpa) : data;
   },
@@ -33,23 +40,57 @@ const epaService = {
   },
 
   createEpa: async (epaData) => {
-    const response = await axios.post(`${API_URL}/epa`, epaData, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeader()
+    const payload = {
+      nombre_epa: epaData.nombre_epa,
+      descripcion: epaData.descripcion,
+      tipo: epaData.tipo,
+      estado: epaData.estado || 'activo'
+    };
+    
+    console.log('Datos enviados al backend:', payload);
+    
+    try {
+      const response = await axios.post(`${API_URL}/epa`, payload, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeader()
+        }
+      });
+      return mapEpa(response.data);
+    } catch (error) {
+      console.error('Error detallado:', error.response?.data || error.message);
+      if (error.response?.data) {
+        console.error('Respuesta del servidor:', JSON.stringify(error.response.data));
       }
-    });
-    return mapEpa(response.data);
+      throw error;
+    }
   },
 
   updateEpa: async (id, epaData) => {
-    const response = await axios.patch(`${API_URL}/epa/${id}`, epaData, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeader()
+    const payload = {
+      nombre_epa: epaData.nombre_epa || epaData.nombre,
+      descripcion: epaData.descripcion,
+      tipo: epaData.tipo,
+      estado: epaData.estado
+    };
+    
+    console.log('Datos enviados al actualizar EPA:', payload);
+    
+    try {
+      const response = await axios.patch(`${API_URL}/epa/${id}`, payload, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeader()
+        }
+      });
+      return mapEpa(response.data);
+    } catch (error) {
+      console.error('Error al actualizar EPA:', error.response?.data || error.message);
+      if (error.response?.data) {
+        console.error('Respuesta del servidor:', JSON.stringify(error.response.data));
       }
-    });
-    return mapEpa(response.data);
+      throw error;
+    }
   },
 
   deleteEpa: async (id) => {

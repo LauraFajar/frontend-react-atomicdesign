@@ -16,11 +16,11 @@ import './EpaForm.css';
 
 const EpaForm = ({ open, onClose, onSubmit, epa }) => {
   const [formData, setFormData] = useState({
-    nombre: '',
+    nombre_epa: '',
     descripcion: '',
     tipo: 'enfermedad',
     estado: 'activo',
-    imagen: null
+    imagen_referencia: null
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -29,19 +29,19 @@ const EpaForm = ({ open, onClose, onSubmit, epa }) => {
     if (epa) {
       setFormData({
         id: epa.id,
-        nombre: epa.nombre || '',
+        nombre_epa: epa.nombre_epa || epa.nombre || '',
         descripcion: epa.descripcion || '',
         tipo: epa.tipo || 'enfermedad',
         estado: epa.estado || 'activo',
-        imagen: epa.imagen || null
+        imagen_referencia: epa.imagen_referencia || epa.imagen || null
       });
     } else {
       setFormData({
-        nombre: '',
+        nombre_epa: '',
         descripcion: '',
         tipo: 'enfermedad',
         estado: 'activo',
-        imagen: null
+        imagen_referencia: null
       });
     }
   }, [epa]);
@@ -64,8 +64,8 @@ const EpaForm = ({ open, onClose, onSubmit, epa }) => {
   const validateForm = () => {
     const newErrors = {};
     
-    if (!formData.nombre.trim()) {
-      newErrors.nombre = 'El nombre es obligatorio';
+    if (!formData.nombre_epa.trim()) {
+      newErrors.nombre_epa = 'El nombre es obligatorio';
     }
     
     if (!formData.descripcion.trim()) {
@@ -122,15 +122,15 @@ const EpaForm = ({ open, onClose, onSubmit, epa }) => {
         <div className="modal-form-field">
           <TextField
             label="Nombre de EPA"
-            name="nombre"
-            value={formData.nombre}
+            name="nombre_epa"
+            value={formData.nombre_epa}
             onChange={handleChange}
             placeholder="Ingresa el nombre de la EPA"
             fullWidth
             variant="outlined"
             required
-            error={!!errors.nombre}
-            helperText={errors.nombre}
+            error={!!errors.nombre_epa}
+            helperText={errors.nombre_epa}
           />
         </div>
         
@@ -195,7 +195,7 @@ const EpaForm = ({ open, onClose, onSubmit, epa }) => {
           </Typography>
           <TextField
             type="file"
-            name="imagen"
+            name="imagen_referencia"
             onChange={(e) => {
               console.log('Archivo seleccionado:', e.target.files[0]);
             }}

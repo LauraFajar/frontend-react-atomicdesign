@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
-import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, IconButton, Chip, CircularProgress } from '@mui/material';
-import { Add, Edit, Delete, Search } from '@mui/icons-material';
+import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, IconButton, Chip, CircularProgress, Switch } from '@mui/material';
+import { Add, Edit, Delete, Search, CheckCircle } from '@mui/icons-material';
 import Modal from '../../molecules/Modal/Modal';
 import ConfirmModal from '../../molecules/ConfirmModal/ConfirmModal';
 import SuccessModal from '../../molecules/SuccessModal/SuccessModal';
 import EpaForm from './EpaForm';
 import EpaDetail from './EpaDetail';
 import epaService from '../../../services/epaService';
+import axios from 'axios';
 import './EpasPage.css';
 
 const statusConfig = {
@@ -67,15 +68,16 @@ const EpasPage = () => {
   }, []);
 
   useEffect(() => {
-    if (epas.length > 0) {
-      filterEpas();
-    }
+    const results = filterEpas(epas, searchTerm);
+    setFilteredEpas(results);
   }, [searchTerm, epas]);
 
   const loadEpas = async () => {
     setLoading(true);
     try {
-      const data = await epaService.getEpas();
+      const response = await epaService.getEpas();
+  
+      const data = response.items ? response.items : response;
       
       setEpas(data);
       setFilteredEpas(data);
@@ -87,13 +89,13 @@ const EpasPage = () => {
     }
   };
 
-  const filterEpas = () => {
-    const results = epas.filter(epa =>
-      (epa.nombre?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-      (epa.tipo?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-      (epa.estado?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+  const filterEpas = (epasToFilter, term) => {
+    if (!epasToFilter) return [];
+    return epasToFilter.filter(epa =>
+      (epa.nombre?.toLowerCase() || '').includes(term.toLowerCase()) ||
+      (epa.tipo?.toLowerCase() || '').includes(term.toLowerCase()) ||
+      (epa.estado?.toLowerCase() || '').includes(term.toLowerCase())
     );
-    setFilteredEpas(results);
   };
 
   const handleSearch = (e) => {
@@ -121,6 +123,70 @@ const EpasPage = () => {
     setSelectedEpa(null);
   };
 
+  const handleToggleStatus = async (epa, checked) => {
+    setLoading(true);
+    try {
+      const newStatus = checked ? 'activo' : 'inactivo';
+      const epaId = epa.id_epa || epa.id;
+      console.log('Toggle estado EPA:', { id: epaId, newStatus });
+
+      await axios.patch(`http://localhost:3001/epa/${epaId}`, { estado: newStatus }, {
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const updatedEpas = epas.map((item) => {
+        const currentId = item.id_epa || item.id;
+        return currentId === epaId ? { ...item, estado: newStatus } : item;
+      });
+      setEpas(updatedEpas);
+      setFilteredEpas(filterEpas(updatedEpas, searchTerm));
+    } catch (error) {
+      console.error('Error al cambiar estado de EPA:', error);
+      console.error('Detalles del error:', error.response?.data || error.message);
+      setError('Error al cambiar el estado de la EPA: ' + (error.response?.data?.message || error.message || 'Error desconocido'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const [openDeleteModal, setOpenDeleteModal] = useState(false);
+  const [epaToDelete, setEpaToDelete] = useState(null);
+
+  const openDeleteConfirm = (epa) => {
+    setEpaToDelete(epa);
+    setOpenDeleteModal(true);
+  };
+
+  const handleDeleteEpa = async () => {
+    if (!epaToDelete) return;
+    setLoading(true);
+    try {
+      const epaId = epaToDelete.id_epa || epaToDelete.id;
+      console.log('EPA a eliminar:', epaToDelete);
+      console.log('ID de EPA a eliminar:', epaId);
+      console.log('Tipo de dato del ID:', typeof epaId);
+      
+      await epaService.deleteEpa(epaId);
+      
+      const updatedEpas = epas.filter((item) => {
+        const itemId = item.id_epa || item.id;
+        return itemId !== epaId;
+      });
+      
+      setEpas(updatedEpas);
+      setFilteredEpas(filterEpas(updatedEpas, searchTerm));
+      setSuccessMessage('EPA eliminada correctamente');
+      setOpenSuccessModal(true);
+      setOpenDeleteModal(false);
+      setEpaToDelete(null);
+    } catch (error) {
+      console.error('Error al eliminar EPA:', error);
+      console.error('Detalles del error:', error.response?.data || error.message);
+      setError('Error al eliminar la EPA: ' + (error.response?.data?.message || error.message || 'Error desconocido'));
+    } finally {
+      setLoading(false);
+    }
+  };
   const openStatusConfirm = (epa) => {
     setEpaToChangeStatus(epa);
     setOpenConfirmModal(true);
@@ -130,7 +196,6 @@ const EpasPage = () => {
     setLoading(true);
     try {
       if (epaData.id) {
-        // Actualizar EPA existente
         const updatedEpa = await epaService.updateEpa(epaData.id, epaData);
         const updatedEpas = epas.map(epa => 
           epa.id === updatedEpa.id ? updatedEpa : epa
@@ -138,7 +203,6 @@ const EpasPage = () => {
         setEpas(updatedEpas);
         setSuccessMessage('EPA actualizada correctamente');
       } else {
-        // Crear nueva EPA
         const newEpa = await epaService.createEpa(epaData);
         setEpas([...epas, newEpa]);
         setSuccessMessage('EPA creada correctamente');
@@ -161,26 +225,54 @@ const EpasPage = () => {
     try {
       const newStatus = epaToChangeStatus.estado === 'activo' ? 'inactivo' : 'activo';
       
-      // Actualizar el estado de la EPA en la API
-      const updatedEpa = await epaService.updateEpa(epaToChangeStatus.id, {
-        ...epaToChangeStatus,
-        estado: newStatus
-      });
+      const epaId = epaToChangeStatus.id_epa || epaToChangeStatus.id;
       
-      // Actualizar el estado local
-      const updatedEpas = epas.map(epa => 
-        epa.id === updatedEpa.id ? updatedEpa : epa
+      console.log('Cambiando estado de EPA a:', newStatus);
+      console.log('EPA a modificar:', epaToChangeStatus);
+      console.log('ID de EPA usado:', epaId, 'Tipo:', typeof epaId);
+      
+      const epaData = {
+        estado: newStatus
+      };
+      
+      console.log('Datos a enviar:', epaData);
+      console.log('URL de la petición:', `http://localhost:3001/epa/${epaId}`);
+      
+      const response = await axios.patch(
+        `http://localhost:3001/epa/${epaId}`, 
+        epaData,
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
       );
       
+      console.log('Respuesta del servidor:', response.data);
+      
+      const updatedEpa = {
+        ...epaToChangeStatus,
+        estado: newStatus
+      };
+      
+      console.log('EPA actualizada:', updatedEpa);
+      
+      const updatedEpas = epas.map(epa => {
+        const currentId = epa.id_epa || epa.id;
+        return currentId === epaId ? updatedEpa : epa;
+      });
+      
       setEpas(updatedEpas);
+      setFilteredEpas(filterEpas(updatedEpas, searchTerm));
       setOpenConfirmModal(false);
       setSuccessMessage(`EPA ${newStatus === 'activo' ? 'activada' : 'desactivada'} correctamente`);
       setOpenSuccessModal(true);
       setEpaToChangeStatus(null);
-      setLoading(false);
     } catch (error) {
       console.error('Error al cambiar estado de EPA:', error);
-      setError('Error al cambiar el estado de la EPA. Por favor, intenta de nuevo.');
+      console.error('Detalles del error:', error.response?.data || error.message);
+      setError('Error al cambiar el estado de la EPA: ' + (error.response?.data?.message || error.message || 'Error desconocido'));
+    } finally {
       setLoading(false);
     }
   };
@@ -262,14 +354,17 @@ const EpasPage = () => {
                           />
                         </TableCell>
                         <TableCell>
-                          <Chip
-                            label={epa.estado === 'activo' ? 'Activo' : 'Inactivo'}
-                            style={{
-                              backgroundColor: statusConfig[epa.estado]?.bgColor || '#e0e0e0',
-                              color: statusConfig[epa.estado]?.color || '#333333'
-                            }}
-                            className="status-chip"
-                          />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Switch
+                              checked={epa.estado === 'activo'}
+                              color="success"
+                              onChange={(e) => handleToggleStatus(epa, e.target.checked)}
+                              inputProps={{ 'aria-label': 'Estado EPA' }}
+                            />
+                            <Typography variant="body2" color={epa.estado === 'activo' ? 'success.main' : 'text.secondary'}>
+                              {epa.estado === 'activo' ? 'Activado' : 'Desactivada'}
+                            </Typography>
+                          </div>
                         </TableCell>
                         <TableCell align="right">
                           <IconButton
@@ -288,15 +383,13 @@ const EpasPage = () => {
                               <Edit />
                             </IconButton>
                           )}
-                          {canChangeStatus && (
-                            <IconButton
-                              onClick={() => openStatusConfirm(epa)}
-                              className="action-button status-button"
-                              title={epa.estado === 'activo' ? 'Desactivar' : 'Activar'}
-                            >
-                              <Delete style={{ color: '#d32f2f' }} />
-                            </IconButton>
-                          )}
+                          <IconButton
+                            onClick={() => openDeleteConfirm(epa)}
+                            className="action-button delete-button"
+                            title="Eliminar"
+                          >
+                            <Delete style={{ color: '#d32f2f' }} />
+                          </IconButton>
                         </TableCell>
                       </TableRow>
                     ))
@@ -334,6 +427,19 @@ const EpasPage = () => {
           onClose={() => setOpenConfirmModal(false)}
           onConfirm={handleChangeStatus}
           epa={epaToChangeStatus}
+          loading={loading}
+        />
+
+        {/* Modal de confirmación para eliminar EPA */}
+        <ConfirmModal
+          isOpen={openDeleteModal}
+          onClose={() => setOpenDeleteModal(false)}
+          onConfirm={handleDeleteEpa}
+          title="Eliminar EPA"
+          message={epaToDelete ? `¿Estás seguro de eliminar la EPA "${epaToDelete.nombre}"?` : ''}
+          confirmText="Eliminar"
+          cancelText="Cancelar"
+          type="danger"
           loading={loading}
         />
 
