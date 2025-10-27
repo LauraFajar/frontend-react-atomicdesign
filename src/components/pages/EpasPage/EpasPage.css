@@ -127,6 +127,12 @@
   color: var(--primary-color) !important;
 }
 
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-lg) 0;
+}
+
 .epa-modal {
   border-radius: var(--border-radius-lg) !important;
   overflow: hidden;

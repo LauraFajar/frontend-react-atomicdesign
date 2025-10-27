@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
-import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, IconButton, Chip, CircularProgress, Switch } from '@mui/material';
+import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, IconButton, Chip, CircularProgress, Switch, Pagination } from '@mui/material';
 import { Add, Edit, Delete, Search, CheckCircle } from '@mui/icons-material';
 import Modal from '../../molecules/Modal/Modal';
 import ConfirmModal from '../../molecules/ConfirmModal/ConfirmModal';
@@ -55,6 +55,8 @@ const EpasPage = () => {
   const [epaToChangeStatus, setEpaToChangeStatus] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
   const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
 
   const isAdmin = user?.role === 'administrador';
   const isInstructor = user?.role === 'instructor';
@@ -64,23 +66,25 @@ const EpasPage = () => {
   const canChangeStatus = isAdmin || isInstructor;
 
   useEffect(() => {
-    loadEpas();
-  }, []);
+    loadEpas(page);
+  }, [page]);
 
   useEffect(() => {
     const results = filterEpas(epas, searchTerm);
     setFilteredEpas(results);
   }, [searchTerm, epas]);
 
-  const loadEpas = async () => {
+  const loadEpas = async (currentPage) => {
     setLoading(true);
     try {
-      const response = await epaService.getEpas();
-  
-      const data = response.items ? response.items : response;
-      
+      const response = await epaService.getEpas(currentPage, 10);
+      const data = response.items || [];
+      const meta = response.meta || {};
+
       setEpas(data);
       setFilteredEpas(data);
+      setTotalPages(meta.totalPages || 1);
+      setPage(currentPage);
       setLoading(false);
     } catch (error) {
       console.error('Error al cargar EPAs:', error);
@@ -100,6 +104,10 @@ const EpasPage = () => {
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
+  };
+
+  const handlePageChange = (event, value) => {
+    setPage(value);
   };
 
   const handleOpenModal = (epa = null) => {
@@ -449,6 +457,17 @@ const EpasPage = () => {
           onClose={() => setOpenSuccessModal(false)}
           message={successMessage}
         />
+
+        {totalPages > 1 && (
+          <div className="pagination-container">
+            <Pagination
+              count={totalPages}
+              page={page}
+              onChange={handlePageChange}
+              color="primary"
+            />
+          </div>
+        )}
       </div>
     </div>
   );
