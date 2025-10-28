@@ -1,6 +1,12 @@
 import axios from 'axios';
+import Cookies from 'js-cookie';
 
 const API_BASE_URL = 'http://localhost:3001';
+
+const getAuthHeader = () => {
+  const token = Cookies.get('token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
 
 class CalendarService {
   /**
@@ -12,7 +18,8 @@ class CalendarService {
       const cultivosResponse = await axios.get(
         `${API_BASE_URL}/cultivos/calendario`,
         {
-          params: { fecha_desde: fechaDesde, fecha_hasta: fechaHasta }
+          params: { fecha_desde: fechaDesde, fecha_hasta: fechaHasta },
+          headers: getAuthHeader()
         }
       );
 
@@ -22,7 +29,8 @@ class CalendarService {
           params: {
             fecha_inicio: fechaDesde,
             fecha_fin: fechaHasta
-          }
+          },
+          headers: getAuthHeader()
         }
       );
 
@@ -70,7 +78,8 @@ class CalendarService {
       const response = await axios.get(
         `${API_BASE_URL}/cultivos/calendario`,
         {
-          params: { fecha_desde: fechaDesde, fecha_hasta: fechaHasta }
+          params: { fecha_desde: fechaDesde, fecha_hasta: fechaHasta },
+          headers: getAuthHeader()
         }
       );
 
@@ -113,7 +122,7 @@ class CalendarService {
 
       const response = await axios.get(
         `${API_BASE_URL}/actividades/reporte`,
-        { params }
+        { params, headers: getAuthHeader() }
       );
 
       return response.data.map(evento => ({
@@ -147,11 +156,11 @@ class CalendarService {
 
       if (isCultivoEvent) {
         const cultivoId = eventId.replace('cultivo-', '');
-        const response = await axios.get(`${API_BASE_URL}/cultivos/${cultivoId}`);
+        const response = await axios.get(`${API_BASE_URL}/cultivos/${cultivoId}`, { headers: getAuthHeader() });
         return response.data;
       } else if (isActividadEvent) {
         const actividadId = eventId.replace('actividad-', '');
-        const response = await axios.get(`${API_BASE_URL}/actividades/${actividadId}`);
+        const response = await axios.get(`${API_BASE_URL}/actividades/${actividadId}`, { headers: getAuthHeader() });
         return response.data;
       } else {
         throw new Error('Tipo de evento no reconocido');

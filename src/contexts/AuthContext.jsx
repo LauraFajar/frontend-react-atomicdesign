@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
-import axios from 'axios'
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import axios from 'axios';
+import Cookies from 'js-cookie';
 
 const AuthContext = createContext()
 
@@ -143,33 +144,33 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    const storedUser = localStorage.getItem('user')
+    const token = Cookies.get('token');
+    const storedUser = Cookies.get('user');
 
     if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-      setIsAuthenticated(true)
-      console.log('[AuthContext] token found in localStorage')
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setIsAuthenticated(true);
+      console.log('[AuthContext] token found in cookies');
     }
 
     if (storedUser) {
       try {
-        const parsed = JSON.parse(storedUser)
+        const parsed = JSON.parse(storedUser);
         const normalizedFromStorage = parsed?.raw
           ? normalizeUser(parsed.raw)
-          : normalizeUser(parsed)
-        setUser(normalizedFromStorage)
-        console.log('[AuthContext] user loaded from localStorage:', normalizedFromStorage)
+          : normalizeUser(parsed);
+        setUser(normalizedFromStorage);
+        console.log('[AuthContext] user loaded from cookies:', normalizedFromStorage);
       } catch (e) {
-        console.error('Error parsing stored user:', e)
-        localStorage.removeItem('user')
+        console.error('Error parsing stored user:', e);
+        Cookies.remove('user');
       }
     } else {
-      console.log('[AuthContext] no user in localStorage')
+      console.log('[AuthContext] no user in cookies');
     }
 
-    setLoading(false)
-  }, [])
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
@@ -196,13 +197,13 @@ export const AuthProvider = ({ children }) => {
       const response = await axios.post('/auth/login', credentials)
       const { access_token, user: responseUser } = response.data
 
-      // Guardar token
-      localStorage.setItem('token', access_token)
-      axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`
+      // Guardar token y usuario en cookies
+      Cookies.set('token', access_token, { expires: 7, secure: true, sameSite: 'strict' });
+      axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
 
-      const normalizedUser = normalizeUser(responseUser)
-      localStorage.setItem('user', JSON.stringify(normalizedUser))
-      setUser(normalizedUser)
+      const normalizedUser = normalizeUser(responseUser);
+      Cookies.set('user', JSON.stringify(normalizedUser), { expires: 7, secure: true, sameSite: 'strict' });
+      setUser(normalizedUser);
       console.log('[AuthContext] login successful, user set:', normalizedUser)
       setIsAuthenticated(true)
 
@@ -222,12 +223,12 @@ export const AuthProvider = ({ children }) => {
   }
 
   const logout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    delete axios.defaults.headers.common['Authorization']
-    setUser(null)
-    setIsAuthenticated(false)
-  }
+    Cookies.remove('token');
+    Cookies.remove('user');
+    delete axios.defaults.headers.common['Authorization'];
+    setUser(null);
+    setIsAuthenticated(false);
+  };
 
   const register = async (userData) => {
     try {

@@ -1,9 +1,10 @@
 import axios from 'axios';
+import Cookies from 'js-cookie';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
 const getAuthHeader = () => {
-  const token = localStorage.getItem('token');
+  const token = Cookies.get('token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
