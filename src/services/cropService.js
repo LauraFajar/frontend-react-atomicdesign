@@ -23,12 +23,26 @@ const mapCrop = (c) => ({
 })
 
 const cropService = {
-  getCrops: async () => {
+  getCrops: async (page = 1, limit = 10) => {
     try {
       const response = await axios.get(`${API_URL}/cultivos`, {
+        params: { page, limit },
         headers: getAuthHeader()
       });
-      return Array.isArray(response.data) ? response.data.map(mapCrop) : response.data;
+
+      if (response.data && response.data.items) {
+        return {
+          items: response.data.items.map(mapCrop),
+          meta: response.data.meta
+        };
+      }
+      
+      const data = Array.isArray(response.data) ? response.data.map(mapCrop) : response.data;
+      return {
+        items: data,
+        meta: { totalPages: 1, currentPage: 1 }
+      };
+
     } catch (error) {
       console.error('Error al obtener cultivos:', error);
       if (error.response?.status === 403) {

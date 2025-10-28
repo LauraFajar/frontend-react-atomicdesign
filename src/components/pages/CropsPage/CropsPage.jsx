@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import cropService from '../../../services/cropService';
-import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, IconButton, Chip, CircularProgress } from '@mui/material';
+import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, IconButton, Chip, CircularProgress, Pagination } from '@mui/material';
 import { Add, Edit, Delete, Search } from '@mui/icons-material';
 import CropFormModal from './CropFormModal';
 import ConfirmModal from '../../molecules/ConfirmModal/ConfirmModal';
@@ -37,6 +37,8 @@ const CropsPage = () => {
   const [selectedCrop, setSelectedCrop] = useState(null);
   const [cropToDelete, setCropToDelete] = useState(null);
   const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
 
   const isAdmin = user?.role === 'administrador';
   const isInstructor = user?.role === 'instructor';
@@ -46,8 +48,8 @@ const CropsPage = () => {
   const canDelete = isAdmin;
 
   useEffect(() => {
-    loadCrops();
-  }, []);
+    loadCrops(page);
+  }, [page]);
 
   useEffect(() => {
     const results = crops.filter(crop =>
@@ -57,13 +59,18 @@ const CropsPage = () => {
     setFilteredCrops(results);
   }, [searchTerm, crops]);
 
-  const loadCrops = async () => {
+  const loadCrops = async (currentPage) => {
     try {
       setLoading(true);
       setError('');
-      const data = await cropService.getCrops();
+      const response = await cropService.getCrops(currentPage, 10);
+      const data = response.items || [];
+      const meta = response.meta || {};
+
       setCrops(data);
       setFilteredCrops(data);
+      setTotalPages(meta.totalPages || 1);
+      setPage(currentPage);
     } catch (error) {
       console.error('Error al cargar los cultivos:', error);
       setError(error.message === 'No tienes permisos para ver los cultivos'
@@ -76,6 +83,10 @@ const CropsPage = () => {
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
+  };
+
+  const handlePageChange = (event, value) => {
+    setPage(value);
   };
 
   const handleOpenModal = (crop = null) => {
@@ -262,6 +273,17 @@ const CropsPage = () => {
         type="danger"
         loading={loading}
       />
+
+      {totalPages > 1 && (
+        <div className="pagination-container">
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={handlePageChange}
+            color="primary"
+          />
+        </div>
+      )}
     </div>
   );
 };

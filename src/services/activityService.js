@@ -21,10 +21,12 @@ const mapActivity = (a) => ({
 });
 
 const activityService = {
-  getActivities: async (filters = {}) => {
+  getActivities: async (filters = {}, page = 1, limit = 10) => {
     try {
       const params = new URLSearchParams();
       if (filters.id_cultivo) params.append('id_cultivo', filters.id_cultivo);
+      params.append('page', page);
+      params.append('limit', limit);
 
       const queryString = params.toString();
       const url = `${API_URL}/actividades${queryString ? `?${queryString}` : ''}`;
@@ -33,7 +35,19 @@ const activityService = {
         headers: getAuthHeader()
       });
 
-      return Array.isArray(response.data) ? response.data.map(mapActivity) : response.data;
+      if (response.data && response.data.items) {
+        return {
+          items: response.data.items.map(mapActivity),
+          meta: response.data.meta
+        };
+      }
+
+      const data = Array.isArray(response.data) ? response.data.map(mapActivity) : response.data;
+      return {
+        items: data,
+        meta: { totalPages: 1, currentPage: 1 }
+      };
+
     } catch (error) {
       console.error('Error al obtener actividades:', error);
       if (error.response?.status === 403) {

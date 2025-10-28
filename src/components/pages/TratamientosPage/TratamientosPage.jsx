@@ -44,10 +44,11 @@ const TratamientosPage = ({ currentUser }) => {
 
   const fetchEpas = async () => {
     try {
-      const data = await epaService.getEpas();
-      setEpas(data);
+      const response = await epaService.getEpas(1, 100); 
+      const epasData = response.items || [];
+      setEpas(epasData);
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching EPAs for filter:', err);
     }
   };
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import activityService from '../../../services/activityService';
 import cropService from '../../../services/cropService';
-import {Button,Table,TableBody,TableCell,TableContainer,TableHead,TableRow,TextField,Typography,IconButton,Chip,CircularProgress,FormControl,InputLabel,Select,MenuItem,Box} from '@mui/material';
+import {Button,Table,TableBody,TableCell,TableContainer,TableHead,TableRow,TextField,Typography,IconButton,Chip,CircularProgress,FormControl,InputLabel,Select,MenuItem,Box, Pagination} from '@mui/material';
 import { Add, Edit, Delete, Search } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -51,6 +51,8 @@ const ActivitiesPage = () => {
   const [selectedCrop, setSelectedCrop] = useState('');
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
 
   const isAdmin = user?.role === 'administrador';
   const isInstructor = user?.role === 'instructor';
@@ -60,25 +62,33 @@ const ActivitiesPage = () => {
   const canDelete = isAdmin;
 
   useEffect(() => {
-    loadData();
-  }, []);
+    loadData(page);
+  }, [page]);
 
   useEffect(() => {
     filterActivities();
   }, [searchTerm, selectedCrop, startDate, endDate, activities]);
 
-  const loadData = async () => {
+  const loadData = async (currentPage) => {
     try {
       setLoading(true);
       setError('');
 
-      const [activitiesData, cropsData] = await Promise.all([
-        activityService.getActivities(),
-        cropService.getCrops()
+      const [activitiesResponse, cropsData] = await Promise.all([
+        activityService.getActivities({}, currentPage, 10),
+        cropService.getCrops(1, 100) 
       ]);
 
+      const activitiesData = activitiesResponse.items || [];
+      const meta = activitiesResponse.meta || {};
+
       setActivities(activitiesData);
-      setCrops(cropsData);
+      setTotalPages(meta.totalPages || 1);
+      setPage(currentPage);
+      
+      const cropsList = cropsData.items || [];
+      setCrops(cropsList);
+
     } catch (error) {
       console.error('Error al cargar los datos:', error);
       setError(error.message === 'No tienes permisos para ver las actividades'
@@ -131,6 +141,10 @@ const ActivitiesPage = () => {
 
   const handleEndDateChange = (date) => {
     setEndDate(date);
+  };
+
+  const handlePageChange = (event, value) => {
+    setPage(value);
   };
 
   const handleOpenModal = (activity = null) => {
@@ -382,6 +396,17 @@ const ActivitiesPage = () => {
         type="danger"
         loading={loading}
       />
+
+      {totalPages > 1 && (
+        <div className="pagination-container">
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={handlePageChange}
+            color="primary"
+          />
+        </div>
+      )}
     </div>
   );
 };
