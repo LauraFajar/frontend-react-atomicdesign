@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../../contexts/AuthContext';
 import activityService from '../../../services/activityService';
 import cropService from '../../../services/cropService';
@@ -37,115 +38,86 @@ const statusConfig = {
 
 const ActivitiesPage = () => {
   const { user } = useAuth();
-  const [activities, setActivities] = useState([]);
-  const [filteredActivities, setFilteredActivities] = useState([]);
-  const [crops, setCrops] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+
   const [openModal, setOpenModal] = useState(false);
   const [openConfirmModal, setOpenConfirmModal] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [activityToDelete, setActivityToDelete] = useState(null);
-  const [error, setError] = useState('');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCrop, setSelectedCrop] = useState('');
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
 
   const isAdmin = user?.role === 'administrador';
   const isInstructor = user?.role === 'instructor';
-  const canView = Boolean(user);
   const canCreate = isAdmin || isInstructor;
   const canEdit = isAdmin || isInstructor;
   const canDelete = isAdmin;
 
-  useEffect(() => {
-    loadData(page);
-  }, [page]);
+  const filters = useMemo(() => ({
+    id_cultivo: selectedCrop,
+    fecha_inicio: startDate ? startDate.toISOString().split('T')[0] : undefined,
+    fecha_fin: endDate ? endDate.toISOString().split('T')[0] : undefined,
+  }), [selectedCrop, startDate, endDate]);
 
-  useEffect(() => {
-    filterActivities();
-  }, [searchTerm, selectedCrop, startDate, endDate, activities]);
+  const { data: activitiesData, isLoading: isLoadingActivities, isError: isActivitiesError, error: activitiesError } = useQuery({
+    queryKey: ['activities', page, filters],
+    queryFn: () => activityService.getActivities(filters, page, 10),
+    keepPreviousData: true,
+  });
 
-  const loadData = async (currentPage) => {
-    try {
-      setLoading(true);
-      setError('');
+  const { data: cropsData } = useQuery({
+    queryKey: ['allCrops'],
+    queryFn: () => cropService.getCrops(1, 100),
+    staleTime: Infinity, 
+  });
 
-      const [activitiesResponse, cropsData] = await Promise.all([
-        activityService.getActivities({}, currentPage, 10),
-        cropService.getCrops(1, 100) 
-      ]);
+  const activities = activitiesData?.items || [];
+  const totalPages = activitiesData?.meta?.totalPages || 1;
+  const crops = cropsData?.items || [];
 
-      const activitiesData = activitiesResponse.items || [];
-      const meta = activitiesResponse.meta || {};
+  const filteredActivities = useMemo(() => {
+    if (!searchTerm) return activities;
+    return activities.filter(activity =>
+      activity.tipo_actividad.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      activity.responsable.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      activity.detalles.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [searchTerm, activities]);
 
-      setActivities(activitiesData);
-      setTotalPages(meta.totalPages || 1);
-      setPage(currentPage);
-      
-      const cropsList = cropsData.items || [];
-      setCrops(cropsList);
+  const createActivityMutation = useMutation({
+    mutationFn: activityService.createActivity,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['activities']);
+      handleCloseModal();
+    },
+  });
 
-    } catch (error) {
-      console.error('Error al cargar los datos:', error);
-      setError(error.message === 'No tienes permisos para ver las actividades'
-        ? 'No tienes permisos para ver las actividades. Contacta al administrador si crees que esto es un error.'
-        : 'Error al cargar las actividades. Por favor intenta de nuevo más tarde.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const updateActivityMutation = useMutation({
+    mutationFn: ({ id, data }) => activityService.updateActivity(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['activities']);
+      handleCloseModal();
+    },
+  });
 
-  const filterActivities = () => {
-    let filtered = activities;
+  const deleteActivityMutation = useMutation({
+    mutationFn: activityService.deleteActivity,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['activities']);
+      setOpenConfirmModal(false);
+      setActivityToDelete(null);
+    },
+  });
 
-    // Filtro por término de búsqueda
-    if (searchTerm) {
-      filtered = filtered.filter(activity =>
-        activity.tipo_actividad.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        activity.responsable.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        activity.detalles.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Filtro por cultivo
-    if (selectedCrop) {
-      filtered = filtered.filter(activity => activity.id_cultivo === parseInt(selectedCrop));
-    }
-
-    // Filtro por fechas
-    if (startDate) {
-      filtered = filtered.filter(activity => new Date(activity.fecha) >= startDate);
-    }
-    if (endDate) {
-      filtered = filtered.filter(activity => new Date(activity.fecha) <= endDate);
-    }
-
-    setFilteredActivities(filtered);
-  };
-
-  const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
-  };
-
-  const handleCropFilter = (e) => {
-    setSelectedCrop(e.target.value);
-  };
-
-  const handleStartDateChange = (date) => {
-    setStartDate(date);
-  };
-
-  const handleEndDateChange = (date) => {
-    setEndDate(date);
-  };
-
-  const handlePageChange = (event, value) => {
-    setPage(value);
-  };
+  const handleSearch = (e) => setSearchTerm(e.target.value);
+  const handleCropFilter = (e) => setSelectedCrop(e.target.value);
+  const handleStartDateChange = (date) => setStartDate(date);
+  const handleEndDateChange = (date) => setEndDate(date);
+  const handlePageChange = (event, value) => setPage(value);
 
   const handleOpenModal = (activity = null) => {
     setSelectedActivity(activity);
@@ -157,57 +129,19 @@ const ActivitiesPage = () => {
     setSelectedActivity(null);
   };
 
-  const handleSaveActivity = async (activityData) => {
-    try {
-      let successMsg = '';
-      if (selectedActivity) {
-        if (!canEdit) throw new Error('No tienes permisos para editar actividades');
-        await activityService.updateActivity(selectedActivity.id, activityData);
-        successMsg = 'Actividad actualizada exitosamente';
-      } else {
-        if (!canCreate) throw new Error('No tienes permisos para crear actividades');
-        await activityService.createActivity(activityData);
-        successMsg = 'Actividad creada exitosamente';
-      }
-      await loadData();
-      handleCloseModal();
-      console.log(successMsg);
-    } catch (error) {
-      console.error('Error al guardar la actividad:', error);
-      if (error.message?.includes('No tienes permisos')) {
-        setError('No tienes permisos para realizar esta acción. Contacta al administrador si crees que esto es un error.');
-        return;
-      }
-      setError(error.response?.data?.message || 'Error al guardar la actividad. Por favor intenta de nuevo más tarde.');
+  const handleSaveActivity = (activityData) => {
+    if (selectedActivity) {
+      if (!canEdit) return;
+      updateActivityMutation.mutate({ id: selectedActivity.id, data: activityData });
+    } else {
+      if (!canCreate) return;
+      createActivityMutation.mutate(activityData);
     }
   };
 
-  const handleDeleteActivity = async () => {
+  const handleDeleteActivity = () => {
     if (!activityToDelete || !canDelete) return;
-
-    try {
-      setError('');
-      await activityService.deleteActivity(activityToDelete.id);
-      await loadData();
-      setOpenConfirmModal(false);
-      setActivityToDelete(null);
-      console.log('Actividad eliminada exitosamente');
-    } catch (error) {
-      console.error('Error al eliminar la actividad:', error);
-      if (error.response?.status === 404) {
-        setError(`La actividad "${activityToDelete.tipo_actividad}" no fue encontrada. Puede que ya haya sido eliminada.`);
-      } else if (error.response?.status === 403) {
-        setError('No tienes permisos para eliminar actividades. Contacta al administrador si crees que esto es un error.');
-      } else if (error.response?.status >= 500) {
-        setError('Error del servidor. Por favor intenta de nuevo más tarde.');
-      } else if (error.code === 'NETWORK_ERROR' || error.message?.includes('Network Error')) {
-        setError('Error de conexión. Verifica tu conexión a internet e intenta de nuevo.');
-      } else {
-        setError(`Error al eliminar la actividad: ${error.message || 'Error desconocido'}`);
-      }
-      setOpenConfirmModal(false);
-      setActivityToDelete(null);
-    }
+    deleteActivityMutation.mutate(activityToDelete.id);
   };
 
   const openDeleteConfirm = (activity) => {
@@ -217,7 +151,7 @@ const ActivitiesPage = () => {
 
   const getCropName = (cropId) => {
     const crop = crops.find(c => c.id === cropId);
-    return crop ? crop.tipo_cultivo : 'Cultivo no encontrado';
+    return crop ? crop.tipo_cultivo : 'N/A';
   };
 
   const formatDate = (dateString) => {
@@ -225,7 +159,7 @@ const ActivitiesPage = () => {
     return new Date(dateString).toLocaleDateString('es-ES');
   };
 
-  if (loading) {
+  if (isLoadingActivities) {
     return (
       <div className="loading-container">
         <CircularProgress className="loading-spinner" />
@@ -314,9 +248,13 @@ const ActivitiesPage = () => {
         </div>
       </div>
 
-      {error && (
+      {(isActivitiesError || createActivityMutation.isError || updateActivityMutation.isError || deleteActivityMutation.isError) && (
         <Typography color="error" sx={{ mb: 2 }}>
-          {error}
+          {activitiesError?.message || 
+           createActivityMutation.error?.message || 
+           updateActivityMutation.error?.message || 
+           deleteActivityMutation.error?.message || 
+           'Ocurrió un error'}
         </Typography>
       )}
 
@@ -394,7 +332,7 @@ const ActivitiesPage = () => {
         confirmText="Eliminar"
         cancelText="Cancelar"
         type="danger"
-        loading={loading}
+        loading={deleteActivityMutation.isLoading}
       />
 
       {totalPages > 1 && (

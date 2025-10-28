@@ -13,31 +13,24 @@ import {
 } from '@mui/material';
 import './LotFormModal.css';
 
-const LotFormModal = ({ open, onClose, onSave, lot }) => {
+const LotFormModal = ({ open, onClose, onSave, lot, isLoading, error: serverError }) => {
   const [formData, setFormData] = useState({
-    nombre_lote: '',
+    nombre: '',
     descripcion: '',
     activo: true
   });
-  const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
-  const [serverError, setServerError] = useState('');
 
   useEffect(() => {
-    console.log('useEffect ejecutándose - lot recibido:', lot);
-    console.log('¿Tiene ID el lote?', lot?.id);
-
     if (lot && lot.id) {
-      console.log('Editando lote existente con ID:', lot.id);
       setFormData({
-        nombre_lote: lot.nombre_lote || lot.nombre || '',
+        nombre: lot.nombre || '',
         descripcion: lot.descripcion || '',
         activo: lot.activo !== undefined ? lot.activo : true
       });
     } else {
-      console.log('Creando nuevo lote - inicializando formulario vacío');
       setFormData({
-        nombre_lote: '',
+        nombre: '',
         descripcion: '',
         activo: true
       });
@@ -47,8 +40,8 @@ const LotFormModal = ({ open, onClose, onSave, lot }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.nombre_lote.trim()) {
-      newErrors.nombre_lote = 'El nombre del lote es requerido';
+    if (!formData.nombre.trim()) {
+      newErrors.nombre = 'El nombre del lote es requerido';
     }
 
     if (!formData.descripcion.trim()) {
@@ -74,40 +67,16 @@ const LotFormModal = ({ open, onClose, onSave, lot }) => {
     }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-
-    setLoading(true);
-    setServerError('');
-
-    try {
-      const submitData = {
-        nombre_lote: formData.nombre_lote,
-        descripcion: formData.descripcion,
-        activo: formData.activo 
-      };
-
-      console.log('Datos a enviar:', submitData);
-      console.log('Modo:', lot ? 'actualización' : 'creación');
-      console.log('Estado del switch activo:', formData.activo);
-
-      await onSave(submitData);
-    } catch (error) {
-      console.error('Error en el formulario:', error);
-      console.error('Error response completo:', error.response);
-      const errorMessage = error.response?.data?.message || error.message || 'Error desconocido';
-      setServerError(`Error: ${errorMessage}`);
-    } finally {
-      setLoading(false);
-    }
+    onSave(formData);
   };
 
   const handleClose = () => {
-    if (!loading) {
+    if (!isLoading) {
       onClose();
       setErrors({});
-      setServerError('');
     }
   };
 
@@ -123,12 +92,12 @@ const LotFormModal = ({ open, onClose, onSave, lot }) => {
             <TextField
               fullWidth
               label="Nombre del Lote"
-              name="nombre_lote"
-              value={formData.nombre_lote}
+              name="nombre"
+              value={formData.nombre}
               onChange={handleChange}
-              error={!!errors.nombre_lote}
-              helperText={errors.nombre_lote}
-              disabled={loading}
+              error={!!errors.nombre}
+              helperText={errors.nombre}
+              disabled={isLoading}
               required
               sx={{
                 '& .MuiOutlinedInput-notchedOutline': {
@@ -159,7 +128,7 @@ const LotFormModal = ({ open, onClose, onSave, lot }) => {
               onChange={handleChange}
               error={!!errors.descripcion}
               helperText={errors.descripcion}
-              disabled={loading}
+              disabled={isLoading}
               required
               sx={{
                 '& .MuiOutlinedInput-notchedOutline': {
@@ -185,7 +154,7 @@ const LotFormModal = ({ open, onClose, onSave, lot }) => {
                 <Switch
                   checked={formData.activo}
                   onChange={handleSwitchChange}
-                  disabled={loading}
+                  disabled={isLoading}
                   sx={{
                     '& .MuiSwitch-switchBase.Mui-checked': {
                       color: '#4CAF50',
@@ -208,7 +177,7 @@ const LotFormModal = ({ open, onClose, onSave, lot }) => {
 
           {serverError && (
             <Typography color="error" sx={{ mt: 2 }}>
-              {serverError}
+              {serverError.message || 'Ha ocurrido un error.'}
             </Typography>
           )}
         </DialogContent>
@@ -216,7 +185,7 @@ const LotFormModal = ({ open, onClose, onSave, lot }) => {
         <DialogActions>
           <Button
             onClick={handleClose}
-            disabled={loading}
+            disabled={isLoading}
             sx={{
               color: '#4CAF50',
               '&:hover': {
@@ -229,8 +198,8 @@ const LotFormModal = ({ open, onClose, onSave, lot }) => {
           <Button
             type="submit"
             variant="contained"
-            disabled={loading}
-            startIcon={loading ? <CircularProgress size={16} /> : null}
+            disabled={isLoading}
+            startIcon={isLoading ? <CircularProgress size={16} /> : null}
             sx={{
               backgroundColor: '#4CAF50',
               '&:hover': {
@@ -238,7 +207,7 @@ const LotFormModal = ({ open, onClose, onSave, lot }) => {
               }
             }}
           >
-            {loading ? 'Guardando...' : (lot ? 'Actualizar' : 'Crear')}
+            {isLoading ? 'Guardando...' : (lot ? 'Actualizar' : 'Crear')}
           </Button>
         </DialogActions>
       </form>

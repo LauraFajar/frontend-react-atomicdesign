@@ -1,14 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../../contexts/AuthContext';
 import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, IconButton, Chip, CircularProgress, Switch, Pagination } from '@mui/material';
-import { Add, Edit, Delete, Search, CheckCircle } from '@mui/icons-material';
-import Modal from '../../molecules/Modal/Modal';
+import { Add, Edit, Delete, Search } from '@mui/icons-material';
 import ConfirmModal from '../../molecules/ConfirmModal/ConfirmModal';
 import SuccessModal from '../../molecules/SuccessModal/SuccessModal';
 import EpaForm from './EpaForm';
 import EpaDetail from './EpaDetail';
 import epaService from '../../../services/epaService';
-import axios from 'axios';
 import './EpasPage.css';
 
 const statusConfig = {
@@ -43,72 +42,87 @@ const typeConfig = {
 
 const EpasPage = () => {
   const { user } = useAuth();
-  const [epas, setEpas] = useState([]);
-  const [filteredEpas, setFilteredEpas] = useState([]);
+  const queryClient = useQueryClient();
+
   const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
   const [openModal, setOpenModal] = useState(false);
   const [openDetailModal, setOpenDetailModal] = useState(false);
   const [openConfirmModal, setOpenConfirmModal] = useState(false);
+  const [openDeleteModal, setOpenDeleteModal] = useState(false);
   const [openSuccessModal, setOpenSuccessModal] = useState(false);
   const [selectedEpa, setSelectedEpa] = useState(null);
   const [epaToChangeStatus, setEpaToChangeStatus] = useState(null);
+  const [epaToDelete, setEpaToDelete] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
-  const [error, setError] = useState('');
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
 
   const isAdmin = user?.role === 'administrador';
   const isInstructor = user?.role === 'instructor';
-  const canView = Boolean(user);
   const canCreate = isAdmin || isInstructor;
   const canEdit = isAdmin || isInstructor;
   const canChangeStatus = isAdmin || isInstructor;
 
-  useEffect(() => {
-    loadEpas(page);
-  }, [page]);
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ['epas', page],
+    queryFn: () => epaService.getEpas(page, 10),
+    keepPreviousData: true,
+  });
 
-  useEffect(() => {
-    const results = filterEpas(epas, searchTerm);
-    setFilteredEpas(results);
+  const epas = data?.items || [];
+  const totalPages = data?.meta?.totalPages || 1;
+
+  const filteredEpas = useMemo(() => {
+    if (!searchTerm) return epas;
+    return epas.filter(epa =>
+      (epa.nombre?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (epa.tipo?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (epa.estado?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+    );
   }, [searchTerm, epas]);
 
-  const loadEpas = async (currentPage) => {
-    setLoading(true);
-    try {
-      const response = await epaService.getEpas(currentPage, 10);
-      const data = response.items || [];
-      const meta = response.meta || {};
-
-      setEpas(data);
-      setFilteredEpas(data);
-      setTotalPages(meta.totalPages || 1);
-      setPage(currentPage);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error al cargar EPAs:', error);
-      setError('Error al cargar las EPAs. Por favor, intenta de nuevo más tarde.');
-      setLoading(false);
-    }
+  const handleMutationSuccess = (message) => {
+    setSuccessMessage(message);
+    setOpenSuccessModal(true);
+    queryClient.invalidateQueries(['epas']);
   };
 
-  const filterEpas = (epasToFilter, term) => {
-    if (!epasToFilter) return [];
-    return epasToFilter.filter(epa =>
-      (epa.nombre?.toLowerCase() || '').includes(term.toLowerCase()) ||
-      (epa.tipo?.toLowerCase() || '').includes(term.toLowerCase()) ||
-      (epa.estado?.toLowerCase() || '').includes(term.toLowerCase())
-    );
-  };
+  const createEpaMutation = useMutation({
+    mutationFn: epaService.createEpa,
+    onSuccess: () => {
+      handleMutationSuccess('EPA creada correctamente');
+      handleCloseModal();
+    },
+  });
 
-  const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
-  };
+  const updateEpaMutation = useMutation({
+    mutationFn: (epaData) => epaService.updateEpa(epaData.id, epaData),
+    onSuccess: () => {
+      handleMutationSuccess('EPA actualizada correctamente');
+      handleCloseModal();
+    },
+  });
 
-  const handlePageChange = (event, value) => {
-    setPage(value);
-  };
+  const deleteEpaMutation = useMutation({
+    mutationFn: epaService.deleteEpa,
+    onSuccess: () => {
+      handleMutationSuccess('EPA eliminada correctamente');
+      setOpenDeleteModal(false);
+      setEpaToDelete(null);
+    },
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ id, data }) => epaService.updateEpa(id, data),
+    onSuccess: (data) => {
+      const newStatus = data.estado;
+      handleMutationSuccess(`EPA ${newStatus === 'activo' ? 'activada' : 'desactivada'} correctamente`);
+      setOpenConfirmModal(false);
+      setEpaToChangeStatus(null);
+    },
+  });
+
+  const handleSearch = (e) => setSearchTerm(e.target.value);
+  const handlePageChange = (event, value) => setPage(value);
 
   const handleOpenModal = (epa = null) => {
     setSelectedEpa(epa);
@@ -118,7 +132,6 @@ const EpasPage = () => {
   const handleCloseModal = () => {
     setOpenModal(false);
     setSelectedEpa(null);
-    setError('');
   };
 
   const handleOpenDetailModal = (epa) => {
@@ -131,161 +144,41 @@ const EpasPage = () => {
     setSelectedEpa(null);
   };
 
-  const handleToggleStatus = async (epa, checked) => {
-    setLoading(true);
-    try {
-      const newStatus = checked ? 'activo' : 'inactivo';
-      const epaId = epa.id_epa || epa.id;
-      console.log('Toggle estado EPA:', { id: epaId, newStatus });
-
-      await axios.patch(`http://localhost:3001/epa/${epaId}`, { estado: newStatus }, {
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      const updatedEpas = epas.map((item) => {
-        const currentId = item.id_epa || item.id;
-        return currentId === epaId ? { ...item, estado: newStatus } : item;
-      });
-      setEpas(updatedEpas);
-      setFilteredEpas(filterEpas(updatedEpas, searchTerm));
-    } catch (error) {
-      console.error('Error al cambiar estado de EPA:', error);
-      console.error('Detalles del error:', error.response?.data || error.message);
-      setError('Error al cambiar el estado de la EPA: ' + (error.response?.data?.message || error.message || 'Error desconocido'));
-    } finally {
-      setLoading(false);
+  const handleSaveEpa = (epaData) => {
+    if (epaData.id) {
+      updateEpaMutation.mutate(epaData);
+    } else {
+      createEpaMutation.mutate(epaData);
     }
   };
-
-  const [openDeleteModal, setOpenDeleteModal] = useState(false);
-  const [epaToDelete, setEpaToDelete] = useState(null);
 
   const openDeleteConfirm = (epa) => {
     setEpaToDelete(epa);
     setOpenDeleteModal(true);
   };
 
-  const handleDeleteEpa = async () => {
+  const handleDeleteEpa = () => {
     if (!epaToDelete) return;
-    setLoading(true);
-    try {
-      const epaId = epaToDelete.id_epa || epaToDelete.id;
-      console.log('EPA a eliminar:', epaToDelete);
-      console.log('ID de EPA a eliminar:', epaId);
-      console.log('Tipo de dato del ID:', typeof epaId);
-      
-      await epaService.deleteEpa(epaId);
-      
-      const updatedEpas = epas.filter((item) => {
-        const itemId = item.id_epa || item.id;
-        return itemId !== epaId;
-      });
-      
-      setEpas(updatedEpas);
-      setFilteredEpas(filterEpas(updatedEpas, searchTerm));
-      setSuccessMessage('EPA eliminada correctamente');
-      setOpenSuccessModal(true);
-      setOpenDeleteModal(false);
-      setEpaToDelete(null);
-    } catch (error) {
-      console.error('Error al eliminar EPA:', error);
-      console.error('Detalles del error:', error.response?.data || error.message);
-      setError('Error al eliminar la EPA: ' + (error.response?.data?.message || error.message || 'Error desconocido'));
-    } finally {
-      setLoading(false);
-    }
+    deleteEpaMutation.mutate(epaToDelete.id);
   };
+
   const openStatusConfirm = (epa) => {
     setEpaToChangeStatus(epa);
     setOpenConfirmModal(true);
   };
 
-  const handleSaveEpa = async (epaData) => {
-    setLoading(true);
-    try {
-      if (epaData.id) {
-        const updatedEpa = await epaService.updateEpa(epaData.id, epaData);
-        const updatedEpas = epas.map(epa => 
-          epa.id === updatedEpa.id ? updatedEpa : epa
-        );
-        setEpas(updatedEpas);
-        setSuccessMessage('EPA actualizada correctamente');
-      } else {
-        const newEpa = await epaService.createEpa(epaData);
-        setEpas([...epas, newEpa]);
-        setSuccessMessage('EPA creada correctamente');
-      }
-      
-      handleCloseModal();
-      setOpenSuccessModal(true);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error al guardar EPA:', error);
-      setError('Error al guardar la EPA. Por favor, intenta de nuevo.');
-      setLoading(false);
-    }
-  };
-
-  const handleChangeStatus = async () => {
+  const handleChangeStatus = () => {
     if (!epaToChangeStatus) return;
-    
-    setLoading(true);
-    try {
-      const newStatus = epaToChangeStatus.estado === 'activo' ? 'inactivo' : 'activo';
-      
-      const epaId = epaToChangeStatus.id_epa || epaToChangeStatus.id;
-      
-      console.log('Cambiando estado de EPA a:', newStatus);
-      console.log('EPA a modificar:', epaToChangeStatus);
-      console.log('ID de EPA usado:', epaId, 'Tipo:', typeof epaId);
-      
-      const epaData = {
-        estado: newStatus
-      };
-      
-      console.log('Datos a enviar:', epaData);
-      console.log('URL de la petición:', `http://localhost:3001/epa/${epaId}`);
-      
-      const response = await axios.patch(
-        `http://localhost:3001/epa/${epaId}`, 
-        epaData,
-        {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-      
-      console.log('Respuesta del servidor:', response.data);
-      
-      const updatedEpa = {
-        ...epaToChangeStatus,
-        estado: newStatus
-      };
-      
-      console.log('EPA actualizada:', updatedEpa);
-      
-      const updatedEpas = epas.map(epa => {
-        const currentId = epa.id_epa || epa.id;
-        return currentId === epaId ? updatedEpa : epa;
-      });
-      
-      setEpas(updatedEpas);
-      setFilteredEpas(filterEpas(updatedEpas, searchTerm));
-      setOpenConfirmModal(false);
-      setSuccessMessage(`EPA ${newStatus === 'activo' ? 'activada' : 'desactivada'} correctamente`);
-      setOpenSuccessModal(true);
-      setEpaToChangeStatus(null);
-    } catch (error) {
-      console.error('Error al cambiar estado de EPA:', error);
-      console.error('Detalles del error:', error.response?.data || error.message);
-      setError('Error al cambiar el estado de la EPA: ' + (error.response?.data?.message || error.message || 'Error desconocido'));
-    } finally {
-      setLoading(false);
-    }
+    const newStatus = epaToChangeStatus.estado === 'activo' ? 'inactivo' : 'activo';
+    updateStatusMutation.mutate({ id: epaToChangeStatus.id, data: { estado: newStatus } });
   };
 
-  if (loading && epas.length === 0) {
+  const handleToggleStatus = (epa, checked) => {
+    const newStatus = checked ? 'activo' : 'inactivo';
+    updateStatusMutation.mutate({ id: epa.id, data: { estado: newStatus } });
+  };
+
+  if (isLoading) {
     return (
       <div className="dashboard-content">
         <div className="loading-container">
@@ -326,14 +219,19 @@ const EpasPage = () => {
           />
         </div>
 
-        {error && (
+        {(isError || createEpaMutation.isError || updateEpaMutation.isError || deleteEpaMutation.isError || updateStatusMutation.isError) && (
           <Typography color="error" sx={{ mb: 2 }}>
-            {error}
+            {error?.message || 
+             createEpaMutation.error?.message || 
+             updateEpaMutation.error?.message || 
+             deleteEpaMutation.error?.message || 
+             updateStatusMutation.error?.message || 
+             'Ocurrió un error'}
           </Typography>
         )}
 
         <div className="epas-content">
-          {loading ? (
+          {isLoading ? (
             <CircularProgress className="loading-spinner" />
           ) : (
             <TableContainer className="epas-table-container">
@@ -435,7 +333,7 @@ const EpasPage = () => {
           onClose={() => setOpenConfirmModal(false)}
           onConfirm={handleChangeStatus}
           epa={epaToChangeStatus}
-          loading={loading}
+          loading={updateStatusMutation.isLoading}
         />
 
         {/* Modal de confirmación para eliminar EPA */}
@@ -448,7 +346,7 @@ const EpasPage = () => {
           confirmText="Eliminar"
           cancelText="Cancelar"
           type="danger"
-          loading={loading}
+          loading={deleteEpaMutation.isLoading}
         />
 
         {}

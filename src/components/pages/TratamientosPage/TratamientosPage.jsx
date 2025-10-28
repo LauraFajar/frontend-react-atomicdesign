@@ -1,14 +1,14 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Box, Button, Card, CardContent, CardActions, Chip, Dialog, DialogActions, 
   DialogContent, DialogTitle, Divider, FormControl, Grid, IconButton, InputLabel,
-  MenuItem, Select, Stack, TextField, Tooltip, Typography 
+  MenuItem, Select, Stack, Tooltip, Typography 
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import InfoIcon from '@mui/icons-material/Info';
-import FilterListIcon from '@mui/icons-material/FilterList';
 import tratamientoService from '../../../services/tratamientoService';
 import epaService from '../../../services/epaService';
 import './TratamientosPage.css';
@@ -21,18 +21,11 @@ const rolesCanEdit = ['Admin','Instructor', 'administrador', 'instructor'];
 const rolesCanView = ['Admin','Instructor','Learner','Intern', 'administrador', 'instructor', 'aprendiz', 'pasante'];
 
 const TratamientosPage = ({ currentUser }) => {
+  const queryClient = useQueryClient();
   const role = currentUser?.role || currentUser?.Role || currentUser?.roleLabel || 'Learner';
-  console.log('Current user:', currentUser);
-  console.log('Role detected:', role);
 
-  const [tratamientos, setTratamientos] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const [epas, setEpas] = useState([]);
   const [filterEpaId, setFilterEpaId] = useState('');
   const [filterTipo, setFilterTipo] = useState('');
-
   const [openForm, setOpenForm] = useState(false);
   const [selected, setSelected] = useState(null);
   const [openDetail, setOpenDetail] = useState(false);
@@ -42,42 +35,48 @@ const TratamientosPage = ({ currentUser }) => {
   const canEdit = rolesCanEdit.includes(role);
   const canView = rolesCanView.includes(role);
 
-  const fetchEpas = async () => {
-    try {
-      const response = await epaService.getEpas(1, 100); 
-      const epasData = response.items || [];
-      setEpas(epasData);
-    } catch (err) {
-      console.error('Error fetching EPAs for filter:', err);
-    }
-  };
+  const { data: epas = [] } = useQuery({
+    queryKey: ['allEpas'],
+    queryFn: async () => {
+      const response = await epaService.getEpas(1, 100);
+      return response.items || [];
+    },
+    staleTime: Infinity,
+    enabled: canView,
+  });
 
-  const fetchTratamientos = async () => {
-    setLoading(true);
-    try {
-      const filters = {
-        ...(filterEpaId ? { epaId: filterEpaId } : {}),
-        ...(filterTipo ? { tipo: filterTipo } : {})
-      };
-      const data = await tratamientoService.getTratamientos(filters);
-      setTratamientos(data);
-    } catch (err) {
-      console.error(err);
-      setError('No se pudieron cargar los tratamientos');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: tratamientos = [], isLoading, isError, error } = useQuery({
+    queryKey: ['tratamientos', filterEpaId, filterTipo],
+    queryFn: () => tratamientoService.getTratamientos({ epaId: filterEpaId, tipo: filterTipo }),
+    enabled: canView,
+  });
 
-  useEffect(() => {
-    if (!canView) return;
-    fetchEpas();
-  }, []);
+  const createMutation = useMutation({
+    mutationFn: tratamientoService.createTratamiento,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['tratamientos']);
+      setOpenForm(false);
+      setSelected(null);
+    },
+  });
 
-  useEffect(() => {
-    if (!canView) return;
-    fetchTratamientos();
-  }, [filterEpaId, filterTipo]);
+  const updateMutation = useMutation({
+    mutationFn: (values) => tratamientoService.updateTratamiento(selected.id, values),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['tratamientos']);
+      setOpenForm(false);
+      setSelected(null);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: tratamientoService.deleteTratamiento,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['tratamientos']);
+      setOpenConfirmModal(false);
+      setTratamientoToDelete(null);
+    },
+  });
 
   const handleCreate = () => {
     setSelected(null);
@@ -94,18 +93,9 @@ const TratamientosPage = ({ currentUser }) => {
     setOpenConfirmModal(true);
   };
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = () => {
     if (!canEdit || !tratamientoToDelete) return;
-    
-    try {
-      await tratamientoService.deleteTratamiento(tratamientoToDelete.id);
-      await fetchTratamientos();
-      setOpenConfirmModal(false);
-      setTratamientoToDelete(null);
-    } catch (err) {
-      console.error(err);
-      setError('No se pudo eliminar el tratamiento');
-    }
+    deleteMutation.mutate(tratamientoToDelete.id);
   };
 
   const handleCancelDelete = () => {
@@ -113,19 +103,11 @@ const TratamientosPage = ({ currentUser }) => {
     setTratamientoToDelete(null);
   };
 
-  const handleSave = async (values) => {
-    try {
-      if (selected) {
-        await tratamientoService.updateTratamiento(selected.id, values);
-      } else {
-        await tratamientoService.createTratamiento(values);
-      }
-      setOpenForm(false);
-      setSelected(null);
-      await fetchTratamientos();
-    } catch (err) {
-      console.error(err);
-      setError('No se pudo guardar el tratamiento');
+  const handleSave = (values) => {
+    if (selected) {
+      updateMutation.mutate(values);
+    } else {
+      createMutation.mutate(values);
     }
   };
 
@@ -236,7 +218,7 @@ const TratamientosPage = ({ currentUser }) => {
         </Stack>
       </Box>
 
-      {loading ? (
+      {isLoading ? (
         <Box className="loading-container">
           <Typography>Cargando tratamientos...</Typography>
         </Box>
@@ -338,7 +320,7 @@ const TratamientosPage = ({ currentUser }) => {
 
       <TratamientoForm
         open={openForm}
-        onClose={() => { setOpenForm(false); setSelected(null); setError(''); }}
+        onClose={() => { setOpenForm(false); setSelected(null); }}
         onSubmit={handleSave}
         tratamiento={selected}
         epas={epas}
@@ -350,13 +332,20 @@ const TratamientosPage = ({ currentUser }) => {
         tratamiento={selected}
       />
 
-      <Dialog open={!!error} onClose={() => setError('')}>
+      <Dialog open={isError || createMutation.isError || updateMutation.isError || deleteMutation.isError} onClose={() => {}}>
         <DialogTitle>Error</DialogTitle>
         <DialogContent>
-          <Typography>{error}</Typography>
+          <Typography>
+            {error?.message || createMutation.error?.message || updateMutation.error?.message || deleteMutation.error?.message || 'Ocurrió un error'}
+          </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setError('')}>Cerrar</Button>
+          <Button onClick={() => {
+            if (isError) queryClient.invalidateQueries(['tratamientos']);
+            createMutation.reset();
+            updateMutation.reset();
+            deleteMutation.reset();
+          }}>Cerrar</Button>
         </DialogActions>
       </Dialog>
 

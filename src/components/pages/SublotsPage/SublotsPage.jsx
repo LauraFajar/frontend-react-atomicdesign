@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../../contexts/AuthContext';
 import sublotService from '../../../services/sublotService';
-import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, IconButton, Chip, CircularProgress } from '@mui/material';
+import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, IconButton, CircularProgress } from '@mui/material';
 import { Add, Edit, Delete, Search } from '@mui/icons-material';
 import SublotFormModal from './SublotFormModal';
 import ConfirmModal from '../../molecules/ConfirmModal/ConfirmModal';
@@ -20,56 +21,60 @@ const statusConfig = {
 
 const SublotsPage = () => {
   const { user } = useAuth();
-  const [sublots, setSublots] = useState([]);
-  const [filteredSublots, setFilteredSublots] = useState([]);
+  const queryClient = useQueryClient();
+
   const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(true);
   const [openModal, setOpenModal] = useState(false);
   const [openConfirmModal, setOpenConfirmModal] = useState(false);
   const [selectedSublot, setSelectedSublot] = useState(null);
   const [sublotToDelete, setSublotToDelete] = useState(null);
-  const [error, setError] = useState('');
 
   const isAdmin = user?.role === 'administrador';
   const isInstructor = user?.role === 'instructor';
-  const canView = Boolean(user);
   const canCreate = isAdmin || isInstructor;
   const canEdit = isAdmin || isInstructor;
   const canDelete = isAdmin;
 
-  useEffect(() => {
-    loadSublots();
-  }, []);
+  const { data: sublots = [], isLoading, isError, error } = useQuery({
+    queryKey: ['sublots'],
+    queryFn: sublotService.getSublots,
+  });
 
-  useEffect(() => {
-    const results = sublots.filter(sublot =>
+  const filteredSublots = useMemo(() => {
+    if (!searchTerm) return sublots;
+    return sublots.filter(sublot =>
       sublot.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sublot.ubicacion.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sublot.nombre_lote.toLowerCase().includes(searchTerm.toLowerCase())
     );
-    setFilteredSublots(results);
   }, [searchTerm, sublots]);
 
-  const loadSublots = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      const data = await sublotService.getSublots();
-      setSublots(data);
-      setFilteredSublots(data);
-    } catch (error) {
-      console.error('Error al cargar los sublotes:', error);
-      setError(error.message === 'No tienes permisos para ver los sublotes'
-        ? 'No tienes permisos para ver los sublotes. Contacta al administrador si crees que esto es un error.'
-        : 'Error al cargar los sublotes. Por favor intenta de nuevo más tarde.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const createSublotMutation = useMutation({
+    mutationFn: sublotService.createSublot,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['sublots']);
+      handleCloseModal();
+    },
+  });
 
-  const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
-  };
+  const updateSublotMutation = useMutation({
+    mutationFn: ({ id, data }) => sublotService.updateSublot(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['sublots']);
+      handleCloseModal();
+    },
+  });
+
+  const deleteSublotMutation = useMutation({
+    mutationFn: sublotService.deleteSublot,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['sublots']);
+      setOpenConfirmModal(false);
+      setSublotToDelete(null);
+    },
+  });
+
+  const handleSearch = (e) => setSearchTerm(e.target.value);
 
   const handleOpenModal = (sublot = null) => {
     setSelectedSublot(sublot);
@@ -81,79 +86,19 @@ const SublotsPage = () => {
     setSelectedSublot(null);
   };
 
-  const handleSaveSublot = async (sublotData) => {
-    try {
-      let successMsg = '';
-      if (selectedSublot) {
-        if (!canEdit) throw new Error('No tienes permisos para editar sublotes');
-        await sublotService.updateSublot(selectedSublot.id, sublotData);
-        successMsg = 'Sublote actualizado exitosamente';
-      } else {
-        if (!canCreate) throw new Error('No tienes permisos para crear sublotes');
-        await sublotService.createSublot(sublotData);
-        successMsg = 'Sublote creado exitosamente';
-      }
-      loadSublots();
-      handleCloseModal();
-      console.log(successMsg);
-    } catch (error) {
-      console.error('Error al guardar el sublote:', error);
-      if (error.message?.includes('No tienes permisos')) {
-        setError('No tienes permisos para realizar esta acción. Contacta al administrador si crees que esto es un error.');
-        return;
-      }
-      if (error.response?.data) {
-        const errorData = error.response.data;
-        if (errorData.message) {
-          setError(errorData.message);
-          return;
-        }
-        if (errorData.errors) {
-          const errorMessages = Object.values(errorData.errors).flat();
-          setError(errorMessages.join(', '));
-          return;
-        }
-      }
-      if (error.response?.status === 400) {
-        setError('Los datos del sublote no son válidos. Verifica que todos los campos estén completos correctamente.');
-      } else if (error.response?.status === 404) {
-        setError('El lote asociado no fue encontrado. Verifica que el ID del lote sea correcto.');
-      } else if (error.response?.status >= 500) {
-        setError('Error del servidor. Por favor intenta de nuevo más tarde.');
-      } else if (error.code === 'NETWORK_ERROR' || error.message?.includes('Network Error')) {
-        setError('Error de conexión. Verifica tu conexión a internet e intenta de nuevo.');
-      } else {
-        setError(error.message || 'Error al guardar el sublote. Por favor intenta de nuevo más tarde.');
-      }
+  const handleSaveSublot = (sublotData) => {
+    if (selectedSublot) {
+      if (!canEdit) return;
+      updateSublotMutation.mutate({ id: selectedSublot.id, data: sublotData });
+    } else {
+      if (!canCreate) return;
+      createSublotMutation.mutate(sublotData);
     }
   };
 
-  const handleDeleteSublot = async () => {
+  const handleDeleteSublot = () => {
     if (!sublotToDelete || !canDelete) return;
-
-    try {
-      setError('');
-      await sublotService.deleteSublot(sublotToDelete.id);
-      await loadSublots();
-      setOpenConfirmModal(false);
-      setSublotToDelete(null);
-      console.log('Sublote eliminado exitosamente');
-    } catch (error) {
-      console.error('Error al eliminar el sublote:', error);
-      if (error.response?.status === 404) {
-        setError(`El sublote "${sublotToDelete.descripcion}" no fue encontrado. Puede que ya haya sido eliminado.`);
-      } else if (error.response?.status === 403) {
-        setError('No tienes permisos para eliminar sublotes. Contacta al administrador si crees que esto es un error.');
-      } else if (error.response?.status >= 500) {
-        setError('Error del servidor. Por favor intenta de nuevo más tarde.');
-      } else if (error.code === 'NETWORK_ERROR' || error.message?.includes('Network Error')) {
-        setError('Error de conexión. Verifica tu conexión a internet e intenta de nuevo.');
-      } else {
-        setError(`Error al eliminar el sublote: ${error.message || 'Error desconocido'}`);
-      }
-      setOpenConfirmModal(false);
-      setSublotToDelete(null);
-    }
+    deleteSublotMutation.mutate(sublotToDelete.id);
   };
 
   const openDeleteConfirm = (sublot) => {
@@ -161,7 +106,7 @@ const SublotsPage = () => {
     setOpenConfirmModal(true);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="loading-container">
         <CircularProgress className="loading-spinner" />
@@ -199,9 +144,13 @@ const SublotsPage = () => {
         />
       </div>
 
-      {error && (
+      {(isError || createSublotMutation.isError || updateSublotMutation.isError || deleteSublotMutation.isError) && (
         <Typography color="error" sx={{ mb: 2 }}>
-          {error}
+          {error?.message || 
+           createSublotMutation.error?.message || 
+           updateSublotMutation.error?.message || 
+           deleteSublotMutation.error?.message || 
+           'Ocurrió un error'}
         </Typography>
       )}
 
@@ -263,7 +212,7 @@ const SublotsPage = () => {
         confirmText="Eliminar"
         cancelText="Cancelar"
         type="danger"
-        loading={loading}
+        loading={deleteSublotMutation.isLoading}
       />
     </div>
   );

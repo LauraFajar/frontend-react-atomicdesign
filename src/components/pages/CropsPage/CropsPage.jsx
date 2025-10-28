@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../../contexts/AuthContext';
 import cropService from '../../../services/cropService';
 import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, IconButton, Chip, CircularProgress, Pagination } from '@mui/material';
@@ -28,58 +29,62 @@ const statusConfig = {
 
 const CropsPage = () => {
   const { user } = useAuth();
-  const [crops, setCrops] = useState([]);
-  const [filteredCrops, setFilteredCrops] = useState([]);
+  const queryClient = useQueryClient();
+
   const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
   const [openModal, setOpenModal] = useState(false);
   const [openConfirmModal, setOpenConfirmModal] = useState(false);
   const [selectedCrop, setSelectedCrop] = useState(null);
   const [cropToDelete, setCropToDelete] = useState(null);
-  const [error, setError] = useState('');
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
 
   const isAdmin = user?.role === 'administrador';
   const isInstructor = user?.role === 'instructor';
-  const canView = Boolean(user);
   const canCreate = isAdmin || isInstructor;
   const canEdit = isAdmin || isInstructor;
   const canDelete = isAdmin;
 
-  useEffect(() => {
-    loadCrops(page);
-  }, [page]);
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ['crops', page],
+    queryFn: () => cropService.getCrops(page, 10),
+    keepPreviousData: true,
+  });
 
-  useEffect(() => {
-    const results = crops.filter(crop =>
+  const crops = data?.items || [];
+  const totalPages = data?.meta?.totalPages || 1;
+
+  const filteredCrops = useMemo(() => {
+    if (!searchTerm) return crops;
+    return crops.filter(crop =>
       crop.tipo_cultivo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       crop.estado_cultivo.toLowerCase().includes(searchTerm.toLowerCase())
     );
-    setFilteredCrops(results);
   }, [searchTerm, crops]);
 
-  const loadCrops = async (currentPage) => {
-    try {
-      setLoading(true);
-      setError('');
-      const response = await cropService.getCrops(currentPage, 10);
-      const data = response.items || [];
-      const meta = response.meta || {};
+  const createCropMutation = useMutation({
+    mutationFn: cropService.createCrop,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['crops']);
+      handleCloseModal();
+    },
+  });
 
-      setCrops(data);
-      setFilteredCrops(data);
-      setTotalPages(meta.totalPages || 1);
-      setPage(currentPage);
-    } catch (error) {
-      console.error('Error al cargar los cultivos:', error);
-      setError(error.message === 'No tienes permisos para ver los cultivos'
-        ? 'No tienes permisos para ver los cultivos. Contacta al administrador si crees que esto es un error.'
-        : 'Error al cargar los cultivos. Por favor intenta de nuevo más tarde.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const updateCropMutation = useMutation({
+    mutationFn: ({ id, data }) => cropService.updateCrop(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['crops']);
+      handleCloseModal();
+    },
+  });
+
+  const deleteCropMutation = useMutation({
+    mutationFn: cropService.deleteCrop,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['crops']);
+      setOpenConfirmModal(false);
+      setCropToDelete(null);
+    },
+  });
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
@@ -99,57 +104,19 @@ const CropsPage = () => {
     setSelectedCrop(null);
   };
 
-  const handleSaveCrop = async (cropData) => {
-    try {
-      let successMsg = '';
-      if (selectedCrop) {
-        if (!canEdit) throw new Error('No tienes permisos para editar cultivos');
-        await cropService.updateCrop(selectedCrop.id, cropData);
-        successMsg = 'Cultivo actualizado exitosamente';
-      } else {
-        if (!canCreate) throw new Error('No tienes permisos para crear cultivos');
-        await cropService.createCrop(cropData);
-        successMsg = 'Cultivo creado exitosamente';
-      }
-      loadCrops();
-      handleCloseModal();
-      console.log(successMsg);
-    } catch (error) {
-      console.error('Error al guardar el cultivo:', error);
-      if (error.message?.includes('No tienes permisos')) {
-        setError('No tienes permisos para realizar esta acción. Contacta al administrador si crees que esto es un error.');
-        return;
-      }
-      setError(error.response?.data?.message || 'Error al guardar el cultivo. Por favor intenta de nuevo más tarde.');
+  const handleSaveCrop = (cropData) => {
+    if (selectedCrop) {
+      if (!canEdit) return;
+      updateCropMutation.mutate({ id: selectedCrop.id, data: cropData });
+    } else {
+      if (!canCreate) return;
+      createCropMutation.mutate(cropData);
     }
   };
 
-  const handleDeleteCrop = async () => {
+  const handleDeleteCrop = () => {
     if (!cropToDelete || !canDelete) return;
-
-    try {
-      setError('');
-      await cropService.deleteCrop(cropToDelete.id);
-      await loadCrops();
-      setOpenConfirmModal(false);
-      setCropToDelete(null);
-      console.log('Cultivo eliminado exitosamente');
-    } catch (error) {
-      console.error('Error al eliminar el cultivo:', error);
-      if (error.response?.status === 404) {
-        setError(`El cultivo "${cropToDelete.tipo_cultivo}" no fue encontrado. Puede que ya haya sido eliminado.`);
-      } else if (error.response?.status === 403) {
-        setError('No tienes permisos para eliminar cultivos. Contacta al administrador si crees que esto es un error.');
-      } else if (error.response?.status >= 500) {
-        setError('Error del servidor. Por favor intenta de nuevo más tarde.');
-      } else if (error.code === 'NETWORK_ERROR' || error.message?.includes('Network Error')) {
-        setError('Error de conexión. Verifica tu conexión a internet e intenta de nuevo.');
-      } else {
-        setError(`Error al eliminar el cultivo: ${error.message || 'Error desconocido'}`);
-      }
-      setOpenConfirmModal(false);
-      setCropToDelete(null);
-    }
+    deleteCropMutation.mutate(cropToDelete.id);
   };
 
   const openDeleteConfirm = (crop) => {
@@ -162,7 +129,7 @@ const CropsPage = () => {
     return new Date(dateString).toLocaleDateString();
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="loading-container">
         <CircularProgress className="loading-spinner" />
@@ -200,9 +167,13 @@ const CropsPage = () => {
         />
       </div>
 
-      {error && (
+      {(isError || createCropMutation.isError || updateCropMutation.isError || deleteCropMutation.isError) && (
         <Typography color="error" sx={{ mb: 2 }}>
-          {error}
+          {error?.message || 
+           createCropMutation.error?.message || 
+           updateCropMutation.error?.message || 
+           deleteCropMutation.error?.message || 
+           'Ocurrió un error'}
         </Typography>
       )}
 
@@ -271,7 +242,7 @@ const CropsPage = () => {
         confirmText="Eliminar"
         cancelText="Cancelar"
         type="danger"
-        loading={loading}
+        loading={deleteCropMutation.isLoading}
       />
 
       {totalPages > 1 && (

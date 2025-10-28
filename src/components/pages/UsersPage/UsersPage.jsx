@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../../contexts/AuthContext';
 import userService from '../../../services/userService';
 import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, IconButton, Chip, CircularProgress } from '@mui/material';
@@ -17,16 +18,13 @@ const roleConfig = {
 
 const UsersPage = () => {
   const { user } = useAuth();
-  const [users, setUsers] = useState([]);
-  const [filteredUsers, setFilteredUsers] = useState([]);
+  const queryClient = useQueryClient();
+
   const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(true);
   const [openModal, setOpenModal] = useState(false);
   const [openConfirmModal, setOpenConfirmModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [userToDelete, setUserToDelete] = useState(null);
-  const [error, setError] = useState('');
-  const [roles, setRoles] = useState([]);
 
   const isAdmin = user?.role === 'administrador';
   const canView = isAdmin;
@@ -34,108 +32,54 @@ const UsersPage = () => {
   const canEdit = isAdmin;
   const canDelete = isAdmin;
 
-  useEffect(() => {
-    if (canView) {
-      loadData();
-    }
-  }, [canView]);
+  const { data: users = [], isLoading, isError, error } = useQuery({
+    queryKey: ['users'],
+    queryFn: userService.getUsers,
+    enabled: canView,
+  });
 
-  useEffect(() => {
-    filterUsers();
+  const { data: roles = [] } = useQuery({
+    queryKey: ['allRoles'],
+    queryFn: userService.getRoles,
+    staleTime: Infinity,
+    enabled: canView,
+  });
+
+  const filteredUsers = useMemo(() => {
+    if (!searchTerm) return users;
+    return users.filter(user =>
+      user.nombres.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.numero_documento.toLowerCase().includes(searchTerm.toLowerCase())
+    );
   }, [searchTerm, users]);
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      setError('');
+  const createMutation = useMutation({
+    mutationFn: userService.createUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['users']);
+      handleCloseModal();
+    },
+  });
 
-      if (!canView) {
-        console.log('[UsersPage] User cannot view users');
-        return;
-      }
+  const updateMutation = useMutation({
+    mutationFn: (userData) => userService.updateUser(selectedUser.id, userData),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['users']);
+      handleCloseModal();
+    },
+  });
 
-      const [usersData, rolesData] = await Promise.all([
-        userService.getUsers().catch(error => {
-          console.error('Error loading users:', error);
-          return [];
-        }),
-        userService.getRoles().catch(error => {
-          console.error('Error loading roles:', error);
-          return [];
-        })
-      ]);
+  const deleteMutation = useMutation({
+    mutationFn: userService.deleteUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['users']);
+      setOpenConfirmModal(false);
+      setUserToDelete(null);
+    },
+  });
 
-      const rolesMap = {};
-      if (rolesData && Array.isArray(rolesData)) {
-        rolesData.forEach(role => {
-          console.log('[UsersPage] Processing role:', role, 'Type:', typeof role);
-          if (role && role.id_rol && role.nombre_rol) {
-            rolesMap[role.id_rol] = role.nombre_rol;
-            console.log(`[UsersPage] Role mapped: ${role.id_rol} -> ${role.nombre_rol}`);
-          }
-        });
-      }
-
-      const enrichedUsers = usersData?.map(user => {
-        console.log(`[UsersPage] Processing user: ${user.nombres}`);
-        console.log(`[UsersPage] User id_rol:`, user.id_rol, 'Type:', typeof user.id_rol);
-
-        let finalRoleName;
-
-        if (user.id_rol && typeof user.id_rol === 'object' && user.id_rol.nombre_rol) {
-          finalRoleName = user.id_rol.nombre_rol;
-        }
-        else if (user.nombre_rol && typeof user.nombre_rol === 'string' && user.nombre_rol.trim()) {
-          finalRoleName = user.nombre_rol.trim();
-        }
-        else {
-          const userRoleId = typeof user.id_rol === 'object' ? user.id_rol.id_rol : user.id_rol;
-          const roleName = rolesMap[userRoleId];
-          finalRoleName = roleName || `Rol ${userRoleId || 'desconocido'}`;
-        }
-
-        console.log(`[UsersPage] User ${user.nombres} final role: ${finalRoleName}`);
-
-        return {
-          ...user,
-          nombre_rol: finalRoleName
-        };
-      }) || [];
-
-      setUsers(enrichedUsers);
-      setRoles(rolesData || []);
-      console.log('[UsersPage] State updated - users:', enrichedUsers.length, 'roles:', rolesData.length);
-    } catch (error) {
-      console.error('Error al cargar los datos:', error);
-      if (error.message.includes('Sesión expirada')) {
-        setError('Tu sesión ha expirada. Por favor inicia sesión nuevamente.');
-      } else if (error.message.includes('No tienes permisos')) {
-        setError('No tienes permisos para ver los usuarios.');
-      } else {
-        setError('Error al cargar los usuarios. Por favor intenta de nuevo más tarde.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filterUsers = () => {
-    let filtered = users;
-
-    if (searchTerm) {
-      filtered = filtered.filter(user =>
-        user.nombres.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.numero_documento.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    setFilteredUsers(filtered);
-  };
-
-  const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
-  };
+  const handleSearch = (e) => setSearchTerm(e.target.value);
 
   const handleOpenModal = (userData = null) => {
     setSelectedUser(userData);
@@ -147,90 +91,19 @@ const UsersPage = () => {
     setSelectedUser(null);
   };
 
-  const handleSaveUser = async (userData) => {
-    try {
-      let successMsg = '';
-      if (selectedUser) {
-        if (!canEdit) throw new Error('No tienes permisos para editar usuarios');
-        await userService.updateUser(selectedUser.id, userData);
-        successMsg = 'Usuario actualizado exitosamente';
-      } else {
-        if (!canCreate) throw new Error('No tienes permisos para crear usuarios');
-        await userService.createUser(userData);
-        successMsg = 'Usuario creado exitosamente';
-      }
-      await loadData();
-      handleCloseModal();
-      console.log(successMsg);
-    } catch (error) {
-      console.error('Error al guardar el usuario:', error);
-
-      if (error.message.includes('Sesión expirada')) {
-        setError('Tu sesión ha expirado. Por favor inicia sesión nuevamente.');
-      } else if (error.message?.includes('No tienes permisos')) {
-        setError('No tienes permisos para realizar esta acción.');
-      } else {
-        setError('Error al guardar el usuario. Por favor intenta de nuevo más tarde.');
-      }
+  const handleSaveUser = (userData) => {
+    if (selectedUser) {
+      if (!canEdit) return;
+      updateMutation.mutate(userData);
+    } else {
+      if (!canCreate) return;
+      createMutation.mutate(userData);
     }
   };
 
-  const handleDeleteUser = async () => {
+  const handleDeleteUser = () => {
     if (!userToDelete || !canDelete) return;
-
-    console.log('[UsersPage] handleDeleteUser called');
-    console.log('[UsersPage] userToDelete:', userToDelete);
-
-    if (!userToDelete.id) {
-      console.error('[UsersPage] User has no ID:', userToDelete);
-      setError(`Error: El usuario seleccionado no tiene un ID válido.`);
-      setOpenConfirmModal(false);
-      setUserToDelete(null);
-      return;
-    }
-
-    const userId = String(userToDelete.id);
-    console.log('[UsersPage] Converted user ID:', userId);
-
-    try {
-      setError('');
-      console.log('[UsersPage] Deleting user with ID:', userId);
-
-      await userService.deleteUser(userId);
-      await loadData();
-      setOpenConfirmModal(false);
-      setUserToDelete(null);
-      console.log('Usuario eliminado exitosamente');
-    } catch (error) {
-      console.error('=== DELETE USER COMPONENT ERROR DEBUG ===');
-      console.error('Error object:', error);
-      console.error('Error message:', error.message);
-      console.error('Error response:', error.response);
-      console.error('Error status:', error.response?.status);
-      console.error('=== END COMPONENT DEBUG ===');
-
-      if (error.message.includes('Sesión expirada')) {
-        setError('Tu sesión ha expirada. Por favor inicia sesión nuevamente.');
-      } else if (error.response?.status === 404) {
-        setError(`El usuario "${userToDelete.nombres}" no fue encontrado.`);
-      } else if (error.response?.status === 403) {
-        setError('No tienes permisos para eliminar usuarios.');
-      } else if (error.response?.status >= 500) {
-        setError('Error del servidor. Por favor intenta de nuevo más tarde.');
-      } else if (error.message.includes('conexión') || error.message.includes('red')) {
-        setError('Error de conexión. Verifica tu conexión a internet.');
-      } else if (error.message.includes('CORS')) {
-        setError('Error de configuración del servidor.');
-      } else if (error.message.includes('servidor')) {
-        setError('No se pudo conectar con el servidor.');
-      } else if (error.message.includes('undefined') || error.message.includes('null')) {
-        setError('Error con el ID del usuario.');
-      } else {
-        setError(`Error al eliminar el usuario: ${error.message || 'Error desconocido'}`);
-      }
-      setOpenConfirmModal(false);
-      setUserToDelete(null);
-    }
+    deleteMutation.mutate(userToDelete.id);
   };
 
   const openDeleteConfirm = (userData) => {
@@ -238,13 +111,11 @@ const UsersPage = () => {
 
     if (!userData) {
       console.error('[UsersPage] Cannot delete user - no user data provided');
-      setError('Error: No se pudo identificar el usuario a eliminar');
       return;
     }
 
     setUserToDelete(userData);
     setOpenConfirmModal(true);
-    setError('');
   };
 
   if (!canView) {
@@ -263,7 +134,7 @@ const UsersPage = () => {
     );
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="loading-container">
         <CircularProgress className="loading-spinner" />
@@ -301,9 +172,13 @@ const UsersPage = () => {
         />
       </div>
 
-      {error && (
+      {(isError || createMutation.isError || updateMutation.isError || deleteMutation.isError) && (
         <Typography color="error" sx={{ mb: 2 }}>
-          {error}
+          {error?.message || 
+           createMutation.error?.message || 
+           updateMutation.error?.message || 
+           deleteMutation.error?.message || 
+           'Ocurrió un error'}
         </Typography>
       )}
 
@@ -401,7 +276,7 @@ const UsersPage = () => {
         confirmText="Eliminar"
         cancelText="Cancelar"
         type="danger"
-        loading={loading}
+        loading={deleteMutation.isLoading}
       />
     </div>
   );
