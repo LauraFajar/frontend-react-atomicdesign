@@ -1,32 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useAlert } from '../../../contexts/AlertContext';
 import LoginForm from '../../molecules/LoginForm/LoginForm';
 import './LoginPage.css';
 
 const LoginPage = () => {
   const location = useLocation();
+  const alert = useAlert();
   const [showSuccess, setShowSuccess] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (location.state?.passwordReset) {
-      setShowSuccess(true);
-      const timer = setTimeout(() => {
-        setShowSuccess(false);
-        window.history.replaceState({}, document.title);
-      }, 5000);
-      return () => clearTimeout(timer);
+      alert.success('¡Éxito!', 'Tu contraseña ha sido restablecida exitosamente! Por favor inicia sesión con tu nueva contraseña.');
+      window.history.replaceState({}, document.title);
     }
-    
+
     if (location.state?.error) {
-      setError(location.state.error);
-      const timer = setTimeout(() => {
-        setError('');
-        window.history.replaceState({}, document.title);
-      }, 5000);
-      return () => clearTimeout(timer);
+      alert.error('Error', location.state.error);
+      window.history.replaceState({}, document.title);
     }
-  }, [location]);
+  }, [location, alert]);
 
   return (
     <div className="login-page">
@@ -36,17 +30,6 @@ const LoginPage = () => {
         className="login-logo"
       />
       
-      {showSuccess && (
-        <div className="auth-success-message">
-          ¡Tu contraseña ha sido restablecida exitosamente! Por favor inicia sesión con tu nueva contraseña.
-        </div>
-      )}
-      
-      {error && (
-        <div className="auth-error-message">
-          {error}
-        </div>
-      )}
       
       <LoginForm />
     </div>

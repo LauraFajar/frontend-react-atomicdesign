@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
+import { useAlert } from '../../../contexts/AlertContext';
 import './Auth.css';
-import Modal from '../../../components/atoms/Modal/Modal';
-import { FaCheckCircle } from 'react-icons/fa';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
 const Register = () => {
+  const alert = useAlert();
   const [formData, setFormData] = useState({
     nombres: '',
     email: '',
@@ -15,7 +15,7 @@ const Register = () => {
     confirmPassword: '',
     tipo_documento: 'C.C.',
     numero_documento: '',
-    id_rol: '5' 
+    id_rol: '5'
   });
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [error, setError] = useState('');
@@ -39,20 +39,19 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    
+
     if (formData.password !== formData.confirmPassword) {
-      setError('Las contraseñas no coinciden');
+      alert.error('Error de Validación', 'Las contraseñas no coinciden');
       return;
     }
-    
+
     if (formData.password.length < 8) {
-      setError('La contraseña debe tener al menos 8 caracteres');
+      alert.error('Error de Validación', 'La contraseña debe tener al menos 8 caracteres');
       return;
     }
-    
+
     setLoading(true);
-    
+
     try {
       // Crear objeto con los datos a enviar (sin confirmPassword)
       const userData = { ...formData };
@@ -62,58 +61,29 @@ const Register = () => {
         ...userData,
         id_rol: 5
       };
-      
+
       console.log('Enviando datos al servidor:', userDataToSend);
-      
+
       const response = await axios.post(`${API_URL}/auth/register`, userDataToSend);
       console.log('Respuesta del servidor:', response.data);
-      
-      setShowSuccessModal(true);
-      console.log('showSuccessModal actualizado a:', true);
-      
+
+      alert.success('¡Registro Exitoso!', 'Tu cuenta ha sido creada correctamente. Ahora puedes iniciar sesión con tus credenciales.');
+      navigate('/login');
+
     } catch (error) {
       console.error('Error en el registro:', error);
-      setError(error.response?.data?.message || 'Error al registrar el usuario. Por favor, inténtalo de nuevo.');
+      alert.error('Error de Registro', error.response?.data?.message || 'Error al registrar el usuario. Por favor, inténtalo de nuevo.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSuccessModalClose = () => {
-    setShowSuccessModal(false);
-    navigate('/login');
-  };
 
   return (
     <div className="auth-container">
-      <Modal isOpen={showSuccessModal} onClose={handleSuccessModalClose}>
-        <div style={{ textAlign: 'center', padding: '20px' }}>
-          <div style={{ color: '#4CAF50', fontSize: '50px', marginBottom: '15px' }}>
-            <FaCheckCircle />
-          </div>
-          <h2 style={{ margin: '10px 0', color: '#333' }}>¡Registro exitoso!</h2>
-          <p style={{ marginBottom: '20px', color: '#555' }}>
-            Tu cuenta ha sido creada correctamente. Ahora puedes iniciar sesión con tus credenciales.
-          </p>
-          <button 
-            onClick={handleSuccessModalClose}
-            style={{
-              backgroundColor: '#4CAF50',
-              color: 'white',
-              border: 'none',
-              padding: '10px 20px',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '16px'
-            }}
-          >
-            Ir al inicio de sesión
-          </button>
-        </div>
-      </Modal>
-      <img 
-        src="/logos/logo.svg" 
-        alt="AgroTIC" 
+      <img
+        src="/logos/logo.svg"
+        alt="AgroTIC"
         className="auth-logo"
       />
       <div className="auth-card">
@@ -121,8 +91,6 @@ const Register = () => {
         <p className="auth-message">
           Completa el formulario para crear tu cuenta en AgroTIC.
         </p>
-        
-        {error && <div className="auth-error-message">{error}</div>}
         
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">

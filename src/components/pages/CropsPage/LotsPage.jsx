@@ -1,26 +1,24 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useAlert } from '../../../contexts/AlertContext';
 import lotService from '../../../services/lotService';
 import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, IconButton, Chip, CircularProgress } from '@mui/material';
 import { Add, Edit, Delete, Search } from '@mui/icons-material';
 import LotFormModal from './LotFormModal';
 import ConfirmModal from '../../molecules/ConfirmModal/ConfirmModal';
-import SuccessModal from '../../molecules/SuccessModal/SuccessModal';
 import './LotsPage.css';
 
 const LotsPage = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const alert = useAlert();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [openModal, setOpenModal] = useState(false);
   const [openConfirmModal, setOpenConfirmModal] = useState(false);
-  const [openSuccessModal, setOpenSuccessModal] = useState(false);
   const [selectedLot, setSelectedLot] = useState(null);
   const [lotToDelete, setLotToDelete] = useState(null);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
 
   const isAdmin = user?.role === 'administrador';
   const isInstructor = user?.role === 'instructor';
@@ -32,9 +30,7 @@ const LotsPage = () => {
     queryKey: ['lots'],
     queryFn: lotService.getLots,
     onError: (err) => {
-      setErrorMessage(err.message === 'No tienes permisos para ver los lotes'
-        ? 'No tienes permisos para ver los lotes. Contacta al administrador si crees que esto es un error.'
-        : 'Error al cargar los lotes. Por favor intenta de nuevo más tarde.');
+      alert.error('Error de Carga', err.message || 'No se pudieron cargar los lotes.');
     }
   });
 
@@ -46,46 +42,41 @@ const LotsPage = () => {
     );
   }, [searchTerm, lots]);
 
-  const handleMutationSuccess = (message) => {
-    setSuccessMessage(message);
-    setOpenSuccessModal(true);
-    queryClient.invalidateQueries(['lots']);
-    setErrorMessage('');
-  };
-
-  const handleMutationError = (error, defaultMessage) => {
-    const message = error.response?.data?.message || error.message || defaultMessage;
-    setErrorMessage(message);
-  };
-
   const createLotMutation = useMutation({
     mutationFn: lotService.createLot,
     onSuccess: () => {
-      handleMutationSuccess('Lote creado exitosamente');
+      queryClient.invalidateQueries(['lots']);
       handleCloseModal();
+      alert.success('¡Éxito!', 'Lote creado correctamente.');
     },
-    onError: (err) => handleMutationError(err, 'Error al crear el lote'),
+    onError: (err) => {
+      alert.error('Error', err.message || 'No se pudo crear el lote.');
+    },
   });
 
   const updateLotMutation = useMutation({
     mutationFn: (lotData) => lotService.updateLot(lotData.id, lotData),
     onSuccess: () => {
-      handleMutationSuccess('Lote actualizado exitosamente');
+      queryClient.invalidateQueries(['lots']);
       handleCloseModal();
+      alert.success('¡Éxito!', 'Lote actualizado correctamente.');
     },
-    onError: (err) => handleMutationError(err, 'Error al actualizar el lote'),
+    onError: (err) => {
+      alert.error('Error', err.message || 'No se pudo actualizar el lote.');
+    },
   });
 
   const deleteLotMutation = useMutation({
     mutationFn: lotService.deleteLot,
     onSuccess: () => {
-      handleMutationSuccess('Lote eliminado exitosamente');
+      queryClient.invalidateQueries(['lots']);
       setOpenConfirmModal(false);
       setLotToDelete(null);
+      alert.success('¡Éxito!', 'Lote eliminado correctamente.');
     },
     onError: (err) => {
-      handleMutationError(err, 'Error al eliminar el lote');
       setOpenConfirmModal(false);
+      alert.error('Error', err.message || 'No se pudo eliminar el lote.');
     },
   });
 
@@ -96,7 +87,6 @@ const LotsPage = () => {
   const handleOpenModal = (lot = null) => {
     setSelectedLot(lot);
     setOpenModal(true);
-    setErrorMessage('');
   };
 
   const handleCloseModal = () => {
@@ -125,7 +115,6 @@ const LotsPage = () => {
   const openDeleteConfirm = (lot) => {
     setLotToDelete(lot);
     setOpenConfirmModal(true);
-    setErrorMessage('');
   };
 
   if (isLoading) {
@@ -166,9 +155,9 @@ const LotsPage = () => {
         />
       </div>
 
-      {(isError || errorMessage) && (
+      {isError && (
         <Typography color="error" sx={{ mb: 2 }}>
-          {errorMessage || error.message}
+          {error.message}
         </Typography>
       )}
 
@@ -247,12 +236,6 @@ const LotsPage = () => {
         cancelText="Cancelar"
         type="danger"
         loading={deleteLotMutation.isLoading}
-      />
-
-      <SuccessModal
-        isOpen={openSuccessModal}
-        onClose={() => setOpenSuccessModal(false)}
-        message={successMessage}
       />
     </div>
   );

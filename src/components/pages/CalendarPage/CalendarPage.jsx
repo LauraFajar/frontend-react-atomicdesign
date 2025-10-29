@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useAlert } from '../../../contexts/AlertContext';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { Box, Typography, Container, FormControl, InputLabel, Select, MenuItem, TextField, Button, Grid, Dialog, DialogTitle, DialogContent, DialogActions, Chip, CircularProgress, Tooltip } from '@mui/material';
@@ -15,6 +16,7 @@ import './CalendarPage.css';
 
 const CalendarPage = () => {
   const { user } = useAuth();
+  const alert = useAlert();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedCrop, setSelectedCrop] = useState('');
   const [dateFrom, setDateFrom] = useState(null);
@@ -31,6 +33,9 @@ const CalendarPage = () => {
     queryFn: () => cropService.getCrops(1, 100),
     select: (data) => data.items || [],
     staleTime: Infinity,
+    onError: (err) => {
+      alert.error('Error de Carga', err.message || 'No se pudieron cargar los cultivos.');
+    }
   });
 
   const { data: events = [], isLoading, isError, error } = useQuery({
@@ -42,6 +47,9 @@ const CalendarPage = () => {
       endDate.setMonth(endDate.getMonth() + 6);
       return calendarService.getCalendarEvents(formatDate(startDate), formatDate(endDate));
     },
+    onError: (err) => {
+      alert.error('Error de Carga', err.message || 'No se pudieron cargar los eventos del calendario.');
+    }
   });
 
   const filteredEvents = useMemo(() => {
@@ -143,11 +151,6 @@ const CalendarPage = () => {
         <h1 className="calendar-title">Calendario de Cultivos y Actividades</h1>
       </div>
 
-      {(isError || isCropsError) && (
-        <Typography color="error" sx={{ mb: 2 }}>
-          {error?.message || cropsError?.message || 'Error al cargar los datos del calendario'}
-        </Typography>
-      )}
 
       <div className="filters-container">
         <Grid container spacing={3} className="filters-grid">

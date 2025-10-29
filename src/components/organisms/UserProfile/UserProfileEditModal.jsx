@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem, Box, Avatar } from '@mui/material'
 import { useAuth } from '../../../contexts/AuthContext'
+import { useAlert } from '../../../contexts/AlertContext'
 import userService from '../../../services/userService'
 
 const docTypes = [
@@ -12,6 +13,7 @@ const docTypes = [
 
 const UserProfileEditModal = ({ open, onClose }) => {
   const { user } = useAuth() || {}
+  const alert = useAlert()
   const [form, setForm] = useState({
     nombres: '',
     email: '',
@@ -55,7 +57,7 @@ const UserProfileEditModal = ({ open, onClose }) => {
   }
   const handleSubmit = async () => {
     if (form.password && form.password !== confirmPassword) {
-      alert('Las contraseñas no coinciden')
+      alert.error('Error de Validación', 'Las contraseñas no coinciden')
       return
     }
 
@@ -81,16 +83,20 @@ const UserProfileEditModal = ({ open, onClose }) => {
 
         const updated = await userService.updateUser(user.id, fd)
         localStorage.setItem('user', JSON.stringify(updated))
+        alert.success('¡Perfil Actualizado!', 'Tu perfil y foto han sido actualizados correctamente.')
       } else {
         if (Object.keys(changed).length === 0) {
           console.log('[UserProfileEditModal] no changes to update')
+          alert.success('¡Perfil Actualizado!', 'No se detectaron cambios en tu perfil.')
         } else {
           const updated = await userService.updateUser(user.id, changed)
           localStorage.setItem('user', JSON.stringify(updated))
+          alert.success('¡Perfil Actualizado!', 'Tu perfil ha sido actualizado correctamente.')
         }
       }
     } catch (err) {
       console.error('Error updating user', err)
+      alert.error('Error de Actualización', 'No se pudo actualizar el perfil. Por favor, inténtalo de nuevo.')
       if (avatarFile) {
         try {
           console.log('[UserProfileEditModal] attempting base64 fallback')
@@ -112,8 +118,10 @@ const UserProfileEditModal = ({ open, onClose }) => {
           console.log('[UserProfileEditModal] retrying with JSON payload (base64)')
           const updated2 = await userService.updateUser(user.id, payload)
           localStorage.setItem('user', JSON.stringify(updated2))
+          alert.success('¡Perfil Actualizado!', 'Tu perfil y foto han sido actualizados correctamente (método alternativo).')
         } catch (err2) {
           console.error('Base64 fallback failed', err2)
+          alert.error('Error de Actualización', 'No se pudo actualizar la foto de perfil. Los demás cambios se guardaron correctamente.')
         }
       }
     }

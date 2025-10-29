@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useAlert } from '../../../contexts/AlertContext';
 import userService from '../../../services/userService';
 import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, IconButton, Chip, CircularProgress, Pagination } from '@mui/material';
 import { Add, Edit, Delete, Search } from '@mui/icons-material';
@@ -19,6 +20,7 @@ const roleConfig = {
 const UsersPage = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const alert = useAlert();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
@@ -70,6 +72,10 @@ const UsersPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries(['users']);
       handleCloseModal();
+      alert.success('¡Éxito!', 'Usuario creado correctamente.');
+    },
+    onError: (error) => {
+      alert.error('Error', error.message || 'No se pudo crear el usuario.');
     },
   });
 
@@ -78,6 +84,10 @@ const UsersPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries(['users']);
       handleCloseModal();
+      alert.success('¡Éxito!', 'Usuario actualizado correctamente.');
+    },
+    onError: (error) => {
+      alert.error('Error', error.message || 'No se pudo actualizar el usuario.');
     },
   });
 
@@ -87,6 +97,11 @@ const UsersPage = () => {
       queryClient.invalidateQueries(['users']);
       setOpenConfirmModal(false);
       setUserToDelete(null);
+      alert.success('¡Éxito!', 'Usuario eliminado correctamente.');
+    },
+    onError: (error) => {
+      setOpenConfirmModal(false);
+      alert.error('Error', error.message || 'No se pudo eliminar el usuario.');
     },
   });
 
@@ -149,7 +164,7 @@ const UsersPage = () => {
     );
   }
 
-  if (isLoading && !data) { // Show loading only on initial fetch
+  if (isLoading && !data) { 
     return (
       <div className="loading-container">
         <CircularProgress className="loading-spinner" />
@@ -187,13 +202,9 @@ const UsersPage = () => {
         />
       </div>
 
-      {(isError || createMutation.isError || updateMutation.isError || deleteMutation.isError) && (
+      {(isError) && (
         <Typography color="error" sx={{ mb: 2 }}>
-          {error?.message || 
-           createMutation.error?.message || 
-           updateMutation.error?.message || 
-           deleteMutation.error?.message || 
-           'Ocurrió un error'}
+          {error?.message || 'Ocurrió un error al cargar los usuarios'}
         </Typography>
       )}
 

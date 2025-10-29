@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useAlert } from '../../../contexts/AlertContext';
 import sublotService from '../../../services/sublotService';
 import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, IconButton, CircularProgress } from '@mui/material';
 import { Add, Edit, Delete, Search } from '@mui/icons-material';
@@ -22,6 +23,7 @@ const statusConfig = {
 const SublotsPage = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const alert = useAlert();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [openModal, setOpenModal] = useState(false);
@@ -38,6 +40,9 @@ const SublotsPage = () => {
   const { data: sublots = [], isLoading, isError, error } = useQuery({
     queryKey: ['sublots'],
     queryFn: sublotService.getSublots,
+    onError: (err) => {
+      alert.error('Error de Carga', err.message || 'No se pudieron cargar los sublotes.');
+    }
   });
 
   const filteredSublots = useMemo(() => {
@@ -54,6 +59,10 @@ const SublotsPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries(['sublots']);
       handleCloseModal();
+      alert.success('¡Éxito!', 'Sublote creado correctamente.');
+    },
+    onError: (err) => {
+      alert.error('Error', err.message || 'No se pudo crear el sublote.');
     },
   });
 
@@ -62,6 +71,10 @@ const SublotsPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries(['sublots']);
       handleCloseModal();
+      alert.success('¡Éxito!', 'Sublote actualizado correctamente.');
+    },
+    onError: (err) => {
+      alert.error('Error', err.message || 'No se pudo actualizar el sublote.');
     },
   });
 
@@ -71,6 +84,11 @@ const SublotsPage = () => {
       queryClient.invalidateQueries(['sublots']);
       setOpenConfirmModal(false);
       setSublotToDelete(null);
+      alert.success('¡Éxito!', 'Sublote eliminado correctamente.');
+    },
+    onError: (err) => {
+      setOpenConfirmModal(false);
+      alert.error('Error', err.message || 'No se pudo eliminar el sublote.');
     },
   });
 

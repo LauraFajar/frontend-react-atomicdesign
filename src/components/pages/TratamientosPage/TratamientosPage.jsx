@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAlert } from '../../../contexts/AlertContext';
 import { 
   Box, Button, Card, CardContent, CardActions, Chip, Dialog, DialogActions, 
   DialogContent, DialogTitle, Divider, FormControl, Grid, IconButton, InputLabel,
@@ -22,6 +23,7 @@ const rolesCanView = ['Admin','Instructor','Learner','Intern', 'administrador', 
 
 const TratamientosPage = ({ currentUser }) => {
   const queryClient = useQueryClient();
+  const alert = useAlert();
   const role = currentUser?.role || currentUser?.Role || currentUser?.roleLabel || 'Learner';
 
   const [filterEpaId, setFilterEpaId] = useState('');
@@ -49,6 +51,9 @@ const TratamientosPage = ({ currentUser }) => {
     queryKey: ['tratamientos', filterEpaId, filterTipo],
     queryFn: () => tratamientoService.getTratamientos({ epaId: filterEpaId, tipo: filterTipo }),
     enabled: canView,
+    onError: (err) => {
+      alert.error('Error de Carga', err.message || 'No se pudieron cargar los tratamientos.');
+    }
   });
 
   const createMutation = useMutation({
@@ -57,6 +62,10 @@ const TratamientosPage = ({ currentUser }) => {
       queryClient.invalidateQueries(['tratamientos']);
       setOpenForm(false);
       setSelected(null);
+      alert.success('¡Éxito!', 'Tratamiento creado correctamente.');
+    },
+    onError: (err) => {
+      alert.error('Error', err.message || 'No se pudo crear el tratamiento.');
     },
   });
 
@@ -66,6 +75,10 @@ const TratamientosPage = ({ currentUser }) => {
       queryClient.invalidateQueries(['tratamientos']);
       setOpenForm(false);
       setSelected(null);
+      alert.success('¡Éxito!', 'Tratamiento actualizado correctamente.');
+    },
+    onError: (err) => {
+      alert.error('Error', err.message || 'No se pudo actualizar el tratamiento.');
     },
   });
 
@@ -75,6 +88,11 @@ const TratamientosPage = ({ currentUser }) => {
       queryClient.invalidateQueries(['tratamientos']);
       setOpenConfirmModal(false);
       setTratamientoToDelete(null);
+      alert.success('¡Éxito!', 'Tratamiento eliminado correctamente.');
+    },
+    onError: (err) => {
+      setOpenConfirmModal(false);
+      alert.error('Error', err.message || 'No se pudo eliminar el tratamiento.');
     },
   });
 
@@ -222,6 +240,15 @@ const TratamientosPage = ({ currentUser }) => {
         <Box className="loading-container">
           <Typography>Cargando tratamientos...</Typography>
         </Box>
+      ) : isError ? (
+        <Box className="empty-state">
+          <Typography variant="h6" align="center" color="error">
+            Error al cargar los tratamientos.
+          </Typography>
+          <Typography variant="body2" align="center" color="text.secondary">
+            {error.message}
+          </Typography>
+        </Box>
       ) : tratamientos.length === 0 ? (
         <Box className="empty-state">
           <Typography variant="h6" align="center" color="text.secondary">
@@ -331,23 +358,6 @@ const TratamientosPage = ({ currentUser }) => {
         onClose={handleCloseDetail}
         tratamiento={selected}
       />
-
-      <Dialog open={isError || createMutation.isError || updateMutation.isError || deleteMutation.isError} onClose={() => {}}>
-        <DialogTitle>Error</DialogTitle>
-        <DialogContent>
-          <Typography>
-            {error?.message || createMutation.error?.message || updateMutation.error?.message || deleteMutation.error?.message || 'Ocurrió un error'}
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => {
-            if (isError) queryClient.invalidateQueries(['tratamientos']);
-            createMutation.reset();
-            updateMutation.reset();
-            deleteMutation.reset();
-          }}>Cerrar</Button>
-        </DialogActions>
-      </Dialog>
 
       <ConfirmModal
         isOpen={openConfirmModal}

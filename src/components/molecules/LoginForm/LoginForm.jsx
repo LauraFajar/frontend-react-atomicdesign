@@ -1,12 +1,14 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../../contexts/AuthContext'
+import { useAlert } from '../../../contexts/AlertContext'
 import Button from '../../atoms/Button/Button'
 import Input from '../../atoms/Input/Input'
 import './LoginForm.css'
 
 const LoginForm = () => {
   const { login } = useAuth()
+  const alert = useAlert()
   const [formData, setFormData] = useState({
     numero_documento: '',
     password: ''
@@ -45,17 +47,17 @@ const LoginForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (!validateForm()) return
 
     setLoading(true)
     try {
       const result = await login(formData)
       if (!result.success) {
-        setErrors({ general: result.message })
+        alert.error('Error de Inicio de Sesión', result.message)
       }
     } catch (error) {
-      setErrors({ general: 'Error de conexión. Intenta nuevamente.' })
+      alert.error('Error de Conexión', 'Error de conexión. Intenta nuevamente.')
     } finally {
       setLoading(false)
     }
@@ -97,11 +99,6 @@ const LoginForm = () => {
         </div>
       </div>
 
-      {errors.general && (
-        <div className="login-form__error">
-          {errors.general}
-        </div>
-      )}
 
       <div className="login-form__actions">
         <button

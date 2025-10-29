@@ -68,7 +68,7 @@ const CropsPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries(['crops']);
       handleCloseModal();
-      alert.success('Éxito', 'El cultivo se ha creado correctamente.');
+      alert.success('¡Éxito!', 'El cultivo se ha creado correctamente.');
     },
     onError: (error) => {
       alert.error('Error', 'No se pudo crear el cultivo.');
@@ -81,7 +81,7 @@ const CropsPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries(['crops']);
       handleCloseModal();
-      alert.success('Éxito', 'El cultivo se ha actualizado correctamente.');
+      alert.success('¡Éxito!', 'El cultivo se ha actualizado correctamente.');
     },
     onError: (error) => {
       alert.error('Error', 'No se pudo actualizar el cultivo.');
@@ -95,7 +95,7 @@ const CropsPage = () => {
       queryClient.invalidateQueries(['crops']);
       setOpenConfirmModal(false);
       setCropToDelete(null);
-      alert.success('Éxito', 'El cultivo se ha eliminado correctamente.');
+      alert.success('¡Éxito!', 'El cultivo se ha eliminado correctamente.');
     },
     onError: (error) => {
       setOpenConfirmModal(false);

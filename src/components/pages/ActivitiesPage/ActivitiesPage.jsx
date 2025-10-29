@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useAlert } from '../../../contexts/AlertContext';
 import activityService from '../../../services/activityService';
 import cropService from '../../../services/cropService';
 import {Button,Table,TableBody,TableCell,TableContainer,TableHead,TableRow,TextField,Typography,IconButton,Chip,CircularProgress,FormControl,InputLabel,Select,MenuItem,Box, Pagination} from '@mui/material';
@@ -39,6 +40,7 @@ const statusConfig = {
 const ActivitiesPage = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const alert = useAlert();
 
   const [openModal, setOpenModal] = useState(false);
   const [openConfirmModal, setOpenConfirmModal] = useState(false);
@@ -67,6 +69,9 @@ const ActivitiesPage = () => {
     queryKey: ['activities', page, filters],
     queryFn: () => activityService.getActivities(filters, page, 10),
     keepPreviousData: true,
+    onError: (err) => {
+      alert.error('Error de Carga', err.message || 'No se pudieron cargar las actividades.');
+    }
   });
 
   const { data: cropsData } = useQuery({
@@ -93,6 +98,10 @@ const ActivitiesPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries(['activities']);
       handleCloseModal();
+      alert.success('¡Éxito!', 'Actividad creada correctamente.');
+    },
+    onError: (err) => {
+      alert.error('Error', err.message || 'No se pudo crear la actividad.');
     },
   });
 
@@ -101,6 +110,10 @@ const ActivitiesPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries(['activities']);
       handleCloseModal();
+      alert.success('¡Éxito!', 'Actividad actualizada correctamente.');
+    },
+    onError: (err) => {
+      alert.error('Error', err.message || 'No se pudo actualizar la actividad.');
     },
   });
 
@@ -110,6 +123,11 @@ const ActivitiesPage = () => {
       queryClient.invalidateQueries(['activities']);
       setOpenConfirmModal(false);
       setActivityToDelete(null);
+      alert.success('¡Éxito!', 'Actividad eliminada correctamente.');
+    },
+    onError: (err) => {
+      setOpenConfirmModal(false);
+      alert.error('Error', err.message || 'No se pudo eliminar la actividad.');
     },
   });
 
@@ -248,13 +266,9 @@ const ActivitiesPage = () => {
         </div>
       </div>
 
-      {(isActivitiesError || createActivityMutation.isError || updateActivityMutation.isError || deleteActivityMutation.isError) && (
+      {isActivitiesError && (
         <Typography color="error" sx={{ mb: 2 }}>
-          {activitiesError?.message || 
-           createActivityMutation.error?.message || 
-           updateActivityMutation.error?.message || 
-           deleteActivityMutation.error?.message || 
-           'Ocurrió un error'}
+          {activitiesError?.message || 'Ocurrió un error al cargar las actividades'}
         </Typography>
       )}
 

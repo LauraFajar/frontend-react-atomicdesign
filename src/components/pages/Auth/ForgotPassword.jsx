@@ -1,35 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useAlert } from '../../../contexts/AlertContext';
 import authService from '../../../services/authService';
 import '../../atoms/Button/Button.css';
 import './Auth.css';
 
-const SuccessModal = ({ onClose }) => {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, 9000); 
-    return () => clearTimeout(timer);
-  }, [onClose]);
-
-  return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <div className="modal-icon">✓</div>
-        <h3>¡Enlace enviado!</h3>
-        <p>Hemos enviado un enlace a tu correo electrónico para restablecer tu contraseña.</p>
-        <button 
-          className="modal-close-btn"
-          onClick={onClose}
-        >
-          Aceptar
-        </button>
-      </div>
-    </div>
-  );
-};
 
 const ForgotPassword = () => {
+  const alert = useAlert();
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -38,29 +16,26 @@ const ForgotPassword = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    
+
     if (!email) {
-      setError('Por favor ingresa tu correo electrónico');
+      alert.error('Error de Validación', 'Por favor ingresa tu correo electrónico');
       return;
     }
 
     setLoading(true);
-    
+
     try {
       await authService.requestPasswordReset(email);
-      setShowModal(true);
+      alert.success('¡Enlace Enviado!', 'Hemos enviado un enlace a tu correo electrónico para restablecer tu contraseña.');
+      setSubmitted(true);
     } catch (err) {
-      setError(err.message || 'Ocurrió un error al enviar el correo. Por favor, inténtalo de nuevo.');
+      alert.error('Error', err.message || 'Ocurrió un error al enviar el correo. Por favor, inténtalo de nuevo.');
       console.error('Error al enviar correo de restablecimiento:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const closeModal = () => {
-    setShowModal(false);
-  };
 
   if (submitted) {
     return (
@@ -91,7 +66,6 @@ const ForgotPassword = () => {
           Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.
         </p>
         
-        {error && <div className="auth-error">{error}</div>}
         
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
@@ -123,7 +97,6 @@ const ForgotPassword = () => {
         </div>
       </div>
       
-      {showModal && <SuccessModal onClose={closeModal} />}
     </div>
   );
 };
