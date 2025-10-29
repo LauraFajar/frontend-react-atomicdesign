@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAlert } from '../../../contexts/AlertContext';
 import {
   Dialog,
   DialogTitle,
@@ -39,6 +40,7 @@ const CropFormModal = ({ open, onClose, onSave, crop }) => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState('');
+  const alert = useAlert();
 
   useEffect(() => {
     if (crop) {
@@ -119,7 +121,7 @@ const CropFormModal = ({ open, onClose, onSave, crop }) => {
         fecha_cosecha_estimada: formData.fecha_cosecha_estimada ? formData.fecha_cosecha_estimada.toISOString() : null,
       };
       
-      await onSave(formattedData);
+      await onSave(formattedData, !!crop);
       onClose();
     } catch (error) {
       console.error('Error al guardar el cultivo:', error);

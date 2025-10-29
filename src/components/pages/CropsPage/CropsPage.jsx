@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useAlert } from '../../../contexts/AlertContext';
 import cropService from '../../../services/cropService';
 import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, IconButton, Chip, CircularProgress, Pagination } from '@mui/material';
 import { Add, Edit, Delete, Search } from '@mui/icons-material';
@@ -30,6 +31,7 @@ const statusConfig = {
 const CropsPage = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const alert = useAlert();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
@@ -66,7 +68,12 @@ const CropsPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries(['crops']);
       handleCloseModal();
+      alert.success('Éxito', 'El cultivo se ha creado correctamente.');
     },
+    onError: (error) => {
+      alert.error('Error', 'No se pudo crear el cultivo.');
+      console.error('Error al crear el cultivo:', error);
+    }
   });
 
   const updateCropMutation = useMutation({
@@ -74,7 +81,12 @@ const CropsPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries(['crops']);
       handleCloseModal();
+      alert.success('Éxito', 'El cultivo se ha actualizado correctamente.');
     },
+    onError: (error) => {
+      alert.error('Error', 'No se pudo actualizar el cultivo.');
+      console.error('Error al actualizar el cultivo:', error);
+    }
   });
 
   const deleteCropMutation = useMutation({
@@ -83,7 +95,13 @@ const CropsPage = () => {
       queryClient.invalidateQueries(['crops']);
       setOpenConfirmModal(false);
       setCropToDelete(null);
+      alert.success('Éxito', 'El cultivo se ha eliminado correctamente.');
     },
+    onError: (error) => {
+      setOpenConfirmModal(false);
+      alert.error('Error', 'No se pudo eliminar el cultivo.');
+      console.error('Error al eliminar el cultivo:', error);
+    }
   });
 
   const handleSearch = (e) => {
@@ -104,8 +122,8 @@ const CropsPage = () => {
     setSelectedCrop(null);
   };
 
-  const handleSaveCrop = (cropData) => {
-    if (selectedCrop) {
+  const handleSaveCrop = (cropData, isUpdate) => {
+    if (isUpdate) {
       if (!canEdit) return;
       updateCropMutation.mutate({ id: selectedCrop.id, data: cropData });
     } else {
@@ -167,13 +185,9 @@ const CropsPage = () => {
         />
       </div>
 
-      {(isError || createCropMutation.isError || updateCropMutation.isError || deleteCropMutation.isError) && (
+      {isError && (
         <Typography color="error" sx={{ mb: 2 }}>
-          {error?.message || 
-           createCropMutation.error?.message || 
-           updateCropMutation.error?.message || 
-           deleteCropMutation.error?.message || 
-           'Ocurrió un error'}
+          {error?.message || 'Ocurrió un error al cargar los cultivos'}
         </Typography>
       )}
 

@@ -1,6 +1,7 @@
 import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AlertProvider } from './contexts/AlertContext';
 import LoginPage from './components/pages/LoginPage/LoginPage';
 import DashboardPage from './components/pages/DashboardPage/DashboardPage';
 import ForgotPassword from './components/pages/Auth/ForgotPassword';
@@ -55,70 +56,72 @@ const PublicRoute = ({ children }) => {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <div className="App">
-          <Routes>
-            <Route path="/login" element={
-              <PublicRoute>
-                <LoginPage />
-              </PublicRoute>
-            } />
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/" element={<Navigate to="/login" />} />
-            <Route path="/forgot-password" element={
-              <PublicRoute>
-                <ForgotPassword />
-              </PublicRoute>
-            } />
-            <Route path="/reset-password" element={
-              <PublicRoute>
-                <ResetPassword />
-              </PublicRoute>
-            } />
-            <Route path="/register" element={
-              <PublicRoute>
-                <Register />
-              </PublicRoute>
-            } />
-            <Route path="/cultivos" element={
-              <ProtectedRoute>
-                <CropsPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/actividades" element={
-              <ProtectedRoute>
-                <ActivitiesPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/tratamientos" element={
-              <ProtectedRoute>
-                <TratamientosPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/calendario" element={
-              <ProtectedRoute>
-                <CalendarPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/usuarios" element={
-              <ProtectedRoute>
-                <UsersPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/perfil" element={
-              <ProtectedRoute>
-                <ProfilePage />
-              </ProtectedRoute>
-            } />
-            <Route path="/acceso-restringido" element={<RestrictedAccess />} />
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
-        </div>
-      </Router>
+      <AlertProvider>
+        <Router>
+          <div className="App">
+            <Routes>
+              <Route path="/login" element={
+                <PublicRoute>
+                  <LoginPage />
+                </PublicRoute>
+              } />
+              <Route path="/forgot-password" element={
+                <PublicRoute>
+                  <ForgotPassword />
+                </PublicRoute>
+              } />
+              <Route path="/reset-password" element={
+                <PublicRoute>
+                  <ResetPassword />
+                </PublicRoute>
+              } />
+              <Route path="/register" element={
+                <PublicRoute>
+                  <Register />
+                </PublicRoute>
+              } />
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <DashboardPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/crops" element={
+                <ProtectedRoute>
+                  <CropsPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/activities" element={
+                <ProtectedRoute>
+                  <ActivitiesPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/calendar" element={
+                <ProtectedRoute>
+                  <CalendarPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/tratamientos" element={
+                <ProtectedRoute>
+                  <TratamientosPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/users" element={
+                <ProtectedRoute allowGuest={false}>
+                  <UsersPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/profile" element={
+                <ProtectedRoute>
+                  <ProfilePage />
+                </ProtectedRoute>
+              } />
+              <Route path="/restricted" element={<RestrictedAccess />} />
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </div>
+        </Router>
+      </AlertProvider>
     </AuthProvider>
   )
 }
