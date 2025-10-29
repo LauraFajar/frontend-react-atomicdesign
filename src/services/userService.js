@@ -44,21 +44,44 @@ const mapUser = (u) => {
 };
 
 const userService = {
-  getUsers: async (filters = {}) => {
+  getUsers: async (page = 1, limit = 10) => {
     try {
       const response = await axios.get(`${API_URL}/usuarios`, {
-        headers: getAuthHeader()
+        headers: getAuthHeader(),
+        params: { page, limit },
       });
 
       console.log('[userService] GET /usuarios response:', response.data);
-      console.log('[userService] Is array:', Array.isArray(response.data));
 
-      if (Array.isArray(response.data) && response.data.length > 0) {
-        console.log('[userService] First user structure:', response.data[0]);
-        console.log('[userService] Available fields in first user:', Object.keys(response.data[0]));
+      // Adapt to the actual backend response structure: { data: [], total: X, ... }
+      if (response.data && Array.isArray(response.data.data)) {
+        return {
+          items: response.data.data.map(mapUser),
+          meta: {
+            totalItems: response.data.total,
+            currentPage: response.data.page,
+            totalPages: Math.ceil(response.data.total / response.data.limit),
+          },
+        };
       }
 
-      return Array.isArray(response.data) ? response.data.map(mapUser) : response.data;
+      // Fallback for older/different response structures
+      if (response.data && Array.isArray(response.data.items)) {
+        return {
+          items: response.data.items.map(mapUser),
+          meta: response.data.meta,
+        };
+      }
+
+      if (Array.isArray(response.data)) {
+        return {
+          items: response.data.map(mapUser),
+          meta: { totalItems: response.data.length, totalPages: 1, currentPage: 1 },
+        };
+      }
+
+      // Return a default structure if the response is unexpected
+      return { items: [], meta: { totalItems: 0, totalPages: 1, currentPage: 1 } };
     } catch (error) {
       console.error('Error al obtener usuarios:', error);
       if (error.response?.status === 401) {

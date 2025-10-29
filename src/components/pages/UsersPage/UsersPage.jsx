@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../../contexts/AuthContext';
 import userService from '../../../services/userService';
-import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, IconButton, Chip, CircularProgress } from '@mui/material';
+import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, IconButton, Chip, CircularProgress, Pagination } from '@mui/material';
 import { Add, Edit, Delete, Search } from '@mui/icons-material';
 import UserFormModal from './UserFormModal';
 import ConfirmModal from '../../molecules/ConfirmModal/ConfirmModal';
@@ -21,6 +21,7 @@ const UsersPage = () => {
   const queryClient = useQueryClient();
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
   const [openModal, setOpenModal] = useState(false);
   const [openConfirmModal, setOpenConfirmModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -32,11 +33,18 @@ const UsersPage = () => {
   const canEdit = isAdmin;
   const canDelete = isAdmin;
 
-  const { data: users = [], isLoading, isError, error } = useQuery({
-    queryKey: ['users'],
-    queryFn: userService.getUsers,
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ['users', page],
+    queryFn: () => userService.getUsers(page, 10),
     enabled: canView,
+    keepPreviousData: true,
+    onSuccess: (data) => {
+      console.log('[UsersPage] Successfully fetched users:', data);
+    },
   });
+
+  const users = data?.items || [];
+  const totalPages = data?.meta?.totalPages || 1;
 
   const { data: roles = [] } = useQuery({
     queryKey: ['allRoles'],
@@ -47,11 +55,14 @@ const UsersPage = () => {
 
   const filteredUsers = useMemo(() => {
     if (!searchTerm) return users;
-    return users.filter(user =>
-      user.nombres.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.numero_documento.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    return users.filter(user => {
+      const nombre = String(user.nombres || '').toLowerCase();
+      const email = String(user.email || '').toLowerCase();
+      const documento = String(user.numero_documento || '').toLowerCase();
+      const term = searchTerm.toLowerCase();
+
+      return nombre.includes(term) || email.includes(term) || documento.includes(term);
+    });
   }, [searchTerm, users]);
 
   const createMutation = useMutation({
@@ -80,6 +91,10 @@ const UsersPage = () => {
   });
 
   const handleSearch = (e) => setSearchTerm(e.target.value);
+
+  const handlePageChange = (event, value) => {
+    setPage(value);
+  };
 
   const handleOpenModal = (userData = null) => {
     setSelectedUser(userData);
@@ -134,7 +149,7 @@ const UsersPage = () => {
     );
   }
 
-  if (isLoading) {
+  if (isLoading && !data) { // Show loading only on initial fetch
     return (
       <div className="loading-container">
         <CircularProgress className="loading-spinner" />
@@ -195,7 +210,8 @@ const UsersPage = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredUsers.length > 0 ? (
+            {isLoading && <TableRow><TableCell colSpan={6}><CircularProgress /></TableCell></TableRow>}
+            {!isLoading && filteredUsers.length > 0 ? (
               filteredUsers.map((userData) => (
                 <TableRow key={userData.id}>
                   <TableCell>{userData.nombres}</TableCell>
@@ -249,15 +265,28 @@ const UsersPage = () => {
                 </TableRow>
               ))
             ) : (
-              <TableRow>
-                <TableCell colSpan={canEdit || canDelete ? 6 : 5} align="center">
-                  {searchTerm ? 'No se encontraron usuarios que coincidan con la búsqueda' : 'No hay usuarios registrados'}
-                </TableCell>
-              </TableRow>
+              !isLoading && (
+                <TableRow>
+                  <TableCell colSpan={canEdit || canDelete ? 6 : 5} align="center">
+                    {searchTerm ? 'No se encontraron usuarios que coincidan con la búsqueda' : 'No hay usuarios registrados'}
+                  </TableCell>
+                </TableRow>
+              )
             )}
           </TableBody>
         </Table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="pagination-container">
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={handlePageChange}
+            color="primary"
+          />
+        </div>
+      )}
 
       <UserFormModal
         open={openModal}
