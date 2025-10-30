@@ -58,7 +58,7 @@ const CropsPage = () => {
   const filteredCrops = useMemo(() => {
     if (!searchTerm) return crops;
     return crops.filter(crop =>
-      crop.tipo_cultivo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      crop.nombre_cultivo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       crop.estado_cultivo.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [searchTerm, crops]);
@@ -175,7 +175,7 @@ const CropsPage = () => {
         <TextField
           fullWidth
           variant="outlined"
-          placeholder="Buscar por tipo o estado de cultivo..."
+          placeholder="Buscar por nombre o estado de cultivo..."
           value={searchTerm}
           onChange={handleSearch}
           InputProps={{
@@ -195,7 +195,8 @@ const CropsPage = () => {
         <Table className="crops-table">
           <TableHead>
             <TableRow>
-              <TableCell>Tipo de Cultivo</TableCell>
+              <TableCell>Nombre del Cultivo</TableCell>
+              <TableCell>Tipo</TableCell>
               <TableCell>Estado</TableCell>
               <TableCell>Fecha de Siembra</TableCell>
               <TableCell>Fecha de Cosecha</TableCell>
@@ -205,6 +206,7 @@ const CropsPage = () => {
           <TableBody>
             {filteredCrops.map((crop) => (
               <TableRow key={crop.id}>
+                <TableCell>{crop.nombre_cultivo}</TableCell>
                 <TableCell>{crop.tipo_cultivo}</TableCell>
                 <TableCell>
                   <Chip
@@ -252,7 +254,7 @@ const CropsPage = () => {
         onClose={() => setOpenConfirmModal(false)}
         onConfirm={handleDeleteCrop}
         title="Eliminar Cultivo"
-        message={`¿Estás seguro de eliminar el cultivo "${cropToDelete?.tipo_cultivo}"? Esta acción no se puede deshacer.`}
+        message={`¿Estás seguro de eliminar el cultivo "${cropToDelete?.nombre_cultivo}"? Esta acción no se puede deshacer.`}
         confirmText="Eliminar"
         cancelText="Cancelar"
         type="danger"

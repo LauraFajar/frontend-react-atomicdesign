@@ -27,9 +27,16 @@ const statusOptions = [
   { value: 'perdido', label: 'Perdido' }
 ];
 
+const tipoCultivoOptions = [
+  { value: 'transitorios', label: 'Transitorios' },
+  { value: 'perennes', label: 'Perennes' },
+  { value: 'semiperennes', label: 'Semiperennes' }
+];
+
 const CropFormModal = ({ open, onClose, onSave, crop }) => {
   const [formData, setFormData] = useState({
-    tipo_cultivo: '',
+    nombre_cultivo: '',
+    tipo_cultivo: 'transitorios',
     id_lote: '',
     id_insumo: '',
     fecha_siembra: null,
@@ -45,7 +52,8 @@ const CropFormModal = ({ open, onClose, onSave, crop }) => {
   useEffect(() => {
     if (crop) {
       setFormData({
-        tipo_cultivo: crop.tipo_cultivo || '',
+        nombre_cultivo: crop.nombre_cultivo || '',
+        tipo_cultivo: crop.tipo_cultivo || 'transitorios',
         id_lote: crop.id_lote || '',
         id_insumo: crop.id_insumo || '',
         fecha_siembra: crop.fecha_siembra ? new Date(crop.fecha_siembra) : null,
@@ -55,7 +63,8 @@ const CropFormModal = ({ open, onClose, onSave, crop }) => {
       });
     } else {
       setFormData({
-        tipo_cultivo: '',
+        nombre_cultivo: '',
+        tipo_cultivo: 'transitorios',
         id_lote: '',
         id_insumo: '',
         fecha_siembra: null,
@@ -68,9 +77,9 @@ const CropFormModal = ({ open, onClose, onSave, crop }) => {
 
   const validateForm = () => {
     const newErrors = {};
-    
-    if (!formData.tipo_cultivo.trim()) {
-      newErrors.tipo_cultivo = 'El tipo de cultivo es requerido';
+
+    if (!formData.nombre_cultivo.trim()) {
+      newErrors.nombre_cultivo = 'El nombre del cultivo es requerido';
     }
     
     if (!formData.id_lote || formData.id_lote < 1) {
@@ -114,7 +123,8 @@ const CropFormModal = ({ open, onClose, onSave, crop }) => {
       
       const formattedData = {
         ...formData,
-        tipo_cultivo: formData.tipo_cultivo?.toString().trim(),
+        nombre_cultivo: formData.nombre_cultivo?.toString().trim(),
+        tipo_cultivo: formData.tipo_cultivo,
         id_lote: formData.id_lote ? parseInt(formData.id_lote, 10) : null,
         id_insumo: formData.id_insumo ? parseInt(formData.id_insumo, 10) : null,
         fecha_siembra: formData.fecha_siembra ? formData.fecha_siembra.toISOString() : null,
@@ -139,8 +149,8 @@ const CropFormModal = ({ open, onClose, onSave, crop }) => {
         if (data.message) {
           const msg = Array.isArray(data.message) ? data.message.join(', ') : String(data.message);
           setServerError(msg);
-          if (msg.toLowerCase().includes('tipo') || msg.toLowerCase().includes('cultivo')) {
-            setErrors(prev => ({ ...prev, tipo_cultivo: msg }));
+          if (msg.toLowerCase().includes('nombre') || msg.toLowerCase().includes('cultivo')) {
+            setErrors(prev => ({ ...prev, nombre_cultivo: msg }));
           }
           return;
         }
@@ -171,16 +181,32 @@ const CropFormModal = ({ open, onClose, onSave, crop }) => {
           )}
           
           <TextField
-            label="Tipo de Cultivo"
-            name="tipo_cultivo"
-            value={formData.tipo_cultivo}
+            label="Nombre del Cultivo"
+            name="nombre_cultivo"
+            value={formData.nombre_cultivo}
             onChange={handleChange}
             required
             fullWidth
-            error={!!errors.tipo_cultivo}
-            helperText={errors.tipo_cultivo}
+            error={!!errors.nombre_cultivo}
+            helperText={errors.nombre_cultivo}
             className="modal-form-field"
           />
+
+          <FormControl fullWidth className="modal-form-field">
+            <InputLabel>Tipo de Cultivo</InputLabel>
+            <Select
+              name="tipo_cultivo"
+              value={formData.tipo_cultivo}
+              onChange={handleChange}
+              label="Tipo de Cultivo"
+            >
+              {tipoCultivoOptions.map(option => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
           <TextField
             label="ID del Lote"
