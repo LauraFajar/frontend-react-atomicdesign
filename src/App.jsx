@@ -115,7 +115,7 @@ function App() {
                   <ProfilePage />
                 </ProtectedRoute>
               } />
-              <Route path="/restricted" element={<RestrictedAccess />} />
+              <Route path="/acceso-restringido" element={<RestrictedAccess />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
