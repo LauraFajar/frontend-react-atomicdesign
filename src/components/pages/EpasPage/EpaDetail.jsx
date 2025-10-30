@@ -90,29 +90,35 @@ const EpaDetail = ({ open, epa, onClose }) => {
           </Box>
         </div>
 
-        {epa.imagen && (
-          <div className="detail-section">
-            <Typography variant="h6" className="detail-label">Imagen de referencia:</Typography>
-            <div className="image-container">
-              <img 
-                src={epa.imagen} 
-                alt={`Imagen de ${epa.nombre}`} 
-                className="detail-image" 
-              />
-            </div>
+        <div className="detail-section">
+          <Typography variant="h6" className="detail-label">Imagen de referencia:</Typography>
+          <div style={{ marginTop: '8px' }}>
+            {epa.imagen_referencia ? (
+              <div className="image-container">
+                <img
+                  src={`http://localhost:3001${epa.imagen_referencia}`}
+                  alt={`Imagen de ${epa.nombre}`}
+                  className="detail-image"
+                  onError={(e) => {
+                    console.error('Error loading EPA image:', e.target.src);
+                    e.target.style.display = 'none';
+                  }}
+                  style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '4px' }}
+                />
+                <Typography variant="body2" color="textSecondary" style={{ marginTop: '4px' }}>
+                  URL: {epa.imagen_referencia}
+                </Typography>
+              </div>
+            ) : (
+              <div className="no-image-container">
+                <Typography variant="body2" color="textSecondary">
+                  No hay imagen disponible
+                </Typography>
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
-        {!epa.imagen && (
-          <div className="detail-section">
-            <Typography variant="h6" className="detail-label">Imagen de referencia:</Typography>
-            <div className="no-image-container">
-              <Typography variant="body2" color="textSecondary">
-                No hay imagen disponible
-              </Typography>
-            </div>
-          </div>
-        )}
       </DialogContent>
       
       <DialogActions className="dialog-actions">

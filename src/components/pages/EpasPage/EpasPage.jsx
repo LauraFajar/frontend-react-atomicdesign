@@ -158,11 +158,26 @@ const EpasPage = () => {
     setSelectedEpa(null);
   };
 
-  const handleSaveEpa = (epaData) => {
-    if (epaData.id) {
-      updateEpaMutation.mutate(epaData);
-    } else {
-      createEpaMutation.mutate(epaData);
+  const handleSaveEpa = async (epaData) => {
+    try {
+      let savedEpa;
+
+      if (epaData.id) {
+        savedEpa = await updateEpaMutation.mutateAsync(epaData);
+      } else {
+        savedEpa = await createEpaMutation.mutateAsync(epaData);
+      }
+
+      // Si hay un archivo seleccionado, subir la imagen
+      if (epaData.selectedFile && savedEpa?.id) {
+        console.log('[EpasPage] Uploading image for EPA:', savedEpa.id);
+        await epaService.uploadEpaImage(savedEpa.id, epaData.selectedFile);
+        queryClient.invalidateQueries(['epas']);
+        alert.success('¡Éxito!', 'EPA creada y imagen subida correctamente.');
+      }
+    } catch (error) {
+      console.error('Error saving EPA:', error);
+      alert.error('Error', error.message || 'No se pudo guardar la EPA.');
     }
   };
 

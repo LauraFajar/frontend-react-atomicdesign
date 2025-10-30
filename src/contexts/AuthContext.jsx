@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import Cookies from 'js-cookie';
+import config from '../config/environment';
 
 const AuthContext = createContext()
 
-const API_BASE_URL = 'http://localhost:3001'
-axios.defaults.baseURL = API_BASE_URL
+axios.defaults.baseURL = config.api.baseURL
+axios.defaults.timeout = config.api.timeout
 
 const ROLE_ID_MAP = {
   1: 'Instructor',

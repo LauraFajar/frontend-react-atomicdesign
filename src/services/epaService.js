@@ -1,7 +1,8 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
+import config from '../config/environment';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+const API_URL = config.api.baseURL;
 
 const getAuthHeader = () => {
   const token = Cookies.get('token');
@@ -14,6 +15,7 @@ const mapEpa = (e) => ({
   descripcion: e.descripcion,
   tipo: e.tipo,
   estado: e.estado,
+  imagen_referencia: e.imagen_referencia || e.imagen,
   raw: e
 });
 
@@ -99,6 +101,37 @@ const epaService = {
       headers: getAuthHeader()
     });
     return response.data;
+  },
+
+  uploadEpaImage: async (epaId, imageFile) => {
+    try {
+      const formData = new FormData();
+      formData.append('imagen', imageFile);
+
+      console.log('[epaService] POST /epa/' + epaId + '/upload-imagen request');
+
+      const response = await axios.post(`${API_URL}/epa/${epaId}/upload-imagen`, formData, {
+        headers: {
+          ...getAuthHeader(),
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      console.log('[epaService] Upload EPA image response:', response.data);
+      return mapEpa(response.data);
+    } catch (error) {
+      console.error('Error al subir imagen de EPA:', error);
+      if (error.response?.status === 401) {
+        throw new Error('Sesión expirada. Por favor inicia sesión nuevamente.');
+      }
+      if (error.response?.status === 403) {
+        throw new Error('No tienes permisos para subir imágenes de esta EPA');
+      }
+      if (error.response?.status === 413) {
+        throw new Error('La imagen es demasiado grande. Por favor selecciona una imagen más pequeña.');
+      }
+      throw error;
+    }
   }
 };
 

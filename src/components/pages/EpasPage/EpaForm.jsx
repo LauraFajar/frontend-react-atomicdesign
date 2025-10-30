@@ -22,6 +22,7 @@ const EpaForm = ({ open, onClose, onSubmit, epa }) => {
     estado: 'activo',
     imagen_referencia: null
   });
+  const [selectedFile, setSelectedFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -35,6 +36,7 @@ const EpaForm = ({ open, onClose, onSubmit, epa }) => {
         estado: epa.estado || 'activo',
         imagen_referencia: epa.imagen_referencia || epa.imagen || null
       });
+      setSelectedFile(null);
     } else {
       setFormData({
         nombre_epa: '',
@@ -43,6 +45,7 @@ const EpaForm = ({ open, onClose, onSubmit, epa }) => {
         estado: 'activo',
         imagen_referencia: null
       });
+      setSelectedFile(null);
     }
   }, [epa]);
 
@@ -82,15 +85,19 @@ const EpaForm = ({ open, onClose, onSubmit, epa }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     setLoading(true);
-    
+
     try {
-      await onSubmit(formData);
+      const dataToSubmit = {
+        ...formData,
+        selectedFile
+      };
+      await onSubmit(dataToSubmit);
       onClose();
     } catch (error) {
       console.error('Error al guardar EPA:', error);
@@ -193,18 +200,21 @@ const EpaForm = ({ open, onClose, onSubmit, epa }) => {
           <Typography variant="body2" gutterBottom>
             Imagen de referencia
           </Typography>
-          <TextField
+          <input
             type="file"
-            name="imagen_referencia"
+            accept="image/*"
             onChange={(e) => {
-              console.log('Archivo seleccionado:', e.target.files[0]);
+              const file = e.target.files[0];
+              setSelectedFile(file);
+              console.log('Archivo seleccionado:', file);
             }}
-            fullWidth
-            variant="outlined"
-            InputLabelProps={{
-              shrink: true,
-            }}
+            style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
           />
+          {selectedFile && (
+            <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
+              Archivo seleccionado: {selectedFile.name}
+            </Typography>
+          )}
         </div>
       </DialogContent>
       
