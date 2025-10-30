@@ -243,13 +243,21 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  const updateUser = (updatedUser) => {
+    const normalizedUser = normalizeUser(updatedUser);
+    setUser(normalizedUser);
+    Cookies.set('user', JSON.stringify(normalizedUser), { expires: 7, secure: true, sameSite: 'strict' });
+    console.log('[AuthContext] user updated:', normalizedUser);
+  };
+
   const value = {
     user,
     isAuthenticated,
     loading,
     login,
     logout,
-    register
+    register,
+    updateUser
   }
 
   return (

@@ -53,7 +53,6 @@ const userService = {
 
       console.log('[userService] GET /usuarios response:', response.data);
 
-      // Adapt to the actual backend response structure: { data: [], total: X, ... }
       if (response.data && Array.isArray(response.data.data)) {
         return {
           items: response.data.data.map(mapUser),
@@ -65,7 +64,6 @@ const userService = {
         };
       }
 
-      // Fallback for older/different response structures
       if (response.data && Array.isArray(response.data.items)) {
         return {
           items: response.data.items.map(mapUser),
@@ -80,7 +78,6 @@ const userService = {
         };
       }
 
-      // Return a default structure if the response is unexpected
       return { items: [], meta: { totalItems: 0, totalPages: 1, currentPage: 1 } };
     } catch (error) {
       console.error('Error al obtener usuarios:', error);
@@ -248,6 +245,37 @@ const userService = {
         throw new Error('No se pudo conectar con el servidor. Verifica que el servidor esté corriendo.');
       }
 
+      throw error;
+    }
+  },
+
+  uploadUserImage: async (userId, imageFile) => {
+    try {
+      const formData = new FormData();
+      formData.append('imagen', imageFile);
+
+      console.log('[userService] POST /usuarios/' + userId + '/upload-imagen request');
+
+      const response = await axios.post(`${API_URL}/usuarios/${userId}/upload-imagen`, formData, {
+        headers: {
+          ...getAuthHeader(),
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      console.log('[userService] Upload image response:', response.data);
+      return mapUser(response.data);
+    } catch (error) {
+      console.error('Error al subir imagen del usuario:', error);
+      if (error.response?.status === 401) {
+        throw new Error('Sesión expirada. Por favor inicia sesión nuevamente.');
+      }
+      if (error.response?.status === 403) {
+        throw new Error('No tienes permisos para subir imágenes de este usuario');
+      }
+      if (error.response?.status === 413) {
+        throw new Error('La imagen es demasiado grande. Por favor selecciona una imagen más pequeña.');
+      }
       throw error;
     }
   },

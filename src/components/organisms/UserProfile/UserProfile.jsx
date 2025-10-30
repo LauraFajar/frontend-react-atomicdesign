@@ -4,7 +4,7 @@ import './UserProfile.css'
 import { Button } from '@mui/material'
 
 const UserProfile = ({ onRequestCloseParent, onRequestOpenEdit }) => {
-  const { user } = useAuth() || {}
+  const { user } = useAuth()
 
   if (!user) {
     return <div className="user-profile">No hay usuario autenticado.</div>
@@ -13,7 +13,38 @@ const UserProfile = ({ onRequestCloseParent, onRequestOpenEdit }) => {
   return (
     <div className="user-profile">
       <div className="user-profile__header">
-        <div className="user-profile__avatar">{user.nombres ? user.nombres.charAt(0) : 'U'}</div>
+        <div className="user-profile__avatar">
+          {user.imagen_url ? (
+            <img
+              src={`http://localhost:3001${user.imagen_url}`}
+              alt="Avatar"
+              style={{
+                width: '100%',
+                height: '100%',
+                borderRadius: '50%',
+                objectFit: 'cover'
+              }}
+              onError={(e) => {
+                console.error('Error loading image:', e.target.src);
+                e.target.style.display = 'none';
+              }}
+            />
+          ) : null}
+          {(!user.imagen_url || user.imagen_url) && (
+            <span style={{
+              position: user.imagen_url ? 'absolute' : 'static',
+              top: '50%',
+              left: '50%',
+              transform: user.imagen_url ? 'translate(-50%, -50%)' : 'none',
+              color: 'white',
+              fontWeight: '700',
+              fontSize: '20px',
+              zIndex: user.imagen_url ? '1' : 'auto'
+            }}>
+              {user.nombres ? user.nombres.charAt(0).toUpperCase() : 'U'}
+            </span>
+          )}
+        </div>
         <div className="user-profile__meta">
           <div className="user-profile__name">{user.nombres}</div>
           <div className="user-profile__email">{user.email}</div>

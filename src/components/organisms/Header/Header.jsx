@@ -80,7 +80,20 @@ const Header = () => {
               aria-expanded={isProfileOpen}
               aria-haspopup="true"
             >
-              <FiUser size={20} />
+              {user?.imagen_url ? (
+                <img
+                  src={`http://localhost:3001${user.imagen_url}`}
+                  alt="Avatar"
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    objectFit: 'cover'
+                  }}
+                />
+              ) : (
+                <FiUser size={20} />
+              )}
               <FiChevronDown size={16} className="header__user-chevron" />
             </button>
 

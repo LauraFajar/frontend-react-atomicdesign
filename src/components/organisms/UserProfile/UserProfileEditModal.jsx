@@ -12,7 +12,7 @@ const docTypes = [
 ]
 
 const UserProfileEditModal = ({ open, onClose }) => {
-  const { user } = useAuth() || {}
+  const { user, updateUser } = useAuth() || {}
   const alert = useAlert()
   const [form, setForm] = useState({
     nombres: '',
@@ -36,7 +36,7 @@ const UserProfileEditModal = ({ open, onClose }) => {
     })
     setConfirmPassword('')
     setAvatarFile(null)
-    setAvatarPreview(user?.imagen_url || user?.avatarUrl || '')
+    setAvatarPreview(user?.imagen_url ? `http://localhost:3001${user.imagen_url}` : '')
   }, [user, open])
 
   useEffect(() => {
@@ -74,56 +74,34 @@ const UserProfileEditModal = ({ open, onClose }) => {
       if ((form.numeroDocumento || '') !== (user.numero_documento || user.numeroDocumento || '')) changed.numero_documento = form.numeroDocumento
       if (form.password && form.password.trim()) changed.password = form.password
 
+      let updated = null
+
+      // Primero actualizar los datos del usuario si hay cambios
+      if (Object.keys(changed).length > 0) {
+        console.log('[UserProfileEditModal] updating user data:', changed)
+        updated = await userService.updateUser(user.id, changed)
+        updateUser(updated)
+      }
+
+      // Luego subir la imagen si hay una seleccionada
       if (avatarFile) {
-        const fd = new FormData()
-        Object.keys(changed).forEach(k => fd.append(k, changed[k]))
-        fd.append('imagen_url', avatarFile)
+        console.log('[UserProfileEditModal] uploading user image')
+        updated = await userService.uploadUserImage(user.id, avatarFile)
+        updateUser(updated)
+      }
 
-  try { for (const pair of fd.entries()) console.log('[UserProfileEditModal] FormData entry:', pair[0], pair[1]) } catch(e){ console.warn('Could not iterate FormData entries for logging', e) }
-
-        const updated = await userService.updateUser(user.id, fd)
-        localStorage.setItem('user', JSON.stringify(updated))
+      if (avatarFile && Object.keys(changed).length > 0) {
         alert.success('¡Perfil Actualizado!', 'Tu perfil y foto han sido actualizados correctamente.')
+      } else if (avatarFile) {
+        alert.success('¡Foto Actualizada!', 'Tu foto de perfil ha sido actualizada correctamente.')
+      } else if (Object.keys(changed).length > 0) {
+        alert.success('¡Perfil Actualizado!', 'Tu perfil ha sido actualizado correctamente.')
       } else {
-        if (Object.keys(changed).length === 0) {
-          console.log('[UserProfileEditModal] no changes to update')
-          alert.success('¡Perfil Actualizado!', 'No se detectaron cambios en tu perfil.')
-        } else {
-          const updated = await userService.updateUser(user.id, changed)
-          localStorage.setItem('user', JSON.stringify(updated))
-          alert.success('¡Perfil Actualizado!', 'Tu perfil ha sido actualizado correctamente.')
-        }
+        alert.success('¡Perfil Actualizado!', 'No se detectaron cambios en tu perfil.')
       }
     } catch (err) {
       console.error('Error updating user', err)
-      alert.error('Error de Actualización', 'No se pudo actualizar el perfil. Por favor, inténtalo de nuevo.')
-      if (avatarFile) {
-        try {
-          console.log('[UserProfileEditModal] attempting base64 fallback')
-          const fileToBase64 = (file) => new Promise((resolve, reject) => {
-            const reader = new FileReader()
-            reader.onload = () => resolve(reader.result)
-            reader.onerror = (e) => reject(e)
-            reader.readAsDataURL(file)
-          })
-          const base64 = await fileToBase64(avatarFile)
-          const payload = {
-            nombres: form.nombres,
-            email: form.email,
-            tipo_documento: form.tipoDocumento,
-            numero_documento: form.numeroDocumento,
-            imagen_url: base64
-          }
-          if (form.password) payload.password = form.password
-          console.log('[UserProfileEditModal] retrying with JSON payload (base64)')
-          const updated2 = await userService.updateUser(user.id, payload)
-          localStorage.setItem('user', JSON.stringify(updated2))
-          alert.success('¡Perfil Actualizado!', 'Tu perfil y foto han sido actualizados correctamente (método alternativo).')
-        } catch (err2) {
-          console.error('Base64 fallback failed', err2)
-          alert.error('Error de Actualización', 'No se pudo actualizar la foto de perfil. Los demás cambios se guardaron correctamente.')
-        }
-      }
+      alert.error('Error de Actualización', err.message || 'No se pudo actualizar el perfil. Por favor, inténtalo de nuevo.')
     }
   }
 
