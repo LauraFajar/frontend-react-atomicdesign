@@ -15,6 +15,9 @@ import UsersPage from './components/pages/UsersPage/UsersPage';
 import RestrictedAccess from './components/pages/RestrictedAccess/RestrictedAccess';
 import ProfilePage from './components/pages/ProfilePage/ProfilePage';
 
+// 🆕 Importa la nueva página de Inventario
+import InventoryPage from './components/pages/InventoryPage/InventoryPage';
+
 const ProtectedRoute = ({ children, allowGuest = false }) => {
   const { isAuthenticated, loading, user } = useAuth()
   const isGuest = user?.role === 'invitado' || user?.roleId === 5
@@ -60,6 +63,7 @@ function App() {
         <Router>
           <div className="App">
             <Routes>
+              {/* Rutas públicas */}
               <Route path="/login" element={
                 <PublicRoute>
                   <LoginPage />
@@ -80,6 +84,8 @@ function App() {
                   <Register />
                 </PublicRoute>
               } />
+
+              {/* Rutas protegidas */}
               <Route path="/dashboard" element={
                 <ProtectedRoute>
                   <DashboardPage />
@@ -115,7 +121,18 @@ function App() {
                   <ProfilePage />
                 </ProtectedRoute>
               } />
+
+              {/* 🆕 Nueva ruta para Inventario */}
+              <Route path="/inventario" element={
+                <ProtectedRoute>
+                  <InventoryPage />
+                </ProtectedRoute>
+              } />
+
+              {/* Acceso restringido */}
               <Route path="/acceso-restringido" element={<RestrictedAccess />} />
+
+              {/* Redirecciones */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>

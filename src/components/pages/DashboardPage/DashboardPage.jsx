@@ -9,6 +9,7 @@ import CalendarPage from '../CalendarPage/CalendarPage';
 import UsersPage from '../UsersPage/UsersPage';
 import EpasPage from '../EpasPage/EpasPage';
 import TratamientosPage from '../TratamientosPage/TratamientosPage';
+import InventoryPage from '../InventoryPage/InventoryPage';
 import { useAuth } from '../../../contexts/AuthContext';
 import './DashboardPage.css';
 
@@ -60,8 +61,8 @@ const DashboardPage = () => {
       return;
     }
 
-    // Si es un módulo padre, solo expandirlo
-    if (parentId === null && (sectionId === 'cultivos' || sectionId === 'iot' || sectionId === 'fitosanitario' || sectionId === 'finanzas' || sectionId === 'inventario')) {
+    // Si es un módulo padre, solo expandirlo (solo los que tienen submódulos)
+    if (parentId === null && (sectionId === 'cultivos' || sectionId === 'iot' || sectionId === 'fitosanitario' || sectionId === 'finanzas')) {
       console.log('[Dashboard] Expanding module:', sectionId);
       setExpandedItems(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
       return;
@@ -172,12 +173,7 @@ const DashboardPage = () => {
           </div>
         );
       case 'inventario':
-        return (
-          <div className="dashboard-content">
-            <h2>Control de Inventario</h2>
-            <p>Gestión de insumos, herramientas y stock</p>
-          </div>
-        );
+        return <InventoryPage />;
       case 'usuarios':
         return <UsersPage />;
       default:

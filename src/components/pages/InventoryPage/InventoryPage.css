@@ -1,0 +1,28 @@
+.inventory-page {
+  padding: 1rem;
+}
+
+.inventory-form,
+.inventory-filters {
+  margin-bottom: 1rem;
+}
+
+.inventory-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.inventory-table th,
+.inventory-table td {
+  border: 1px solid #ddd;
+  padding: 0.5rem;
+  text-align: left;
+}
+
+.inventory-table th {
+  background: #f2f2f2;
+}
+
+button {
+  margin-right: 0.5rem;
+}
