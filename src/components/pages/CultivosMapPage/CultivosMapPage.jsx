@@ -103,7 +103,7 @@ const CultivosMapPage = () => {
   return (
     <div className="cultivos-map-page">
       <div className="cultivos-map-header">
-        <h1 className="cultivos-map-title">Mapa de Cultivos</h1>
+        <h1 className="cultivos-map-title">Mapa de Lotes</h1>
       </div>
       <Paper elevation={2} sx={{ height: '60vh', width: '100%', overflow: 'hidden', borderRadius: '8px' }}>
         <MapContainer
