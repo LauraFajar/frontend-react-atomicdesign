@@ -10,6 +10,7 @@ import UsersPage from '../UsersPage/UsersPage';
 import EpasPage from '../EpasPage/EpasPage';
 import TratamientosPage from '../TratamientosPage/TratamientosPage';
 import { useAuth } from '../../../contexts/AuthContext';
+import CultivosMapPage from '../CultivosMapPage/CultivosMapPage';
 import './DashboardPage.css';
 
 const DashboardPage = () => {
@@ -142,6 +143,8 @@ const DashboardPage = () => {
         return <LotsPage />;
       case 'cultivos-sublotes':
         return <SublotsPage />;
+      case 'cultivos-mapa':
+        return <CultivosMapPage />;
       case 'cultivos-actividades':
         return <ActivitiesPage />;
       case 'cultivos-calendario':

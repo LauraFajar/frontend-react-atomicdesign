@@ -14,6 +14,7 @@ import TratamientosPage from './components/pages/TratamientosPage/TratamientosPa
 import UsersPage from './components/pages/UsersPage/UsersPage';
 import RestrictedAccess from './components/pages/RestrictedAccess/RestrictedAccess';
 import ProfilePage from './components/pages/ProfilePage/ProfilePage';
+import CultivosMapPage from './components/pages/CultivosMapPage/CultivosMapPage';
 
 const ProtectedRoute = ({ children, allowGuest = false }) => {
   const { isAuthenticated, loading, user } = useAuth()
@@ -113,6 +114,11 @@ function App() {
               <Route path="/profile" element={
                 <ProtectedRoute>
                   <ProfilePage />
+                </ProtectedRoute>
+              } />
+              <Route path="/mapa-cultivos" element={
+                <ProtectedRoute>
+                  <CultivosMapPage />
                 </ProtectedRoute>
               } />
               <Route path="/acceso-restringido" element={<RestrictedAccess />} />

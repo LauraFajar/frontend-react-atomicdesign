@@ -1,0 +1,19 @@
+.cultivos-map-page {
+  padding: 2rem;
+  background-color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.cultivos-map-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.cultivos-map-title {
+  font-size: var(--font-size-2xl);
+  font-weight: 600;
+  color: var(--primary-green);
+  margin: 0;
+}

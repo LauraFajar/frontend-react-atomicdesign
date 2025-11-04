@@ -1,5 +1,5 @@
 import React from 'react'
-import { FiHome, FiZap, FiPackage, FiDroplet, FiDollarSign, FiBox, FiActivity, FiChevronDown, FiChevronRight, FiCalendar, FiMapPin, FiUsers, FiLayers, FiShield } from 'react-icons/fi';
+import { FiHome, FiZap, FiPackage, FiDroplet, FiDollarSign, FiBox, FiActivity, FiChevronDown, FiChevronRight, FiCalendar, FiMapPin, FiUsers, FiLayers, FiShield, FiMap } from 'react-icons/fi';
 import { Link } from 'react-router-dom'
 import './Sidebar.css'
 
@@ -16,8 +16,9 @@ const Sidebar = ({ activeItem = 'inicio', onItemClick, expandedItems = {}, user 
           { id: 'cultivos-lista', label: 'Gestión de Cultivos', icon: <FiDroplet size={16} /> },
           { id: 'cultivos-lotes', label: 'Lotes', icon: <FiMapPin size={16} /> },
           { id: 'cultivos-sublotes', label: 'Sublotes', icon: <FiLayers size={16} /> },
+          { id: 'cultivos-mapa', label: 'Mapa de Lotes', icon: <FiMap size={16} /> },
           { id: 'cultivos-actividades', label: 'Actividades', icon: <FiActivity size={16} /> },
-          { id: 'cultivos-calendario', label: 'Calendario', icon: <FiCalendar size={16} /> }
+          { id: 'cultivos-calendario', label: 'Calendario', icon: <FiCalendar size={16} /> },
         ]
       },
       {
