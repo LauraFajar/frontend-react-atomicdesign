@@ -5,21 +5,25 @@ const InventoryTable = ({ items, onEdit, onDelete }) => {
     <table className="inventory-table">
       <thead>
         <tr>
+          <th>ID</th>
           <th>Nombre</th>
-          <th>Categoría</th>
-          <th>Stock</th>
+          <th>Cantidad</th>
+          <th>Unidad</th>
+          <th>Última fecha</th>
           <th>Acciones</th>
         </tr>
       </thead>
       <tbody>
         {items.map((item) => (
           <tr key={item.id}>
-            <td>{item.name}</td>
-            <td>{item.category}</td>
-            <td>{item.stock}</td>
+            <td>{item.id}</td>
+            <td>{item.nombre}</td>
+            <td>{item.cantidad}</td>
+            <td>{item.unidad}</td>
+            <td>{item.ultima_fecha || '-'}</td>
             <td>
-              <button onClick={() => onEdit(item)}>Editar</button>
-              <button onClick={() => onDelete(item.id)}>Eliminar</button>
+              <button className="btn-update" onClick={() => onEdit(item)}>Actualizar</button>
+              <button className="btn-delete" onClick={() => onDelete(item.id)}>Eliminar</button>
             </td>
           </tr>
         ))}
