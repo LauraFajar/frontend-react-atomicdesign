@@ -5,12 +5,13 @@ import { useAlert } from '../../../contexts/AlertContext';
 import activityService from '../../../services/activityService';
 import cropService from '../../../services/cropService';
 import {Button,Table,TableBody,TableCell,TableContainer,TableHead,TableRow,TextField,Typography,IconButton,Chip,CircularProgress,FormControl,InputLabel,Select,MenuItem,Box, Pagination} from '@mui/material';
-import { Add, Edit, Delete, Search } from '@mui/icons-material';
+import { Add, Edit, Delete, Search, CameraAlt } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import es from 'date-fns/locale/es';
 import ActivityFormModal from './ActivityFormModal';
+import PhotoUploadModal from './PhotoUploadModal';
 import ConfirmModal from '../../molecules/ConfirmModal/ConfirmModal';
 import './ActivitiesPage.css';
 
@@ -46,6 +47,8 @@ const ActivitiesPage = () => {
   const [openConfirmModal, setOpenConfirmModal] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [activityToDelete, setActivityToDelete] = useState(null);
+  const [openPhotoModal, setOpenPhotoModal] = useState(false);
+  const [activityForPhoto, setActivityForPhoto] = useState(null);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCrop, setSelectedCrop] = useState('');
@@ -55,6 +58,7 @@ const ActivitiesPage = () => {
 
   const isAdmin = user?.role === 'administrador';
   const isInstructor = user?.role === 'instructor';
+  const isApprenticeOrIntern = user?.role === 'aprendiz' || user?.role === 'pasante';
   const canCreate = isAdmin || isInstructor;
   const canEdit = isAdmin || isInstructor;
   const canDelete = isAdmin;
@@ -145,6 +149,22 @@ const ActivitiesPage = () => {
   const handleCloseModal = () => {
     setOpenModal(false);
     setSelectedActivity(null);
+  };
+
+  const handleOpenPhotoModal = (activity) => {
+    setActivityForPhoto(activity);
+    setOpenPhotoModal(true);
+  };
+
+  const handleClosePhotoModal = () => {
+    setOpenPhotoModal(false);
+    setActivityForPhoto(null);
+  };
+
+  const handlePhotoUploaded = () => {
+    alert.success('¡Éxito!', 'Foto subida correctamente.');
+    queryClient.invalidateQueries(['activities']);
+    handleClosePhotoModal();
   };
 
   const handleSaveActivity = (activityData) => {
@@ -321,6 +341,15 @@ const ActivitiesPage = () => {
                         <Delete />
                       </IconButton>
                     )}
+                    {(isApprenticeOrIntern || isAdmin) && (
+                      <IconButton
+                        onClick={() => handleOpenPhotoModal(activity)}
+                        className="action-button photo-button"
+                        size="small"
+                      >
+                        <CameraAlt />
+                      </IconButton>
+                    )}
                   </TableCell>
                 )}
               </TableRow>
@@ -335,6 +364,13 @@ const ActivitiesPage = () => {
         onSave={handleSaveActivity}
         activity={selectedActivity}
         crops={crops}
+      />
+
+      <PhotoUploadModal
+        open={openPhotoModal}
+        onClose={handleClosePhotoModal}
+        onSave={handlePhotoUploaded} 
+        activity={activityForPhoto}
       />
 
       <ConfirmModal

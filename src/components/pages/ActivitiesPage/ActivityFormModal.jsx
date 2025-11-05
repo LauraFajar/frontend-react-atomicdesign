@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import {Dialog,DialogTitle,DialogContent,DialogActions,Button,TextField,MenuItem,FormControl,InputLabel,Select,Typography,CircularProgress} from '@mui/material';
+import {Dialog,DialogTitle,DialogContent,DialogActions,Button,TextField,MenuItem,FormControl,InputLabel,Select,Typography,CircularProgress, Box} from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import es from 'date-fns/locale/es';
 import './ActivityFormModal.css';
+import { useQuery } from '@tanstack/react-query';
+import activityService from '../../../services/activityService';
 
 const activityTypes = [
   { value: 'siembra', label: 'Siembra' },
@@ -36,6 +38,12 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState('');
+
+  const { data: photos, isLoading: isLoadingPhotos } = useQuery({
+    queryKey: ['activityPhotos', activity?.id_actividad],
+    queryFn: () => activityService.getActivityPhotos(activity.id_actividad),
+    enabled: !!activity?.id_actividad, 
+  });
 
   useEffect(() => {
     if (activity) {
@@ -269,6 +277,30 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
             className="modal-form-field"
             placeholder="Describe los detalles de la actividad..."
           />
+
+          {activity && (
+            <Box sx={{ mt: 4 }}>
+              <Typography variant="h6" gutterBottom>Fotodocumentación</Typography>
+              {isLoadingPhotos ? (
+                <CircularProgress />
+              ) : photos && photos.length > 0 ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {photos.map((photo) => (
+                    <Box key={photo.id_foto} sx={{ border: '1px solid #ddd', borderRadius: '8px', p: 2 }}>
+                      <img 
+                        src={`${process.env.REACT_APP_API_URL}/${photo.ruta_foto}`}
+                        alt={photo.descripcion}
+                        style={{ width: '100%', maxHeight: '300px', objectFit: 'cover', borderRadius: '4px' }}
+                      />
+                      <Typography variant="body2" sx={{ mt: 1 }}>{photo.descripcion}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+              ) : (
+                <Typography>No hay fotos para esta actividad.</Typography>
+              )}
+            </Box>
+          )}
         </DialogContent>
 
         <DialogActions className="dialog-actions">

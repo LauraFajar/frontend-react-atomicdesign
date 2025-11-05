@@ -126,6 +126,51 @@ const activityService = {
     }
   },
 
+  uploadPhoto: async (id, { file, description }) => {
+    try {
+      const formData = new FormData();
+      formData.append('photo', file);
+      formData.append('descripcion', description);
+
+      const response = await axios.post(`${API_URL}/actividades/upload-photo/${id}`, formData, {
+        headers: {
+          ...getAuthHeader(),
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error al subir la foto:', error);
+      if (error.response) {
+        if (error.response.status === 401) {
+          throw new Error('No autorizado. Por favor, inicia sesión de nuevo.');
+        }
+        if (error.response.status === 404) {
+          throw new Error('La actividad no fue encontrada.');
+        }
+        if (error.response.status === 400) {
+          throw new Error(error.response.data.message || 'Datos inválidos. Asegúrate de incluir una imagen y una descripción.');
+        }
+      }
+      throw new Error('Ocurrió un error inesperado al subir la foto.');
+    }
+  },
+
+  getActivityPhotos: async (activityId) => {
+    try {
+      const response = await axios.get(`${API_URL}/actividades/${activityId}/photos`, {
+        headers: getAuthHeader(),
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error al obtener las fotos de la actividad:', error);
+      if (error.response?.status === 404) {
+        return []; 
+      }
+      throw new Error('No se pudieron obtener las fotos de la actividad.');
+    }
+  },
+
   getActivityReport: async (filters = {}) => {
     try {
       const params = new URLSearchParams();
