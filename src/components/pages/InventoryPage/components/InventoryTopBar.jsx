@@ -112,8 +112,8 @@ const InventoryTopBar = ({
       nombre: data.nombre,
       unidad: data.unidad,
       codigo: data.codigo,
-      id: data.id,
-      fecha: data.fecha,
+      fecha_entrada: data.fecha_entrada ?? data.fecha,
+      observacion: data.observacion,
     };
     createInsumoMutation.mutate(payload);
   };
@@ -161,9 +161,9 @@ const InventoryTopBar = ({
   return (
     <div className="inventory-topbar">
       <div className="topbar-left">
-        <button className="btn-action" onClick={() => setOpenSalida(true)}>nueva salida</button>
-        <button className="btn-action" onClick={() => setOpenEntrada(true)}>nueva entrada</button>
-        <button className="btn-action" onClick={() => setOpenNuevoInsumo(true)}>+Nuevo insumo</button>
+        <button className="btn-action" onClick={() => setOpenSalida(true)}>Nueva salida</button>
+        <button className="btn-action" onClick={() => setOpenEntrada(true)}>Nueva entrada</button>
+        <button className="btn-action" onClick={() => setOpenNuevoInsumo(true)}>Nuevo insumo</button>
       </div>
       <div className="topbar-right">
         <input

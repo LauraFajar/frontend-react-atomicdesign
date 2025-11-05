@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 
 const InventoryNewInsumoModal = ({ open, onCancel, onSave }) => {
-  const [form, setForm] = useState({ nombre: '', codigo: '', id: '', unidad: '', fecha: '' });
+  const [form, setForm] = useState({ nombre: '', codigo: '', unidad: '', fecha_entrada: '', observacion: '' });
 
   useEffect(() => {
     if (!open) {
-      setForm({ nombre: '', codigo: '', id: '', unidad: '', fecha: '' });
+      setForm({ nombre: '', codigo: '', unidad: '', fecha_entrada: '', observacion: '' });
     }
   }, [open]);
 
@@ -43,13 +43,6 @@ const InventoryNewInsumoModal = ({ open, onCancel, onSave }) => {
           />
           <input
             type="text"
-            name="id"
-            placeholder="ID"
-            value={form.id}
-            onChange={handleChange}
-          />
-          <input
-            type="text"
             name="unidad"
             placeholder="Unidad(ej:litro,unidas)"
             value={form.unidad}
@@ -57,9 +50,16 @@ const InventoryNewInsumoModal = ({ open, onCancel, onSave }) => {
           />
           <input
             type="date"
-            name="fecha"
+            name="fecha_entrada"
             placeholder="DD/MM/AAAA"
-            value={form.fecha}
+            value={form.fecha_entrada}
+            onChange={handleChange}
+          />
+          <input
+            type="text"
+            name="observacion"
+            placeholder="Observacion"
+            value={form.observacion}
             onChange={handleChange}
           />
           <div className="modal-actions">

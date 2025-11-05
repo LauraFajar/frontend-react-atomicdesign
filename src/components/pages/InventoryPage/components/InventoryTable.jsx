@@ -1,4 +1,5 @@
 import React from 'react';
+import { Edit, Delete } from '@mui/icons-material';
 
 const InventoryTable = ({ items, onEdit, onDelete }) => {
   return (
@@ -21,9 +22,13 @@ const InventoryTable = ({ items, onEdit, onDelete }) => {
             <td>{item.cantidad}</td>
             <td>{item.unidad}</td>
             <td>{item.ultima_fecha || '-'}</td>
-            <td>
-              <button className="btn-update" onClick={() => onEdit(item)}>Actualizar</button>
-              <button className="btn-delete" onClick={() => onDelete(item.id)}>Eliminar</button>
+            <td className="actions-cell">
+              <button className="icon-btn icon-edit" aria-label="Editar" onClick={() => onEdit(item)}>
+                <Edit fontSize="small" />
+              </button>
+              <button className="icon-btn icon-delete" aria-label="Eliminar" onClick={() => onDelete(item.id)}>
+                <Delete fontSize="small" />
+              </button>
             </td>
           </tr>
         ))}

@@ -2,14 +2,15 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAlert } from '../../../contexts/AlertContext';
 import InventoryTable from './components/InventoryTable';
-import InventoryForm from './components/InventoryForm';
-import InventoryFilters from './components/InventoryFilters';
+// import InventoryForm from './components/InventoryForm';
+import InventoryItemModal from './components/InventoryItemModal';
 import InventoryTopBar from './components/InventoryTopBar';
 import inventoryService from '../../../services/inventoryService';
 import './InventoryPage.css';
 
 const InventoryPage = () => {
   const [selectedItem, setSelectedItem] = useState(null);
+  const [openItemModal, setOpenItemModal] = useState(false);
   const [filterTerm, setFilterTerm] = useState('');
   const alert = useAlert();
   const queryClient = useQueryClient();
@@ -98,12 +99,19 @@ const InventoryPage = () => {
         onNuevoInsumo={handleNuevoInsumo}
         onSearch={handleFilter}
       />
-      <InventoryFilters onFilter={handleFilter} />
-      <InventoryForm onSave={handleAddOrUpdate} selectedItem={selectedItem} />
+      {/* Barra de búsqueda inferior eliminada */}
+      {/* Formulario inline reemplazado por modal para mejorar estética */}
+      {/* <InventoryForm onSave={handleAddOrUpdate} selectedItem={selectedItem} /> */}
       <InventoryTable
         items={filteredItems}
-        onEdit={setSelectedItem}
+        onEdit={(item) => { setSelectedItem(item); setOpenItemModal(true); }}
         onDelete={handleDelete}
+      />
+      <InventoryItemModal
+        open={openItemModal}
+        selectedItem={selectedItem}
+        onCancel={() => { setOpenItemModal(false); setSelectedItem(null); }}
+        onSave={(values) => { handleAddOrUpdate(values); setOpenItemModal(false); setSelectedItem(null); }}
       />
       {isLoading && <p>Cargando inventario...</p>}
       {isError && <p>Error al cargar inventario.</p>}
