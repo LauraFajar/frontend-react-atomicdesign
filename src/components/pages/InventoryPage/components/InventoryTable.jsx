@@ -1,39 +1,51 @@
 import React from 'react';
 import { Edit, Delete } from '@mui/icons-material';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  IconButton
+} from '@mui/material';
 
 const InventoryTable = ({ items, onEdit, onDelete }) => {
   return (
-    <table className="inventory-table">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Nombre</th>
-          <th>Cantidad</th>
-          <th>Unidad</th>
-          <th>Última fecha</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        {items.map((item) => (
-          <tr key={item.id}>
-            <td>{item.id}</td>
-            <td>{item.nombre}</td>
-            <td>{item.cantidad}</td>
-            <td>{item.unidad}</td>
-            <td>{item.ultima_fecha || '-'}</td>
-            <td className="actions-cell">
-              <button className="icon-btn icon-edit" aria-label="Editar" onClick={() => onEdit(item)}>
-                <Edit fontSize="small" />
-              </button>
-              <button className="icon-btn icon-delete" aria-label="Eliminar" onClick={() => onDelete(item.id)}>
-                <Delete fontSize="small" />
-              </button>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <TableContainer component={Paper} className="inventory-table-container">
+      <Table className="inventory-table">
+        <TableHead>
+          <TableRow>
+            <TableCell>ID</TableCell>
+            <TableCell>Nombre</TableCell>
+            <TableCell>Cantidad</TableCell>
+            <TableCell>Unidad</TableCell>
+            <TableCell>Última fecha</TableCell>
+            <TableCell align="right">Acciones</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {items.map((item) => (
+            <TableRow key={item.id} hover>
+              <TableCell>{item.id}</TableCell>
+              <TableCell>{item.nombre}</TableCell>
+              <TableCell className={`quantity-cell ${item.stockStatus || ''}`}>{item.cantidad}</TableCell>
+              <TableCell>{item.unidad}</TableCell>
+              <TableCell>{item.ultima_fecha || '-'}</TableCell>
+              <TableCell align="right">
+                <IconButton aria-label="Editar" onClick={() => onEdit(item)} className="action-button edit-button">
+                  <Edit fontSize="small" />
+                </IconButton>
+                <IconButton aria-label="Eliminar" onClick={() => onDelete(item)} className="action-button delete-button">
+                  <Delete fontSize="small" />
+                </IconButton>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
   );
 };
 

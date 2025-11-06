@@ -1,34 +1,30 @@
 import React, { useEffect, useState } from 'react';
-import insumosService from '../../../../services/insumosService';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  Typography
+} from '@mui/material';
 
 const InventoryItemModal = ({ open, selectedItem, onCancel, onSave }) => {
-  const [form, setForm] = useState({ id_insumo: '', cantidad: 0, unidad: '', ultima_fecha: '' });
-  const [insumos, setInsumos] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({ nombre: '', cantidad: 0, unidad: '', ultima_fecha: '', observacion: '' });
   const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (!open) return;
-    setLoading(true);
-    setError(null);
-    insumosService
-      .getInsumos(1, 200)
-      .then((list) => setInsumos(list))
-      .catch((e) => setError(e?.message || 'Error al cargar insumos'))
-      .finally(() => setLoading(false));
-  }, [open]);
 
   useEffect(() => {
     if (!open) return;
     if (selectedItem) {
       setForm({
-        id_insumo: selectedItem.id_insumo ?? selectedItem.insumoId ?? '',
+        nombre: selectedItem.nombre ?? selectedItem.insumo?.nombre_insumo ?? '',
         cantidad: Number(selectedItem.cantidad ?? 0),
         unidad: selectedItem.unidad ?? '',
         ultima_fecha: selectedItem.ultima_fecha ?? '',
+        observacion: selectedItem.observacion ?? '',
       });
     } else {
-      setForm({ id_insumo: '', cantidad: 0, unidad: '', ultima_fecha: '' });
+      setForm({ nombre: '', cantidad: 0, unidad: '', ultima_fecha: '', observacion: '' });
     }
   }, [open, selectedItem]);
 
@@ -42,62 +38,96 @@ const InventoryItemModal = ({ open, selectedItem, onCancel, onSave }) => {
     onSave?.(form);
   };
 
-  if (!open) return null;
-
   return (
-    <div className="inventory-modal-backdrop" onClick={onCancel}>
-      <div className="inventory-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="modal-title">{selectedItem ? 'Actualizar item' : 'Agregar item'}</h2>
+    <Dialog open={open} onClose={onCancel} fullWidth maxWidth="sm">
+      <DialogTitle className="modal-title">
+        {selectedItem ? 'Actualizar Insumo' : 'Nuevo Insumo'}
+      </DialogTitle>
+      <DialogContent>
+        {error && (
+          <Typography color="error" sx={{ mb: 2 }}>
+            {error}
+          </Typography>
+        )}
         <form onSubmit={handleSubmit}>
-          <div>
-            <label>Insumo</label>
-            <select
-              name="id_insumo"
-              value={form.id_insumo}
-              onChange={handleChange}
-              required
-            >
-              <option value="" disabled>
-                {loading ? 'Cargando insumos...' : 'Seleccione un insumo'}
-              </option>
-              {insumos.map((i) => (
-                <option key={i.id} value={i.id}>
-                  {i.nombre}
-                </option>
-              ))}
-            </select>
-            {error && <small style={{ color: 'red' }}>{error}</small>}
-          </div>
-          <input
+          <TextField
+            fullWidth
+            name="nombre"
+            label="Nombre del insumo"
+            value={form.nombre}
+            onChange={handleChange}
+            required
+            className="modal-form-field"
+          />
+
+          <TextField
             type="number"
+            fullWidth
             name="cantidad"
-            placeholder="Cantidad"
+            label="Cantidad"
             value={form.cantidad}
             onChange={handleChange}
             required
+            className="modal-form-field"
+            inputProps={{ min: 0 }}
           />
-          <input
-            type="text"
+
+          <TextField
+            fullWidth
             name="unidad"
-            placeholder="Unidad"
+            label="Unidad"
             value={form.unidad}
             onChange={handleChange}
             required
+            className="modal-form-field"
           />
-          <input
+
+          <TextField
             type="date"
+            fullWidth
             name="ultima_fecha"
-            placeholder="Última fecha"
+            label="Última fecha"
             value={form.ultima_fecha}
             onChange={handleChange}
+            className="modal-form-field"
+            InputLabelProps={{ shrink: true }}
           />
-          <div className="modal-actions">
-            <button type="button" className="btn-cancel" onClick={onCancel}>Cancelar</button>
-            <button type="submit" className="btn-save">Guardar</button>
-          </div>
+
+          <TextField
+            fullWidth
+            name="observacion"
+            label="Observación"
+            value={form.observacion}
+            onChange={handleChange}
+            className="modal-form-field"
+            inputProps={{ maxLength: 50 }}
+            helperText={`Máximo 50 caracteres (${Math.min(50, (form.observacion || '').length)}/50)`}
+          />
+
+          <DialogActions className="dialog-actions">
+            <Button
+              onClick={onCancel}
+              sx={{
+                color: 'var(--primary-green)',
+                '&:hover': { backgroundColor: 'rgba(76, 175, 80, 0.08)' }
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              sx={{
+                backgroundColor: 'var(--primary-green)',
+                '&:hover': { backgroundColor: 'var(--dark-green)' }
+              }}
+            >
+              Guardar
+            </Button>
+          </DialogActions>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

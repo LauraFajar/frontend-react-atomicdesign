@@ -205,7 +205,6 @@ const InventoryTopBar = ({
         open={openNuevoInsumo}
         onCancel={() => setOpenNuevoInsumo(false)}
         onSave={(data) => {
-          // handled below by mutation
           handleGuardarNuevoInsumo(data);
         }}
       />

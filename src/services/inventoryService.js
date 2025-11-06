@@ -9,11 +9,8 @@ const getAuthHeader = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-// Mapea al formato esperado por la UI de Inventario
 const mapItem = (i) => ({
-  // Usar siempre el ID primario del inventario para operaciones (update/delete)
   id: i?.id_inventario ?? i?.id,
-  // Mantener referencia al insumo relacionado
   insumoId: i?.id_insumo ?? i?.insumo?.id_insumo ?? i?.insumo?.id,
   nombre: i?.insumo?.nombre_insumo ?? i?.nombre ?? i?.name ?? '',
   cantidad: Number(i?.cantidad_stock ?? i?.cantidad ?? i?.stock ?? 0),
@@ -23,9 +20,11 @@ const mapItem = (i) => ({
 });
 
 const inventoryService = {
-  getItems: async (page = 1, limit = 50) => {
+  getItems: async (page = 1, limit = 10) => {
+    const safePage = Math.max(1, Number(page || 1));
+    const safeLimit = Math.max(1, Math.min(Number(limit || 10), 100));
     const response = await axios.get(`${API_URL}/inventario`, {
-      params: { page, limit },
+      params: { page: safePage, limit: safeLimit },
       headers: getAuthHeader(),
     });
 
