@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { useEffect, useState, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAlert } from '../../../contexts/AlertContext';
 import LoginForm from '../../molecules/LoginForm/LoginForm';
 import './LoginPage.css';
@@ -7,20 +7,32 @@ import './LoginPage.css';
 const LoginPage = () => {
   const location = useLocation();
   const alert = useAlert();
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [error, setError] = useState('');
+  const navigate = useNavigate();
+  const toastShownRef = useRef(false); 
 
   useEffect(() => {
-    if (location.state?.passwordReset) {
+    if (location.state?.passwordReset && !toastShownRef.current) {
       alert.success('¡Éxito!', 'Tu contraseña ha sido restablecida exitosamente! Por favor inicia sesión con tu nueva contraseña.');
-      window.history.replaceState({}, document.title);
+      toastShownRef.current = true;
+      navigate(location.pathname, { replace: true, state: {} });
     }
 
-    if (location.state?.error) {
-      alert.error('Error', location.state.error);
-      window.history.replaceState({}, document.title);
+    if (location.state?.forgotPasswordSuccess && !toastShownRef.current) {
+      alert.success('¡Enlace Enviado!', `Hemos enviado un enlace a ${location.state.email || 'tu correo electrónico'} para restablecer tu contraseña.`);
+      toastShownRef.current = true;
+      navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [location, alert]);
+
+    if (location.state?.error && !toastShownRef.current) {
+      alert.error('Error', location.state.error);
+      toastShownRef.current = true; 
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+
+    if (!location.state?.passwordReset && !location.state?.forgotPasswordSuccess && !location.state?.error) {
+      toastShownRef.current = false;
+    }
+  }, [location, alert, navigate]);
 
   return (
     <div className="login-page">
@@ -29,7 +41,6 @@ const LoginPage = () => {
         alt="AgroTIC" 
         className="login-logo"
       />
-      
       
       <LoginForm />
     </div>

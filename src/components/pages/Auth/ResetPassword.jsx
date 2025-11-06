@@ -64,12 +64,7 @@ const ResetPassword = () => {
     
     try {
       await authService.resetPassword(token, password);
-      setSuccess(true);
-      
-      setTimeout(() => {
-        navigate('/login', { state: { passwordReset: true } });
-      }, 5000);
-      
+      navigate('/login', { state: { passwordReset: true } });
     } catch (err) {
       setError(err.message || 'Ocurrió un error al restablecer la contraseña. Por favor, inténtalo de nuevo.');
       console.error('Error al restablecer contraseña:', err);
@@ -78,29 +73,11 @@ const ResetPassword = () => {
     }
   };
 
-  if (success) {
-    return (
-      <div className="auth-container">
-        <img 
-          src="/logos/logo.svg" 
-          alt="AgroTIC" 
-          className="auth-logo"
-        />
-        <div className="auth-card">
-          <h2>¡Contraseña actualizada!</h2>
-          <p className="auth-message">
-            Tu contraseña ha sido restablecida correctamente. Serás redirigido al inicio de sesión...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="auth-container">
-      <img 
-        src="/logos/logo.svg" 
-        alt="AgroTIC" 
+      <img
+        src="/logos/logo.svg"
+        alt="AgroTIC"
         className="auth-logo"
       />
       <div className="auth-card">
@@ -108,9 +85,9 @@ const ResetPassword = () => {
         <p className="auth-message">
           Ingresa tu nueva contraseña. Asegúrate de que sea segura y no la compartas con nadie.
         </p>
-        
+
         {error && <div className="auth-error">{error}</div>}
-        
+
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
             <label htmlFor="password">Nueva contraseña</label>
@@ -125,7 +102,7 @@ const ResetPassword = () => {
               className="form-input"
             />
           </div>
-          
+
           <div className="form-group">
             <label htmlFor="confirmPassword">Confirmar contraseña</label>
             <input
@@ -139,9 +116,9 @@ const ResetPassword = () => {
               className="form-input"
             />
           </div>
-          
-          <button 
-            type="submit" 
+
+          <button
+            type="submit"
             className="auth-button"
             disabled={loading}
           >
