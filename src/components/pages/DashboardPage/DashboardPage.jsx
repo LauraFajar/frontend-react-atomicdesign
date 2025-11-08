@@ -11,7 +11,7 @@ import EpasPage from '../EpasPage/EpasPage';
 import TratamientosPage from '../TratamientosPage/TratamientosPage';
 import InventoryPage from '../InventoryPage/InventoryPage';
 import { useAuth } from '../../../contexts/AuthContext';
-import CultivosMapPage from '../CultivosMapPage/CultivosMapPage';
+import LotsMapPage from '../LotsMapPage/LotsMapPage';
 import './DashboardPage.css';
 
 const DashboardPage = () => {
@@ -145,7 +145,7 @@ const DashboardPage = () => {
       case 'cultivos-sublotes':
         return <SublotsPage />;
       case 'cultivos-mapa':
-        return <CultivosMapPage />;
+        return <LotsMapPage />;
       case 'cultivos-actividades':
         return <ActivitiesPage />;
       case 'cultivos-calendario':

@@ -15,6 +15,7 @@ import UsersPage from './components/pages/UsersPage/UsersPage';
 import RestrictedAccess from './components/pages/RestrictedAccess/RestrictedAccess';
 import ProfilePage from './components/pages/ProfilePage/ProfilePage';
 import CultivosMapPage from './components/pages/CultivosMapPage/CultivosMapPage';
+import LotsMapPage from './components/pages/LotsMapPage/LotsMapPage';
 import InventoryPage from './components/pages/InventoryPage/InventoryPage';
 
 const ProtectedRoute = ({ children, allowGuest = false }) => {
@@ -123,6 +124,11 @@ function App() {
               <Route path="/mapa-cultivos" element={
                 <ProtectedRoute>
                   <CultivosMapPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/mapa-lotes" element={
+                <ProtectedRoute>
+                  <LotsMapPage />
                 </ProtectedRoute>
               } />
               <Route path="/inventario" element={
