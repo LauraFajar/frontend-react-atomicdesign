@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Box, Paper, Typography, FormControl, InputLabel, Select, MenuItem, TextField, Button, Divider, Chip, Alert, Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
+import { Box, Paper, Typography, FormControl, InputLabel, Select, MenuItem, TextField, Button, Divider, Chip, Alert, Table, TableHead, TableRow, TableCell, TableBody, Tabs, Tab } from '@mui/material';
 import dayjs from 'dayjs';
 import financeService from '../../../services/financeService';
 import cropService from '../../../services/cropService';
@@ -39,6 +39,9 @@ const FinanceDashboard = () => {
   const [to, setTo] = useState(dayjs().format('YYYY-MM-DD'));
   const [groupBy, setGroupBy] = useState('mes');
   const [tipo, setTipo] = useState('todos');
+  const [criterio, setCriterio] = useState('bc');
+  const [umbral, setUmbral] = useState(1);
+  const [tab, setTab] = useState(0);
 
   const { data: cropsData = { items: [] } } = useQuery({
     queryKey: ['crops', 1, 100],
@@ -50,6 +53,17 @@ const FinanceDashboard = () => {
     queryKey: ['finanzasResumen', cultivoId, from, to, groupBy, tipo],
     queryFn: () => financeService.getResumen({ cultivoId, from, to, groupBy, tipo }),
     enabled: Boolean(cultivoId),
+  });
+
+  const rentabilidadQuery = useQuery({
+    queryKey: ['finanzasRentabilidad', cultivoId, from, to, criterio, umbral],
+    queryFn: () => financeService.getRentabilidad({ cultivoId, from, to, criterio, umbral }),
+    enabled: Boolean(cultivoId),
+  });
+
+  const margenListaQuery = useQuery({
+    queryKey: ['finanzasMargenLista', from, to],
+    queryFn: () => financeService.getMargenLista({ from, to }),
   });
 
   const resumen = resumenQuery.data || { ingresosTotal: '0', egresosTotal: '0', margenTotal: '0', series: [], categoriasGasto: [] };
@@ -73,6 +87,26 @@ const FinanceDashboard = () => {
     const otrosTotal = sorted.slice(5).reduce((acc, it) => acc + parseFloat(it.total || '0'), 0);
     return otrosTotal > 0 ? [...top5, { nombre: 'Otros', total: String(otrosTotal) }] : top5;
   }, [resumen]);
+
+  const margenRows = useMemo(() => {
+    const d = margenListaQuery.data;
+    if (Array.isArray(d)) return d;
+    if (Array.isArray(d?.items)) return d.items;
+    if (Array.isArray(d?.data)) return d.data;
+    return [];
+  }, [margenListaQuery.data]);
+
+  const rankingData = useMemo(() => {
+    const rows = margenRows;
+    return rows.map((r) => {
+      const ingresos = parseFloat(r.ingresos || 0);
+      const egresos = parseFloat(r.egresos || 0);
+      const margen = parseFloat(r.margen || (ingresos - egresos));
+      const bc = egresos > 0 ? ingresos / egresos : null;
+      const rentable = bc !== null ? bc > (parseFloat(umbral) || 1) : margen > 0;
+      return { nombre: r.nombre_cultivo || r.cultivo || r.nombre, margen, bc, rentable };
+    });
+  }, [margenRows, umbral]);
 
   const handleExport = async (type) => {
     if (!cultivoId) return;
@@ -106,7 +140,9 @@ const FinanceDashboard = () => {
 
   return (
     <div className="dashboard-content finance-dashboard">
-      <Typography variant="h5" className="page-title">Finanzas</Typography>
+      <div className="container-header">
+        <h1 className="page-title">Control Financiero</h1>
+      </div>
       {resumenQuery.isError && (
         <Alert severity="error" sx={{ mb: 2 }}>
           No fue posible obtener el resumen financiero. Verifica que el backend exponga <code>/finanzas/resumen</code> en {process.env.REACT_APP_API_URL || 'config.api.baseURL'}.
@@ -140,6 +176,15 @@ const FinanceDashboard = () => {
               <MenuItem value="egreso">Egresos</MenuItem>
             </Select>
           </FormControl>
+          <FormControl size="small" className="filter-item">
+            <InputLabel id="criterio-label">Criterio</InputLabel>
+            <Select labelId="criterio-label" value={criterio} label="Criterio" onChange={(e) => setCriterio(e.target.value)}>
+              <MenuItem value="margen">Margen</MenuItem>
+              <MenuItem value="bc">B/C</MenuItem>
+              <MenuItem value="porcentaje">% Margen</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField size="small" label="Umbral" type="number" value={umbral} onChange={(e) => setUmbral(e.target.value)} className="filter-item" InputLabelProps={{ shrink: true }} />
           <Button
             variant="contained"
             sx={{
@@ -155,128 +200,251 @@ const FinanceDashboard = () => {
         </Box>
       </Paper>
 
-      <div className="content-grid">
-        <div className="left-panel">
-          <Paper className="kpi-card" elevation={1}>
-            <div className="kpi-row">
-              <div className="kpi-item">
-                <div className="kpi-title">Ingresos</div>
-                <div className="kpi-value">{numberFmt(resumen.ingresosTotal)}</div>
-              </div>
-              <div className="kpi-item">
-                <div className="kpi-title">Egresos</div>
-                <div className="kpi-value">{numberFmt(resumen.egresosTotal)}</div>
-              </div>
-              <div className="kpi-item">
-                <div className="kpi-title">Margen</div>
-                <div className="kpi-value">{numberFmt(resumen.margenTotal)}</div>
-              </div>
-            </div>
-          </Paper>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+        <Tabs
+          value={tab}
+          onChange={(_, v) => setTab(v)}
+          variant="scrollable"
+          scrollButtons="auto"
+          textColor="inherit"
+          sx={{ '& .MuiTabs-indicator': { backgroundColor: 'var(--primary-green)' } }}
+        >
+          <Tab label="Resumen" disableRipple sx={{ color: 'var(--primary-green)', '&.Mui-selected': { color: 'var(--primary-green)', fontWeight: 600 } }} />
+          <Tab label="Ranking" disableRipple sx={{ color: 'var(--primary-green)', '&.Mui-selected': { color: 'var(--primary-green)', fontWeight: 600 } }} />
+          <Tab label="Exportaciones" disableRipple sx={{ color: 'var(--primary-green)', '&.Mui-selected': { color: 'var(--primary-green)', fontWeight: 600 } }} />
+        </Tabs>
+      </Box>
 
-          <Paper className="chart-card" elevation={1}>
-            <Typography variant="subtitle1">Ingresos vs Egresos</Typography>
-            <Divider sx={{ my: 1 }} />
-            <div className="chart-container">
-              {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={240}>
-                  <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Line type="monotone" dataKey="ingresos" name="Ingresos" stroke="#2e7d32" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="egresos" name="Egresos" stroke="#d32f2f" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="chart-placeholder">Sin datos para graficar</div>
-              )}
-            </div>
-          </Paper>
+      {tab === 0 && (
+        <div className="content-grid">
+          <div className="left-panel">
+            <Paper className="chart-card" elevation={1}>
+              <Typography variant="subtitle1">Ingresos vs Egresos</Typography>
+              <Divider sx={{ my: 1 }} />
+              <div className="chart-container">
+                {chartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={240}>
+                    <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Line type="monotone" dataKey="ingresos" name="Ingresos" stroke="#2e7d32" strokeWidth={2} dot={false} />
+                      <Line type="monotone" dataKey="egresos" name="Egresos" stroke="#d32f2f" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="chart-placeholder">Sin datos para graficar</div>
+                )}
+              </div>
+            </Paper>
 
-          <Paper className="chart-card" elevation={1}>
-            <Typography variant="subtitle1">Margen por período</Typography>
-            <Divider sx={{ my: 1 }} />
-            <div className="chart-container">
-              {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={240}>
-                  <BarChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="margen" name="Margen" fill="#1976d2" />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="chart-placeholder">Sin datos para graficar</div>
-              )}
-            </div>
-          </Paper>
-        </div>
-
-        <div className="right-panel">
-          <Paper className="chart-card" elevation={1}>
-            <Typography variant="subtitle1">Gasto por categoría (pie)</Typography>
-            <Divider sx={{ my: 1 }} />
-            <div className="pie-list">
-              {topCategorias.map((c) => (
-                <div key={c.nombre} className="pie-item">
-                  <Chip size="small" label={c.nombre} />
-                  <span className="pie-value">{numberFmt(c.total)}</span>
+            <Paper className="chart-card" elevation={1}>
+              <Typography variant="subtitle1">Margen por período</Typography>
+              <Divider sx={{ my: 1 }} />
+              <div className="chart-container">
+                {chartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={240}>
+                    <BarChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="margen" name="Margen" fill="#1976d2" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="chart-placeholder">Sin datos para graficar</div>
+                )}
+              </div>
+            </Paper>
+          </div>
+          <div className="right-panel">
+            {/* KPIs al frente de la gráfica */}
+            <Paper className="kpi-card" elevation={1}>
+              <div className="kpi-row">
+                <div className="kpi-item">
+                  <div className="kpi-title">Ingresos</div>
+                  <div className="kpi-value">{numberFmt(resumen.ingresosTotal)}</div>
                 </div>
-              ))}
-              {topCategorias.length === 0 && (
-                <Typography variant="body2" color="text.secondary">Sin categorías</Typography>
-              )}
-            </div>
-          </Paper>
+                <div className="kpi-item">
+                  <div className="kpi-title">Egresos</div>
+                  <div className="kpi-value">{numberFmt(resumen.egresosTotal)}</div>
+                </div>
+                <div className="kpi-item">
+                  <div className="kpi-title">Margen</div>
+                  <div className="kpi-value">{numberFmt(resumen.margenTotal)}</div>
+                </div>
+              </div>
+              <Divider sx={{ my: 1 }} />
+              <div className="kpi-row">
+                <div className="kpi-item">
+                  <div className="kpi-title">B/C</div>
+                  <div className="kpi-value">{(() => {
+                    const bc = rentabilidadQuery.data?.beneficioCosto;
+                    if (bc === null || bc === undefined) return 'N/A';
+                    return Number(bc).toFixed(2);
+                  })()}</div>
+                </div>
+                <div className="kpi-item">
+                  <div className="kpi-title">% Margen</div>
+                  <div className="kpi-value">{(() => {
+                    const pm = rentabilidadQuery.data?.margenPorcentaje;
+                    if (pm === null || pm === undefined) return 'N/A';
+                    return `${Number(pm).toFixed(2)}%`;
+                  })()}</div>
+                </div>
+                <div className="kpi-item">
+                  <div className="kpi-title">Rentable</div>
+                  <div className="kpi-value">{rentabilidadQuery.data?.rentable === true ? 'Sí' : rentabilidadQuery.data?.rentable === false ? 'No' : 'N/A'}</div>
+                </div>
+              </div>
+            </Paper>
 
-          <Paper className="export-card" elevation={1}>
-            <Typography variant="subtitle1">Exportaciones</Typography>
-            <Divider sx={{ my: 1 }} />
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button size="small" variant="contained" sx={{
-                backgroundColor: 'var(--primary-green)',
-                color: '#fff',
-                '&:hover': { backgroundColor: 'var(--primary-green)' }
-              }} disabled={!cultivoId} onClick={() => handleExport('excel')}>Exportar Excel</Button>
-              <Button size="small" variant="contained" color="primary" disabled={!cultivoId} onClick={() => handleExport('pdf')}>Exportar PDF</Button>
-            </Box>
-            <Divider sx={{ my: 1 }} />
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              Vista previa (primeras 4 filas)
-            </Typography>
-            {chartData.length > 0 ? (
-              <Table size="small" aria-label="preview-export">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Periodo</TableCell>
-                    <TableCell align="right">Ingresos</TableCell>
-                    <TableCell align="right">Egresos</TableCell>
-                    <TableCell align="right">Margen</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {chartData.slice(0, 5).map((row) => (
-                    <TableRow key={row.name}>
-                      <TableCell>{row.name}</TableCell>
-                      <TableCell align="right">{numberFmt(row.ingresos)}</TableCell>
-                      <TableCell align="right">{numberFmt(row.egresos)}</TableCell>
-                      <TableCell align="right">{numberFmt(row.margen)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <Typography variant="body2" color="text.secondary">Sin datos para exportar</Typography>
-            )}
-          </Paper>
+            <Paper className="chart-card" elevation={1}>
+              <Typography variant="subtitle1">Gasto por categoría (pie)</Typography>
+              <Divider sx={{ my: 1 }} />
+              <div className="pie-list">
+                {topCategorias.map((c) => (
+                  <div key={c.nombre} className="pie-item">
+                    <Chip size="small" label={c.nombre} />
+                    <span className="pie-value">{numberFmt(c.total)}</span>
+                  </div>
+                ))}
+                {topCategorias.length === 0 && (
+                  <Typography variant="body2" color="text.secondary">Sin categorías</Typography>
+                )}
+              </div>
+            </Paper>
+          </div>
         </div>
-      </div>
+      )}
+
+      {tab === 1 && (
+        <div className="content-grid">
+          <div className="left-panel">
+            <Paper className="chart-card" elevation={1}>
+              <Typography variant="subtitle1">Ranking por cultivo</Typography>
+              <Divider sx={{ my: 1 }} />
+              <div className="chart-container">
+                {margenListaQuery.isLoading ? (
+                  <div className="chart-placeholder">Cargando ranking...</div>
+                ) : margenListaQuery.isError ? (
+                  <div className="chart-placeholder">Error cargando ranking</div>
+                ) : rankingData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={240}>
+                    <BarChart data={rankingData} layout="vertical" margin={{ top: 10, right: 20, left: 20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis type="category" dataKey="nombre" width={120} />
+                      <Tooltip />
+                      <Bar dataKey="margen" name="Margen" fill="#4CAF50" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="chart-placeholder">Sin datos para ranking</div>
+                )}
+              </div>
+            </Paper>
+          </div>
+          <div className="right-panel">
+            <Paper className="chart-card" elevation={1}>
+              <Typography variant="subtitle1">Tabla resumen cultivos</Typography>
+              <Divider sx={{ my: 1 }} />
+              {margenListaQuery.isLoading ? (
+                <Typography variant="body2" color="text.secondary">Cargando...</Typography>
+              ) : rankingData.length > 0 ? (
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Cultivo</TableCell>
+                      <TableCell align="right">Ingresos</TableCell>
+                      <TableCell align="right">Egresos</TableCell>
+                      <TableCell align="right">Margen</TableCell>
+                      <TableCell align="right">B/C</TableCell>
+                      <TableCell align="right">% Margen</TableCell>
+                      <TableCell>Rentable</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {margenRows.slice(0, 10).map((r) => {
+                      const ingresos = parseFloat(r.ingresos || 0);
+                      const egresos = parseFloat(r.egresos || 0);
+                      const margen = parseFloat(r.margen || (ingresos - egresos));
+                      const bc = egresos > 0 ? ingresos / egresos : null;
+                      const pm = ingresos > 0 ? (margen / ingresos) * 100 : null;
+                      const rentable = bc !== null ? bc > (parseFloat(umbral) || 1) : margen > 0;
+                      const nombre = r.nombre_cultivo || r.cultivo || r.nombre;
+                      return (
+                        <TableRow key={nombre}>
+                          <TableCell>{nombre}</TableCell>
+                          <TableCell align="right">{numberFmt(ingresos)}</TableCell>
+                          <TableCell align="right">{numberFmt(egresos)}</TableCell>
+                          <TableCell align="right">{numberFmt(margen)}</TableCell>
+                          <TableCell align="right">{bc === null ? 'N/A' : Number(bc).toFixed(2)}</TableCell>
+                          <TableCell align="right">{pm === null ? 'N/A' : `${Number(pm).toFixed(2)}%`}</TableCell>
+                          <TableCell>{rentable ? 'Sí' : 'No'}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              ) : (
+                <Typography variant="body2" color="text.secondary">Sin datos</Typography>
+              )}
+            </Paper>
+          </div>
+        </div>
+      )}
+
+      {tab === 2 && (
+        <div className="content-grid">
+          <div className="left-panel">
+            <Paper className="export-card" elevation={1}>
+              <Typography variant="subtitle1">Exportaciones</Typography>
+              <Divider sx={{ my: 1 }} />
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button size="small" variant="contained" sx={{
+                  backgroundColor: 'var(--primary-green)',
+                  color: '#fff',
+                  '&:hover': { backgroundColor: 'var(--primary-green)' }
+                }} disabled={!cultivoId} onClick={() => handleExport('excel')}>Exportar Excel</Button>
+                <Button size="small" variant="contained" color="primary" disabled={!cultivoId} onClick={() => handleExport('pdf')}>Exportar PDF</Button>
+              </Box>
+              <Divider sx={{ my: 1 }} />
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Vista previa (primeras 4 filas)
+              </Typography>
+              {chartData.length > 0 ? (
+                <Table size="small" aria-label="preview-export">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Periodo</TableCell>
+                      <TableCell align="right">Ingresos</TableCell>
+                      <TableCell align="right">Egresos</TableCell>
+                      <TableCell align="right">Margen</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {chartData.slice(0, 5).map((row) => (
+                      <TableRow key={row.name}>
+                        <TableCell>{row.name}</TableCell>
+                        <TableCell align="right">{numberFmt(row.ingresos)}</TableCell>
+                        <TableCell align="right">{numberFmt(row.egresos)}</TableCell>
+                        <TableCell align="right">{numberFmt(row.margen)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <Typography variant="body2" color="text.secondary">Sin datos para exportar</Typography>
+              )}
+            </Paper>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

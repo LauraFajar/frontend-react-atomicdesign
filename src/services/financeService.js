@@ -10,7 +10,6 @@ const getAuthHeader = () => {
 };
 
 const financeService = {
-  // Resumen por cultivo y período
   getResumen: async ({ cultivoId, from, to, groupBy, tipo }) => {
     const params = new URLSearchParams({ cultivoId, from, to, groupBy });
     if (tipo && tipo !== 'todos') params.append('tipo', tipo);
@@ -23,6 +22,15 @@ const financeService = {
   getMargenLista: async ({ from, to }) => {
     const params = new URLSearchParams({ from, to });
     const url = `${API_URL}/finanzas/margen?${params.toString()}`;
+    const response = await axios.get(url, { headers: getAuthHeader() });
+    return response.data;
+  },
+
+  getRentabilidad: async ({ cultivoId, from, to, criterio, umbral }) => {
+    const params = new URLSearchParams({ cultivoId, from, to });
+    if (criterio) params.append('criterio', criterio);
+    if (typeof umbral !== 'undefined' && umbral !== null && umbral !== '') params.append('umbral', umbral);
+    const url = `${API_URL}/finanzas/rentabilidad?${params.toString()}`;
     const response = await axios.get(url, { headers: getAuthHeader() });
     return response.data;
   },

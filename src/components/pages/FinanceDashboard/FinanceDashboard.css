@@ -2,12 +2,31 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
+  padding: var(--spacing-lg);
+  background-color: var(--white);
+  min-height: calc(100vh - 64px);
+}
+
+.container-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+@media (min-width: 600px) {
+  .container-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
 }
 
 .page-title {
   color: var(--primary-green);
   font-weight: 700;
-  margin-bottom: var(--spacing-md);
+  margin: 0;
+  font-size: var(--font-size-2xl);
 }
 
 .filters-card {
