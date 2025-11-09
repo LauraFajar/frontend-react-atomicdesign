@@ -10,6 +10,7 @@ import UsersPage from '../UsersPage/UsersPage';
 import EpasPage from '../EpasPage/EpasPage';
 import TratamientosPage from '../TratamientosPage/TratamientosPage';
 import InventoryPage from '../InventoryPage/InventoryPage';
+import FinanceDashboard from '../FinanceDashboard/FinanceDashboard';
 import { useAuth } from '../../../contexts/AuthContext';
 import LotsMapPage from '../LotsMapPage/LotsMapPage';
 import './DashboardPage.css';
@@ -62,8 +63,7 @@ const DashboardPage = () => {
       return;
     }
 
-    // Si es un módulo padre, solo expandirlo (solo los que tienen submódulos)
-    if (parentId === null && (sectionId === 'cultivos' || sectionId === 'iot' || sectionId === 'fitosanitario' || sectionId === 'finanzas')) {
+    if (parentId === null && (sectionId === 'cultivos' || sectionId === 'fitosanitario')) {
       console.log('[Dashboard] Expanding module:', sectionId);
       setExpandedItems(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
       return;
@@ -169,12 +169,8 @@ const DashboardPage = () => {
       case 'fitosanitario-tratamientos':
         return <TratamientosPage currentUser={user} />;
       case 'finanzas':
-        return (
-          <div className="dashboard-content">
-            <h2>Gestión Financiera</h2>
-            <p>Control de ingresos, egresos y rentabilidad</p>
-          </div>
-        );
+      case 'finanzas-dashboard':
+        return <FinanceDashboard />;
       case 'inventario':
         return <InventoryPage />;
       case 'usuarios':

@@ -1,7 +1,8 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
+import config from '../config/environment';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+const API_URL = config.api.baseURL;
 
 const getAuthHeader = () => {
   const token = Cookies.get('token');

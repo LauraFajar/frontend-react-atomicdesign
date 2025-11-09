@@ -86,7 +86,7 @@
 
 .map-fab {
   position: absolute;
-  right: 12px;
+  left: 450px;
   top: 10px;
   z-index: 1000;
 }

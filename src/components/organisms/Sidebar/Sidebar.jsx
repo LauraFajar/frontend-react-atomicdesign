@@ -28,7 +28,11 @@ const Sidebar = ({ activeItem = 'inicio', onItemClick, expandedItems = {}, user 
           { id: 'fitosanitario-tratamientos', label: 'Tratamientos', icon: <FiShield size={16} /> }
         ]
       },
-      { id: 'finanzas', label: 'Finanzas', icon: <FiDollarSign size={20} /> },
+      {
+        id: 'finanzas',
+        label: 'Finanzas',
+        icon: <FiDollarSign size={20} />
+      },
       { id: 'inventario', label: 'Inventario', icon: <FiBox size={20} /> },
       {
         id: 'usuarios',
