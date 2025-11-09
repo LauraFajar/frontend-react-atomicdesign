@@ -456,17 +456,17 @@ const LotsMapPage = () => {
                     );
                   })}
                 </MapContainer>
-                <div className="below-map-actions">
-                  <Button size="small" variant="contained" color="success" onClick={() => setShowLots((v) => !v)}>
-                    Lotes
-                  </Button>
-                  <Button size="small" variant="contained" color="primary" onClick={() => setShowSublots((v) => !v)}>
-                    Sublotes
-                  </Button>
-                </div>
               </>
             )}
           </Paper>
+          <div className="below-map-actions">
+            <Button size="small" variant="contained" color="success" onClick={() => setShowLots((v) => !v)}>
+              Lotes
+            </Button>
+            <Button size="small" variant="contained" color="primary" onClick={() => setShowSublots((v) => !v)}>
+              Sublotes
+            </Button>
+          </div>
         </div>
       </div>
 

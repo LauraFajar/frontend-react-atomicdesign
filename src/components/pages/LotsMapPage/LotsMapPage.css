@@ -148,10 +148,6 @@
 .below-map-actions {
   display: flex;
   gap: 8px;
-  position: absolute;
-  bottom: 12px;
-  left: 0;
-  right: 0;
   justify-content: center;
-  z-index: 1000;
+  margin-top: 8px;
 }
