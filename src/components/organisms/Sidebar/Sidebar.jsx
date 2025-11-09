@@ -31,7 +31,15 @@ const Sidebar = ({ activeItem = 'inicio', onItemClick, expandedItems = {}, user 
         ]
       },
       { id: 'finanzas', label: 'Finanzas', icon: <FiDollarSign size={20} /> },
-      { id: 'inventario', label: 'Inventario', icon: <FiBox size={20} /> },
+      {
+        id: 'inventario',
+        label: 'Inventario',
+        icon: <FiBox size={20} />,
+        submodules: [
+          { id: 'inventario-almacenes', label: 'Almacenes', icon: <FiBox size={16} /> },
+          { id: 'inventario-categorias', label: 'Categorías', icon: <FiLayers size={16} /> },
+        ]
+      },
       {
         id: 'usuarios',
         label: 'Usuarios',

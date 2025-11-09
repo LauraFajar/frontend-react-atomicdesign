@@ -10,6 +10,9 @@ import UsersPage from '../UsersPage/UsersPage';
 import EpasPage from '../EpasPage/EpasPage';
 import TratamientosPage from '../TratamientosPage/TratamientosPage';
 import InventoryPage from '../InventoryPage/InventoryPage';
+import AlmacenesPage from '../AlmacenesPage/AlmacenesPage';
+import CategoriasPage from '../CategoriasPage/CategoriasPage';
+import IotPage from '../IotPage/IotPage';
 import { useAuth } from '../../../contexts/AuthContext';
 import CultivosMapPage from '../CultivosMapPage/CultivosMapPage';
 import './DashboardPage.css';
@@ -62,8 +65,16 @@ const DashboardPage = () => {
       return;
     }
 
-    // Si es un módulo padre, solo expandirlo (solo los que tienen submódulos)
-    if (parentId === null && (sectionId === 'cultivos' || sectionId === 'iot' || sectionId === 'fitosanitario' || sectionId === 'finanzas')) {
+    // Al hacer clic en el módulo Inventario, mostrar su tabla y expandir submódulos
+    if (parentId === null && sectionId === 'inventario') {
+      console.log('[Dashboard] Showing Inventario table and expanding submenu');
+      setActiveSection('inventario');
+      setExpandedItems(prev => ({ ...prev, inventario: true }));
+      return;
+    }
+
+    // Si es un módulo padre con submódulos, solo expandirlo
+    if (parentId === null && (sectionId === 'cultivos' || sectionId === 'fitosanitario')) {
       console.log('[Dashboard] Expanding module:', sectionId);
       setExpandedItems(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
       return;
@@ -151,12 +162,7 @@ const DashboardPage = () => {
       case 'cultivos-calendario':
         return <CalendarPage />;
       case 'iot':
-        return (
-          <div className="dashboard-content">
-            <h2>Módulo IoT</h2>
-            <p>Monitoreo de sensores en tiempo real</p>
-          </div>
-        );
+        return <IotPage />;
       case 'fitosanitario':
         return (
           <div className="dashboard-content">
@@ -177,6 +183,12 @@ const DashboardPage = () => {
         );
       case 'inventario':
         return <InventoryPage />;
+      case 'almacenes':
+      case 'inventario-almacenes':
+        return <AlmacenesPage />;
+      case 'categorias':
+      case 'inventario-categorias':
+        return <CategoriasPage />;
       case 'usuarios':
         return <UsersPage />;
       default:

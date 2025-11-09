@@ -164,29 +164,7 @@ const InventoryPage = () => {
     setOpenMovementModal(true);
   };
 
-  const handleGuardarMovimiento = (mov) => {
-    const itemMatch = items.find((it) => Number(it.insumoId) === Number(mov.id_insumo));
-    const cantidad = Number(mov.cantidad || 0);
-    if (cantidad <= 0) {
-      alert.error('Validación', 'La cantidad debe ser mayor a 0');
-      return;
-    }
-
-    if (mov.tipo_movimiento === 'salida') {
-      if (!itemMatch) { alert.error('Validación', 'No se encontró el insumo en inventario'); return; }
-      const nuevaCantidad = Number(itemMatch.cantidad || 0) - cantidad;
-      if (nuevaCantidad < 0) { alert.error('Validación', 'La salida excede el stock disponible'); return; }
-      updateMutation.mutate({ id: itemMatch.id, data: { cantidad: nuevaCantidad, unidad: mov.unidad_medida, ultima_fecha: mov.fecha_movimiento } });
-    } else if (mov.tipo_movimiento === 'entrada') {
-      if (itemMatch) {
-        const nuevaCantidad = Number(itemMatch.cantidad || 0) + cantidad;
-        updateMutation.mutate({ id: itemMatch.id, data: { cantidad: nuevaCantidad, unidad: mov.unidad_medida, ultima_fecha: mov.fecha_movimiento } });
-      } else {
-        createMutation.mutate({ id_insumo: mov.id_insumo, cantidad: cantidad, unidad: mov.unidad_medida, ultima_fecha: mov.fecha_movimiento });
-      }
-    }
-    setOpenMovementModal(false);
-  };
+  // Botones de atajo eliminados: Almacenes y Categorías
 
   if (isLoading) {
     return (
@@ -239,7 +217,6 @@ const InventoryPage = () => {
             }}
           />
         </div>
-
         <InventoryTable
           items={displayItems}
           onEdit={(item) => { setSelectedItem(item); setOpenItemModal(true); }}
@@ -256,7 +233,29 @@ const InventoryPage = () => {
         <InventoryMovementModal
           open={openMovementModal}
           onCancel={() => setOpenMovementModal(false)}
-          onSave={handleGuardarMovimiento}
+          onSave={(mov) => {
+            const itemMatch = items.find((it) => Number(it.insumoId) === Number(mov.id_insumo));
+            const cantidad = Number(mov.cantidad || 0);
+            if (cantidad <= 0) {
+              alert.error('Validación', 'La cantidad debe ser mayor a 0');
+              return;
+            }
+
+            if (mov.tipo_movimiento === 'salida') {
+              if (!itemMatch) { alert.error('Validación', 'No se encontró el insumo en inventario'); return; }
+              const nuevaCantidad = Number(itemMatch.cantidad || 0) - cantidad;
+              if (nuevaCantidad < 0) { alert.error('Validación', 'La salida excede el stock disponible'); return; }
+              updateMutation.mutate({ id: itemMatch.id, data: { cantidad: nuevaCantidad, unidad: mov.unidad_medida, ultima_fecha: mov.fecha_movimiento } });
+            } else if (mov.tipo_movimiento === 'entrada') {
+              if (itemMatch) {
+                const nuevaCantidad = Number(itemMatch.cantidad || 0) + cantidad;
+                updateMutation.mutate({ id: itemMatch.id, data: { cantidad: nuevaCantidad, unidad: mov.unidad_medida, ultima_fecha: mov.fecha_movimiento } });
+              } else {
+                createMutation.mutate({ id_insumo: mov.id_insumo, cantidad: cantidad, unidad: mov.unidad_medida, ultima_fecha: mov.fecha_movimiento });
+              }
+            }
+            setOpenMovementModal(false);
+          }}
         />
 
         <ConfirmModal

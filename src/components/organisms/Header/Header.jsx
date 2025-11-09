@@ -62,9 +62,12 @@ const Header = () => {
     setIsEditModalOpen(false)
   }
 
+  
+
   return (
     <header className="header">
       <div className="header__content">
+        {/* Zona izquierda reservada para logo/branding (sin acciones rápidas) */}
         <div className="header__actions">
           {/* Notificaciones */}
           <button className="header__action-button" title="Notificaciones">

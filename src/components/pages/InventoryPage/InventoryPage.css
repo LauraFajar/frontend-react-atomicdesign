@@ -3,12 +3,21 @@
   background-color: var(--white);
   min-height: calc(100vh - 64px);
 }
-
 .container-header {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
   margin-bottom: var(--spacing-xl);
+}
+
+
+
+
+@media (max-width: 600px) {
+  .upper-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
 }
 
 @media (min-width: 600px) {
@@ -214,6 +223,8 @@
   overflow: hidden;
   width: 100%;
 }
+
+/* Eliminado: estilos de tarjeta Hola Mundo ya no se usan */
 
 .inventory-table {
   width: 100%;

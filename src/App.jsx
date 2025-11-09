@@ -16,6 +16,8 @@ import RestrictedAccess from './components/pages/RestrictedAccess/RestrictedAcce
 import ProfilePage from './components/pages/ProfilePage/ProfilePage';
 import CultivosMapPage from './components/pages/CultivosMapPage/CultivosMapPage';
 import InventoryPage from './components/pages/InventoryPage/InventoryPage';
+import IotPage from './components/pages/IotPage/IotPage';
+// Hola Mundo para Almacenes/Categorías se renderiza dentro de InventoryPage, no rutas aparte
 
 const ProtectedRoute = ({ children, allowGuest = false }) => {
   const { isAuthenticated, loading, user } = useAuth()
@@ -128,6 +130,15 @@ function App() {
               <Route path="/inventario" element={
                 <ProtectedRoute>
                   <InventoryPage />
+                </ProtectedRoute>
+              } />
+
+              {/* Hola Mundo para Almacenes/Categorías: se gestiona dentro de /inventario */}
+
+              {/* IoT */}
+              <Route path="/iot" element={
+                <ProtectedRoute>
+                  <IotPage />
                 </ProtectedRoute>
               } />
 
