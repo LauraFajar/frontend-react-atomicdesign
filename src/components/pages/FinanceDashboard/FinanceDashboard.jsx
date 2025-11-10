@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import ExcelJS from 'exceljs';
 import { useQuery } from '@tanstack/react-query';
 import { Box, Paper, Typography, FormControl, InputLabel, Select, MenuItem, TextField, Button, Divider, Chip, Alert, Table, TableHead, TableRow, TableCell, TableBody, Tabs, Tab } from '@mui/material';
 import dayjs from 'dayjs';
@@ -111,21 +112,179 @@ const FinanceDashboard = () => {
   const handleExport = async (type) => {
     if (!cultivoId) return;
     try {
-      const params = { cultivoId, from, to, groupBy, tipo };
-      const blob = type === 'excel'
-        ? await financeService.exportExcel(params)
-        : await financeService.exportPdf(params);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = type === 'excel' ? `finanzas_${cultivoId}_${from}_${to}.xlsx` : `finanzas_${cultivoId}_${from}_${to}.pdf`;
-      a.click();
-      window.URL.revokeObjectURL(url);
+      const selected = cropItemsNormalized.find((c) => String(c.id) === String(cultivoId));
+      const nombreCultivo = selected?.nombre || String(cultivoId);
+      const safeName = nombreCultivo
+        .toString()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, '_')
+        .replace(/[^\w-]+/g, '');
+
+      if (type === 'excel') {
+        const wb = new ExcelJS.Workbook();
+        const ws = wb.addWorksheet('Reporte');
+        const currencyFmt = '"$" #,##0';
+
+        ws.getCell('A1').value = `Control Financiero - ${nombreCultivo}`;
+        ws.getCell('A1').font = { bold: true, size: 14, color: { argb: 'FF2E7D32' } };
+        ws.getCell('A2').value = `Rango: ${from} a ${to} | Grupo: ${groupBy}`;
+        ws.getCell('A2').font = { color: { argb: 'FF666666' } };
+
+        const kpiStartRow = 4;
+        ws.getRow(kpiStartRow).values = ['Indicador', 'Valor'];
+        ws.getRow(kpiStartRow).font = { bold: true, color: { argb: 'FF2E7D32' } };
+        const kpiRows = [
+          ['Ingresos', Number(resumen?.ingresosTotal ?? 0)],
+          ['Egresos', Number(resumen?.egresosTotal ?? 0)],
+          ['Margen', Number(resumen?.margenTotal ?? 0)],
+          ['B/C', rentabilidadQuery.data?.beneficioCosto ?? null],
+          ['% Margen', rentabilidadQuery.data?.margenPorcentaje ?? null],
+          ['Rentable', rentabilidadQuery.data?.rentable === true ? 'Sí' : rentabilidadQuery.data?.rentable === false ? 'No' : 'N/A'],
+        ];
+        for (let i = 0; i < kpiRows.length; i++) {
+          const rIdx = kpiStartRow + 1 + i;
+          const [label, val] = kpiRows[i];
+          ws.getRow(rIdx).values = [label, label === '% Margen' && typeof val === 'number' ? Number(val) / 100 : val];
+          if (label === 'Ingresos' || label === 'Egresos' || label === 'Margen') ws.getCell(`B${rIdx}`).numFmt = currencyFmt;
+          if (label === '% Margen' && typeof val === 'number') ws.getCell(`B${rIdx}`).numFmt = '0.00%';
+        }
+        ws.getColumn(1).width = 18;
+        ws.getColumn(2).width = 18;
+
+        const tableStart = kpiStartRow + kpiRows.length + 3;
+        ws.getRow(tableStart).values = ['Periodo', 'Ingresos', 'Egresos', 'Margen'];
+        ws.getRow(tableStart).font = { bold: true, color: { argb: 'FF2E7D32' } };
+        ws.getRow(tableStart).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+        ws.getColumn(1).width = 14;
+        ws.getColumn(2).width = 16;
+        ws.getColumn(3).width = 16;
+        ws.getColumn(4).width = 16;
+
+        const dataRows = chartData.map((r) => ({
+          Periodo: r.name,
+          Ingresos: Number(r.ingresos ?? 0),
+          Egresos: Number(r.egresos ?? 0),
+          Margen: Number(r.margen ?? 0),
+        }));
+        for (let i = 0; i < dataRows.length; i++) {
+          const idx = tableStart + 1 + i;
+          const row = dataRows[i];
+          ws.getRow(idx).values = [row.Periodo, row.Ingresos, row.Egresos, row.Margen];
+          ws.getCell(`B${idx}`).numFmt = currencyFmt;
+          ws.getCell(`C${idx}`).numFmt = currencyFmt;
+          ws.getCell(`D${idx}`).numFmt = currencyFmt;
+        }
+        // Separadores de filas
+        const lastRow = tableStart + dataRows.length;
+        for (let r = tableStart; r <= lastRow; r++) {
+          ['A','B','C','D'].forEach((c) => {
+            ws.getCell(`${c}${r}`).border = { bottom: { style: 'thin', color: { argb: 'FFEEEEEE' } } };
+          });
+        }
+
+        const buffer = await wb.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `finanzas_${safeName}_${from}_${to}.xlsx`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      } else {
+        const html = buildReportHtml(nombreCultivo);
+        const w = window.open('', '_blank');
+        if (!w) throw new Error('No se pudo abrir ventana para PDF');
+        w.document.open();
+        w.document.write(html);
+        w.document.close();
+        w.focus();
+        setTimeout(() => {
+          try {
+            w.print();
+            w.close();
+          } catch (err) {
+            console.warn('No se pudo imprimir/cerrar la ventana del reporte:', err);
+          }
+        }, 300);
+      }
     } catch (e) {
       console.error('Error exportando reporte:', e);
       alert('No fue posible exportar el reporte');
     }
   };
+
+  const buildReportHtml = (nombreCultivo) => {
+    const fechaRango = `${from} a ${to}`;
+    const kpiBc = rentabilidadQuery.data?.beneficioCosto;
+    const kpiPm = rentabilidadQuery.data?.margenPorcentaje;
+    const kpiRent = rentabilidadQuery.data?.rentable;
+    const rows = chartData.slice(0, 100);
+    const style = `
+      <style>
+        body { font-family: Arial, sans-serif; color: #111; }
+        .report { padding: 16px; }
+        .header { display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; }
+        .title { color: #2e7d32; font-size: 20px; font-weight: 700; margin:0; }
+        .subtitle { color: #666; margin: 4px 0 0 0; }
+        .kpis { display:flex; gap:12px; margin: 12px 0; }
+        .kpi { border:1px solid #e5e7eb; border-radius:8px; padding:8px 12px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background:#f3f4f6; color:#2e7d32; text-align:left; padding:8px; border-bottom:2px solid #e5e7eb; }
+        td { padding:8px; border-bottom:1px solid #eee; }
+        tr:nth-child(even) td { background: #fafafa; }
+      </style>
+    `;
+    const kpisHtml = `
+      <div class="kpis">
+        <div class="kpi">Ingresos: ${numberFmt(resumen.ingresosTotal)}</div>
+        <div class="kpi">Egresos: ${numberFmt(resumen.egresosTotal)}</div>
+        <div class="kpi">Margen: ${numberFmt(resumen.margenTotal)}</div>
+        <div class="kpi">B/C: ${kpiBc === null || kpiBc === undefined ? 'N/A' : Number(kpiBc).toFixed(2)}</div>
+        <div class="kpi">% Margen: ${kpiPm === null || kpiPm === undefined ? 'N/A' : `${Number(kpiPm).toFixed(2)}%`}</div>
+        <div class="kpi">Rentable: ${kpiRent === true ? 'Sí' : kpiRent === false ? 'No' : 'N/A'}</div>
+      </div>
+    `;
+    const tableRows = rows.map(r => `
+      <tr>
+        <td>${r.name}</td>
+        <td>${numberFmt(r.ingresos)}</td>
+        <td>${numberFmt(r.egresos)}</td>
+        <td>${numberFmt(r.margen)}</td>
+      </tr>
+    `).join('');
+    const html = `
+      <html>
+      <head>${style}</head>
+      <body>
+        <div class="report">
+          <div class="header">
+            <div>
+              <h1 class="title">Control Financiero - ${nombreCultivo}</h1>
+              <p class="subtitle">Rango: ${fechaRango} | Grupo: ${groupBy}</p>
+            </div>
+          </div>
+          ${kpisHtml}
+          <table>
+            <thead>
+              <tr>
+                <th>Periodo</th>
+                <th>Ingresos</th>
+                <th>Egresos</th>
+                <th>Margen</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+            </tbody>
+          </table>
+        </div>
+      </body>
+      </html>
+    `;
+    return html;
+  };
+
 
   const cropItems = Array.isArray(cropsData?.items) ? cropsData.items : (Array.isArray(cropsData) ? cropsData : []);
   const cropItemsNormalized = useMemo(() => (
@@ -412,6 +571,7 @@ const FinanceDashboard = () => {
                   '&:hover': { backgroundColor: 'var(--primary-green)' }
                 }} disabled={!cultivoId} onClick={() => handleExport('excel')}>Exportar Excel</Button>
                 <Button size="small" variant="contained" color="primary" disabled={!cultivoId} onClick={() => handleExport('pdf')}>Exportar PDF</Button>
+                
               </Box>
               <Divider sx={{ my: 1 }} />
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>

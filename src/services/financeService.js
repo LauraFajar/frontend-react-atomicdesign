@@ -63,18 +63,20 @@ const financeService = {
     return response.data;
   },
 
-  exportExcel: async ({ cultivoId, from, to, groupBy, tipo }) => {
+  exportExcel: async ({ cultivoId, from, to, groupBy, tipo, nombreCultivo }) => {
     const params = new URLSearchParams({ cultivoId, from, to, groupBy });
+    if (nombreCultivo) params.append('nombre_cultivo', nombreCultivo);
     if (tipo && tipo !== 'todos') params.append('tipo', tipo);
-    const url = `${API_URL}/finanzas/export/excel?${params.toString()}`;
+    const url = `${API_URL}/finanzas/resumen/excel?${params.toString()}`;
     const response = await axios.get(url, { headers: getAuthHeader(), responseType: 'blob' });
     return response.data;
   },
 
-  exportPdf: async ({ cultivoId, from, to, groupBy, tipo }) => {
+  exportPdf: async ({ cultivoId, from, to, groupBy, tipo, nombreCultivo }) => {
     const params = new URLSearchParams({ cultivoId, from, to, groupBy });
+    if (nombreCultivo) params.append('nombre_cultivo', nombreCultivo);
     if (tipo && tipo !== 'todos') params.append('tipo', tipo);
-    const url = `${API_URL}/finanzas/export/pdf?${params.toString()}`;
+    const url = `${API_URL}/finanzas/resumen/pdf?${params.toString()}`;
     const response = await axios.get(url, { headers: getAuthHeader(), responseType: 'blob' });
     return response.data;
   },
