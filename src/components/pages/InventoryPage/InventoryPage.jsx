@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, TextField, Typography, CircularProgress, Table, TableHead, TableRow, TableCell, TableBody, IconButton } from '@mui/material';
-import { Add, Search as SearchIcon, CompareArrows, ArrowDownward, ArrowUpward, Delete, Edit } from '@mui/icons-material';
+import { Add, Search as SearchIcon, ArrowDownward, ArrowUpward, Delete, Edit } from '@mui/icons-material';
 import { useAlert } from '../../../contexts/AlertContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import InventoryTable from './components/InventoryTable';
@@ -92,7 +92,8 @@ const InventoryPage = () => {
 
   const displayItems = useMemo(() => {
     const enriched = items.map((i) => {
-      const computedCantidad = movimientosEnabled ? Number(stockByInsumo[i.insumoId] ?? i.cantidad) : i.cantidad;
+      const rawCantidad = movimientosEnabled ? Number(stockByInsumo[i.insumoId] ?? i.cantidad) : i.cantidad;
+      const computedCantidad = Math.max(0, Number(rawCantidad || 0));
       return { ...i, cantidad: computedCantidad, stockStatus: getStockStatus(computedCantidad) };
     });
     if (!filterTerm) return enriched;
@@ -310,10 +311,7 @@ const InventoryPage = () => {
     setOpenItemModal(true);
   };
 
-  const handleNuevoMovimiento = () => {
-    if (!canEdit) { alert.error('Permisos', 'No tienes permisos para registrar movimientos'); return; }
-    setOpenMovementModal(true);
-  };
+  // Eliminado: botón de nuevo movimiento ya no se usa
 
   if (isLoading) {
     return (
@@ -344,34 +342,11 @@ const InventoryPage = () => {
               Nuevo Insumo
             </Button>
             )}
-            {canEdit && (
-            <Button
-              variant="contained"
-              startIcon={<CompareArrows />}
-              onClick={handleNuevoMovimiento}
-              className="new-movement-button"
-            >
-              Nuevo Movimiento
-            </Button>
-            )}
+            {/* Botón de nuevo movimiento eliminado por requerimiento */}
           </div>
         </div>
 
-        {/* Sección de stock bajo */}
-        <div className="users-table-container" style={{ marginTop: 8 }}>
-          <Typography variant="h6" sx={{ mb: 1 }}>Stock bajo</Typography>
-          {lowStockData?.items?.length ? (
-            <ul style={{ margin: 0, paddingLeft: 18 }}>
-              {lowStockData.items.slice(0, 5).map((i) => (
-                <li key={i.id}>
-                  {i.nombre} · {i.cantidad} {i.unidad}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <Typography variant="body2" color="text.secondary">Sin items con stock bajo.</Typography>
-          )}
-        </div>
+       
 
         <div className="search-container">
           <TextField
@@ -390,6 +365,14 @@ const InventoryPage = () => {
           items={displayItems}
           onEdit={(item) => { setSelectedItem(item); setOpenItemModal(true); }}
           onDelete={handleOpenConfirmDelete}
+          onQuickEntrada={(item) => {
+            setMovementToEdit({ id_insumo: item.insumoId, tipo_movimiento: 'entrada', unidad: item.unidad });
+            setOpenMovementModal(true);
+          }}
+          onQuickSalida={(item) => {
+            setMovementToEdit({ id_insumo: item.insumoId, tipo_movimiento: 'salida', unidad: item.unidad });
+            setOpenMovementModal(true);
+          }}
         />
 
         {/* (Revert) Sección Registro de Insumos eliminada */}

@@ -72,7 +72,17 @@ const InventoryMovementModal = ({ open, onCancel, onSave, movement }) => {
       const mm = String(today.getMonth() + 1).padStart(2, '0');
       const dd = String(today.getDate()).padStart(2, '0');
       const todayStr = `${yyyy}-${mm}-${dd}`;
-      setForm({ id_insumo: '', tipo_movimiento: 'entrada', cantidad: 0, unidad: '', fecha: todayStr, responsable: '', observacion: '' });
+      const base = { id_insumo: '', tipo_movimiento: 'entrada', cantidad: 0, unidad: '', fecha: todayStr, responsable: '', observacion: '' };
+      const prefill = movement ? {
+        id_insumo: movement.id_insumo != null ? String(movement.id_insumo) : base.id_insumo,
+        tipo_movimiento: movement.tipo_movimiento ? String(movement.tipo_movimiento).toLowerCase() : base.tipo_movimiento,
+        cantidad: movement.cantidad != null ? Number(movement.cantidad) : base.cantidad,
+        unidad: movement.unidad_medida || movement.unidad || base.unidad,
+        fecha: toDateInput(movement.fecha_movimiento || movement.fecha) || base.fecha,
+        responsable: movement.responsable || base.responsable,
+        observacion: movement.observacion || base.observacion,
+      } : base;
+      setForm(prefill);
     }
   }, [open, movement]);
 
