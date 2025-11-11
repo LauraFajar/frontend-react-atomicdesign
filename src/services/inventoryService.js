@@ -16,6 +16,8 @@ const mapItem = (i) => ({
   cantidad: Number(i?.cantidad_stock ?? i?.cantidad ?? i?.stock ?? 0),
   unidad: i?.unidad_medida ?? i?.unidad ?? i?.unit ?? '',
   ultima_fecha: i?.fecha ?? i?.ultima_fecha ?? i?.last_date ?? null,
+  categoria: i?.insumo?.id_categoria?.nombre ?? i?.categoria ?? '',
+  almacen: i?.insumo?.id_almacen?.nombre_almacen ?? i?.almacen ?? '',
   raw: i,
 });
 
@@ -40,6 +42,24 @@ const inventoryService = {
       items: Array.isArray(data) ? data.map(mapItem) : [],
       meta: { totalPages: 1, currentPage: 1 },
     };
+  },
+
+  getLowStock: async (limite = 10) => {
+    const response = await axios.get(`${API_URL}/inventario/stock-bajo`, {
+      params: { limite },
+      headers: getAuthHeader(),
+    });
+    const items = Array.isArray(response.data?.items)
+      ? response.data.items.map(mapItem)
+      : [];
+    return { items, limite_configurado: response.data?.limite_configurado ?? limite };
+  },
+
+  getStats: async () => {
+    const response = await axios.get(`${API_URL}/inventario/estadisticas`, {
+      headers: getAuthHeader(),
+    });
+    return response.data || {};
   },
 
   createItem: async (item) => {

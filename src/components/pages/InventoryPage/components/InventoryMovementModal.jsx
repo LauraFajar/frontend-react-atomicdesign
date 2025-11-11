@@ -18,7 +18,7 @@ const tipoOptions = [
   { value: 'salida', label: 'Salida' },
 ];
 
-const InventoryMovementModal = ({ open, onCancel, onSave }) => {
+const InventoryMovementModal = ({ open, onCancel, onSave, movement }) => {
   const [form, setForm] = useState({ id_insumo: '', tipo_movimiento: '', cantidad: 0, unidad: '', fecha: '', responsable: '', observacion: '' });
   const [insumos, setInsumos] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -38,13 +38,43 @@ const InventoryMovementModal = ({ open, onCancel, onSave }) => {
 
   useEffect(() => {
     if (!open) return;
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    const todayStr = `${yyyy}-${mm}-${dd}`;
-    setForm({ id_insumo: '', tipo_movimiento: 'entrada', cantidad: 0, unidad: '', fecha: todayStr, responsable: '', observacion: '' });
-  }, [open]);
+    const toDateInput = (value) => {
+      if (!value) {
+        const d = new Date();
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+      }
+      const d = new Date(value);
+      if (!isNaN(d.getTime())) {
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+      }
+      return typeof value === 'string' ? value : '';
+    };
+
+    if (movement?.id) {
+      setForm({
+        id_insumo: String(movement.id_insumo || ''),
+        tipo_movimiento: String(movement.tipo_movimiento || 'entrada').toLowerCase(),
+        cantidad: Number(movement.cantidad || 0),
+        unidad: movement.unidad_medida || movement.unidad || '',
+        fecha: toDateInput(movement.fecha_movimiento || movement.fecha),
+        responsable: movement.responsable || '',
+        observacion: movement.observacion || '',
+      });
+    } else {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${yyyy}-${mm}-${dd}`;
+      setForm({ id_insumo: '', tipo_movimiento: 'entrada', cantidad: 0, unidad: '', fecha: todayStr, responsable: '', observacion: '' });
+    }
+  }, [open, movement]);
 
   const handleChange = (field) => (e) => {
     const value = field === 'cantidad' ? Number(e.target.value) : e.target.value;
@@ -78,7 +108,7 @@ const InventoryMovementModal = ({ open, onCancel, onSave }) => {
 
   return (
     <Dialog open={open} onClose={onCancel} fullWidth maxWidth="sm">
-      <DialogTitle>Registrar movimiento</DialogTitle>
+      <DialogTitle>{movement?.id ? 'Editar movimiento' : 'Registrar movimiento'}</DialogTitle>
       <DialogContent>
         {loading ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>

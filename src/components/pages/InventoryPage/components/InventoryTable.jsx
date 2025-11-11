@@ -19,6 +19,8 @@ const InventoryTable = ({ items, onEdit, onDelete }) => {
           <TableRow>
             <TableCell>ID</TableCell>
             <TableCell>Nombre</TableCell>
+            <TableCell>Categoría</TableCell>
+            <TableCell>Almacén</TableCell>
             <TableCell>Cantidad</TableCell>
             <TableCell>Unidad</TableCell>
             <TableCell>Última fecha</TableCell>
@@ -30,14 +32,18 @@ const InventoryTable = ({ items, onEdit, onDelete }) => {
             <TableRow key={item.id} hover>
               <TableCell>{item.id}</TableCell>
               <TableCell>{item.nombre}</TableCell>
+              <TableCell>{item.categoria || '-'}</TableCell>
+              <TableCell>{item.almacen || '-'}</TableCell>
               <TableCell className={`quantity-cell ${item.stockStatus || ''}`}>{item.cantidad}</TableCell>
               <TableCell>{item.unidad}</TableCell>
               <TableCell>{item.ultima_fecha || '-'}</TableCell>
               <TableCell align="right">
-                <IconButton aria-label="Editar" onClick={() => onEdit(item)} className="action-button edit-button">
+                {/* Editar stock/unidad del inventario */}
+                <IconButton title="Editar inventario" aria-label="Editar inventario" onClick={() => onEdit?.(item)} className="action-button edit-button">
                   <Edit fontSize="small" />
                 </IconButton>
-                <IconButton aria-label="Eliminar" onClick={() => onDelete(item)} className="action-button delete-button">
+                {/* Eliminar registro de inventario */}
+                <IconButton title="Eliminar inventario" aria-label="Eliminar inventario" onClick={() => onDelete?.(item)} className="action-button delete-button">
                   <Delete fontSize="small" />
                 </IconButton>
               </TableCell>

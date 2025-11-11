@@ -8,9 +8,10 @@ import {
   TextField,
   Typography
 } from '@mui/material';
+import { FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 
-const InventoryItemModal = ({ open, selectedItem, onCancel, onSave }) => {
-  const [form, setForm] = useState({ nombre: '', cantidad: 0, unidad: '', ultima_fecha: '', observacion: '' });
+const InventoryItemModal = ({ open, selectedItem, onCancel, onSave, categorias = [], almacenes = [] }) => {
+  const [form, setForm] = useState({ nombre: '', cantidad: 0, unidad: '', ultima_fecha: '', observacion: '', id_categoria: '', id_almacen: '' });
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -22,9 +23,11 @@ const InventoryItemModal = ({ open, selectedItem, onCancel, onSave }) => {
         unidad: selectedItem.unidad ?? '',
         ultima_fecha: selectedItem.ultima_fecha ?? '',
         observacion: selectedItem.observacion ?? '',
+        id_categoria: '',
+        id_almacen: '',
       });
     } else {
-      setForm({ nombre: '', cantidad: 0, unidad: '', ultima_fecha: '', observacion: '' });
+      setForm({ nombre: '', cantidad: 0, unidad: '', ultima_fecha: '', observacion: '', id_categoria: '', id_almacen: '' });
     }
   }, [open, selectedItem]);
 
@@ -35,7 +38,12 @@ const InventoryItemModal = ({ open, selectedItem, onCancel, onSave }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave?.(form);
+    const payload = {
+      ...form,
+      id_categoria: form.id_categoria ? Number(form.id_categoria) : undefined,
+      id_almacen: form.id_almacen ? Number(form.id_almacen) : undefined,
+    };
+    onSave?.(payload);
   };
 
   return (
@@ -72,15 +80,49 @@ const InventoryItemModal = ({ open, selectedItem, onCancel, onSave }) => {
             inputProps={{ min: 0 }}
           />
 
-          <TextField
-            fullWidth
-            name="unidad"
-            label="Unidad"
-            value={form.unidad}
+        <TextField
+          fullWidth
+          name="unidad"
+          label="Unidad"
+          value={form.unidad}
+          onChange={handleChange}
+          required
+          className="modal-form-field"
+        />
+
+        <FormControl fullWidth className="modal-form-field">
+          <InputLabel id="categoria-label">Categoría</InputLabel>
+          <Select
+            labelId="categoria-label"
+            label="Categoría"
+            name="id_categoria"
+            value={form.id_categoria}
             onChange={handleChange}
             required
-            className="modal-form-field"
-          />
+          >
+            <MenuItem value=""><em>Seleccione categoría</em></MenuItem>
+            {(Array.isArray(categorias?.items) ? categorias.items : categorias).map((c) => (
+              <MenuItem key={c.id} value={c.id}>{c.nombre}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <FormControl fullWidth className="modal-form-field">
+          <InputLabel id="almacen-label">Almacén</InputLabel>
+          <Select
+            labelId="almacen-label"
+            label="Almacén"
+            name="id_almacen"
+            value={form.id_almacen}
+            onChange={handleChange}
+            required
+          >
+            <MenuItem value=""><em>Seleccione almacén</em></MenuItem>
+            {(Array.isArray(almacenes?.items) ? almacenes.items : almacenes).map((a) => (
+              <MenuItem key={a.id} value={a.id}>{a.nombre}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
           <TextField
             type="date"

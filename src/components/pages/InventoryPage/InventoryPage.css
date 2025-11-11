@@ -249,6 +249,28 @@
   border-bottom: 2px solid var(--medium-gray);
 }
 
+/* Section headers for Entradas and Salidas */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid rgba(26, 236, 89, 0.06);
+}
+.section-title {
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+.section-icon {
+  opacity: 0.9;
+}
+.section-title--entrada { color: var(--primary-green); }
+.section-title--salida { color: #dc2626; }
+.section-icon--entrada { color: var(--primary-green); }
+.section-icon--salida { color: #ef4444; }
+
 .inventory-table tbody tr:hover { background: #f8fafc; }
 .inventory-table tbody tr:nth-child(even) { background: #fafafa; } 
 .inventory-table tbody tr:last-child td { border-bottom: none; }

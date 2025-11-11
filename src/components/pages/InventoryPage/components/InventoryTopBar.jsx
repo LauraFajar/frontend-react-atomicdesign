@@ -2,7 +2,10 @@ import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAlert } from '../../../../contexts/AlertContext';
 import insumosService from '../../../../services/insumosService';
+import categoriasService from '../../../../services/categoriasService';
+import almacenesService from '../../../../services/almacenesService';
 import inventoryService from '../../../../services/inventoryService';
+import movimientosService from '../../../../services/movimientosService';
 import InventoryEntryModal from './InventoryEntryModal';
 import InventoryExitModal from './InventoryExitModal';
 import InventoryNewInsumoModal from './InventoryNewInsumoModal';
@@ -42,6 +45,18 @@ const InventoryTopBar = ({
     staleTime: 60 * 1000,
   });
 
+  const { data: categorias = [] } = useQuery({
+    queryKey: ['categorias', 'topbar'],
+    queryFn: () => categoriasService.getCategorias(1, 100),
+    staleTime: 60 * 1000,
+  });
+
+  const { data: almacenes = [] } = useQuery({
+    queryKey: ['almacenes', 'topbar'],
+    queryFn: () => almacenesService.getAlmacenes(1, 100),
+    staleTime: 60 * 1000,
+  });
+
   const items = inventoryData?.items || [];
 
   const stats = useMemo(() => {
@@ -65,14 +80,17 @@ const InventoryTopBar = ({
   };
 
   const createEntradaMutation = useMutation({
-    mutationFn: (payload) => inventoryService.createItem(payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['inventory']);
-      queryClient.invalidateQueries(['inventory', 'topbar']);
+    mutationFn: (payload) => movimientosService.createMovimiento(payload),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries(['movimientos']),
+        queryClient.invalidateQueries(['inventory']),
+        queryClient.invalidateQueries(['inventory', 'topbar']),
+      ]);
       alert.success('Inventario', 'Entrada registrada correctamente');
       setOpenEntrada(false);
     },
-    onError: (e) => alert.error('Error', e.message || 'No se pudo registrar la entrada'),
+    onError: (e) => alert.error('Error', e?.response?.data?.message || e.message || 'No se pudo registrar la entrada'),
   });
 
   const handleGuardarEntrada = (data) => {
@@ -87,11 +105,10 @@ const InventoryTopBar = ({
     }
     const payload = {
       id_insumo: insumoMatch.id,
+      tipo_movimiento: 'Entrada',
       cantidad: 1,
-      unidad: insumoMatch.unidad || 'unidad',
-      ultima_fecha: data.fecha,
-      responsable: data.responsable,
-      observacion: data.observacion,
+      unidad_medida: insumoMatch.unidad || 'unidad',
+      fecha_movimiento: data.fecha,
     };
     createEntradaMutation.mutate(payload);
   };
@@ -114,6 +131,8 @@ const InventoryTopBar = ({
       codigo: data.codigo,
       fecha_entrada: data.fecha_entrada ?? data.fecha,
       observacion: data.observacion,
+      id_categoria: data.id_categoria ?? undefined,
+      id_almacen: data.id_almacen ?? undefined,
     };
     createInsumoMutation.mutate(payload);
   };
@@ -156,6 +175,16 @@ const InventoryTopBar = ({
       ultima_fecha: data.fecha,
     };
     updateSalidaMutation.mutate({ id: itemMatch.id, data: payload });
+
+    // Registrar también el movimiento de salida para que la tabla de movimientos se actualice
+    const movimientoPayload = {
+      id_insumo: itemMatch.insumoId,
+      tipo_movimiento: 'Salida',
+      cantidad,
+      unidad_medida: data.unidad || itemMatch.unidad || 'unidad',
+      fecha_movimiento: data.fecha,
+    };
+    createSalidaMovimientoMutation.mutate(movimientoPayload);
   };
 
   return (
@@ -203,6 +232,8 @@ const InventoryTopBar = ({
       />
       <InventoryNewInsumoModal
         open={openNuevoInsumo}
+        categorias={Array.isArray(categorias?.items) ? categorias.items : (Array.isArray(categorias) ? categorias : [])}
+        almacenes={Array.isArray(almacenes?.items) ? almacenes.items : (Array.isArray(almacenes) ? almacenes : [])}
         onCancel={() => setOpenNuevoInsumo(false)}
         onSave={(data) => {
           handleGuardarNuevoInsumo(data);
@@ -213,3 +244,14 @@ const InventoryTopBar = ({
 };
 
 export default InventoryTopBar;
+  const createSalidaMovimientoMutation = useMutation({
+    mutationFn: (payload) => movimientosService.createMovimiento(payload),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries(['movimientos']),
+        queryClient.invalidateQueries(['inventory', 'topbar']),
+      ]);
+      // No mostramos toast aquí para evitar duplicados; el de inventario ya confirma.
+    },
+    onError: (e) => alert.error('Error', e?.response?.data?.message || e.message || 'No se pudo registrar la salida'),
+  });
