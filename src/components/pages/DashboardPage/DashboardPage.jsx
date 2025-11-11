@@ -13,6 +13,7 @@ import InventoryPage from '../InventoryPage/InventoryPage';
 import AlmacenesPage from '../AlmacenesPage/AlmacenesPage';
 import CategoriasPage from '../CategoriasPage/CategoriasPage';
 import IotPage from '../IotPage/IotPage';
+import ReportesPage from '../ReportesPage/ReportesPage';
 import { useAuth } from '../../../contexts/AuthContext';
 import CultivosMapPage from '../CultivosMapPage/CultivosMapPage';
 import './DashboardPage.css';
@@ -181,6 +182,8 @@ const DashboardPage = () => {
             <p>Control de ingresos, egresos y rentabilidad</p>
           </div>
         );
+      case 'inventario-reportes':
+        return <ReportesPage />;
       case 'inventario':
         return <InventoryPage />;
       case 'almacenes':

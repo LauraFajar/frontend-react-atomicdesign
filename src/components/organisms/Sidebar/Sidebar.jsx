@@ -38,6 +38,7 @@ const Sidebar = ({ activeItem = 'inicio', onItemClick, expandedItems = {}, user 
         submodules: [
           { id: 'inventario-almacenes', label: 'Almacenes', icon: <FiBox size={16} /> },
           { id: 'inventario-categorias', label: 'Categorías', icon: <FiLayers size={16} /> },
+          { id: 'inventario-reportes', label: 'Reportes', icon: <FiActivity size={16} /> },
         ]
       },
       {
