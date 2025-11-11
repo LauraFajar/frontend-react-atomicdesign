@@ -70,7 +70,8 @@ const Sidebar = ({ activeItem = 'inicio', onItemClick, expandedItems = {}, user 
         item.id === 'inicio' || 
         item.id === 'iot' ||
         item.id === 'cultivos' ||
-        item.id === 'fitosanitario'
+        item.id === 'fitosanitario' ||
+        item.id === 'inventario'
       );
     }
 
@@ -80,7 +81,8 @@ const Sidebar = ({ activeItem = 'inicio', onItemClick, expandedItems = {}, user 
         item.id === 'inicio' ||
         item.id === 'iot' ||
         item.id === 'cultivos' ||
-        item.id === 'fitosanitario'
+        item.id === 'fitosanitario' ||
+        item.id === 'inventario'
       );
     }
 

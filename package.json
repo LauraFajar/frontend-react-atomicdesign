@@ -30,7 +30,8 @@
     "react-leaflet": "^4.2.1",
     "react-router-dom": "^6.20.1",
     "react-scripts": "5.0.1",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "xlsx": "^0.18.5"
   },
   "browserslist": {
     "production": [

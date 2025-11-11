@@ -19,7 +19,7 @@ const tipoOptions = [
 ];
 
 const InventoryMovementModal = ({ open, onCancel, onSave, movement }) => {
-  const [form, setForm] = useState({ id_insumo: '', tipo_movimiento: '', cantidad: 0, unidad: '', fecha: '', responsable: '', observacion: '' });
+  const [form, setForm] = useState({ id_insumo: '', tipo_movimiento: '', cantidad: 0, unidad: '', fecha: '' });
   const [insumos, setInsumos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -63,8 +63,6 @@ const InventoryMovementModal = ({ open, onCancel, onSave, movement }) => {
         cantidad: Number(movement.cantidad || 0),
         unidad: movement.unidad_medida || movement.unidad || '',
         fecha: toDateInput(movement.fecha_movimiento || movement.fecha),
-        responsable: movement.responsable || '',
-        observacion: movement.observacion || '',
       });
     } else {
       const today = new Date();
@@ -72,15 +70,13 @@ const InventoryMovementModal = ({ open, onCancel, onSave, movement }) => {
       const mm = String(today.getMonth() + 1).padStart(2, '0');
       const dd = String(today.getDate()).padStart(2, '0');
       const todayStr = `${yyyy}-${mm}-${dd}`;
-      const base = { id_insumo: '', tipo_movimiento: 'entrada', cantidad: 0, unidad: '', fecha: todayStr, responsable: '', observacion: '' };
+      const base = { id_insumo: '', tipo_movimiento: 'entrada', cantidad: 0, unidad: '', fecha: todayStr };
       const prefill = movement ? {
         id_insumo: movement.id_insumo != null ? String(movement.id_insumo) : base.id_insumo,
         tipo_movimiento: movement.tipo_movimiento ? String(movement.tipo_movimiento).toLowerCase() : base.tipo_movimiento,
         cantidad: movement.cantidad != null ? Number(movement.cantidad) : base.cantidad,
         unidad: movement.unidad_medida || movement.unidad || base.unidad,
         fecha: toDateInput(movement.fecha_movimiento || movement.fecha) || base.fecha,
-        responsable: movement.responsable || base.responsable,
-        observacion: movement.observacion || base.observacion,
       } : base;
       setForm(prefill);
     }
@@ -111,8 +107,6 @@ const InventoryMovementModal = ({ open, onCancel, onSave, movement }) => {
       cantidad: Number(form.cantidad),
       unidad_medida: form.unidad,
       fecha_movimiento: form.fecha,
-      responsable: form.responsable,
-      observacion: form.observacion,
     });
   };
 
@@ -187,23 +181,7 @@ const InventoryMovementModal = ({ open, onCancel, onSave, movement }) => {
               className="modal-form-field"
             />
 
-            <TextField
-              label="Responsable"
-              value={form.responsable}
-              onChange={handleChange('responsable')}
-              fullWidth
-              className="modal-form-field"
-            />
 
-            <TextField
-              label="Observación"
-              value={form.observacion}
-              onChange={handleChange('observacion')}
-              fullWidth
-              multiline
-              rows={3}
-              className="modal-form-field"
-            />
           </>
         )}
       </DialogContent>
