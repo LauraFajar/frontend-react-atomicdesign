@@ -50,6 +50,7 @@ const permissionService = {
       try {
         _cachedAllPerms = await permissionService.list();
       } catch (e) {
+        console.warn('[permissionService.getUserKeys] Failed to cache permissions:', e);
       }
     }
 
@@ -103,6 +104,7 @@ const permissionService = {
       try {
         _cachedAllPerms = await permissionService.list();
       } catch (e) {
+        console.warn('[permissionService.getMyKeys] Failed to cache permissions:', e);
       }
     }
 
