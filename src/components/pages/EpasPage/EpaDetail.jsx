@@ -96,7 +96,7 @@ const EpaDetail = ({ open, epa, onClose }) => {
             {epa.imagen_referencia ? (
               <div className="image-container">
                 <img
-                  src={`http://localhost:3001${epa.imagen_referencia}`}
+                  src={epa.imagen_referencia.startsWith('http') ? epa.imagen_referencia : (epa.imagen_referencia.startsWith('/') ? epa.imagen_referencia : `/${epa.imagen_referencia}`)}
                   alt={`Imagen de ${epa.nombre}`}
                   className="detail-image"
                   onError={(e) => {

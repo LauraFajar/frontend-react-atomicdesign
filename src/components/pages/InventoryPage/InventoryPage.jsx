@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, TextField, Typography, CircularProgress } from '@mui/material';
 import { Add, Search as SearchIcon, CompareArrows } from '@mui/icons-material';
 import { useAlert } from '../../../contexts/AlertContext';
+import { useAuth } from '../../../contexts/AuthContext';
 import InventoryTable from './components/InventoryTable';
 import InventoryItemModal from './components/InventoryItemModal';
 import InventoryMovementModal from './components/InventoryMovementModal';
@@ -13,6 +14,7 @@ import movimientosService from '../../../services/movimientosService';
 import './InventoryPage.css';
 
 const InventoryPage = () => {
+  const { user, hasAnyPermission, permissions, refreshPermissions } = useAuth();
   const [selectedItem, setSelectedItem] = useState(null);
   const [openItemModal, setOpenItemModal] = useState(false);
   const [openConfirmModal, setOpenConfirmModal] = useState(false);
@@ -22,16 +24,44 @@ const InventoryPage = () => {
   const alert = useAlert();
   const queryClient = useQueryClient();
 
+  const isAdmin = user?.role === 'administrador' || user?.roleId === 4;
+  const isInstructor = user?.role === 'instructor' || user?.roleId === 1;
+  const permisosVer = ['inventario:ver','insumos:ver','inventario:listar'];
+  const permisosCrear = ['inventario:crear','insumos:crear'];
+  const permisosEditar = ['inventario:editar','insumos:editar'];
+  const permisosEliminar = ['inventario:eliminar','insumos:eliminar'];
+  const permisosMovimientos = ['inventario:movimientos','movimientos:crear','inventario:entrada','inventario:salida'];
+
+  const canView = isAdmin || isInstructor || hasAnyPermission(permisosVer);
+  const canCreate = isAdmin || hasAnyPermission(permisosCrear);
+  const canEdit = isAdmin || hasAnyPermission(permisosEditar);
+  const canDelete = isAdmin || hasAnyPermission(permisosEliminar);
+  const canMovements = isAdmin || hasAnyPermission(permisosMovimientos);
+
+  useEffect(() => {
+    if (user?.id) {
+      refreshPermissions(user.id);
+    }
+  }, []);
+
+  useEffect(() => {
+    console.log('[InventoryPage] user:', user);
+    console.log('[InventoryPage] permissions:', permissions);
+    console.log('[InventoryPage] flags:', { canView, canCreate, canEdit, canDelete, canMovements, isAdmin, isInstructor });
+  }, [user, permissions, canView, canCreate, canEdit, canDelete, canMovements, isAdmin, isInstructor]);
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ['inventory'],
     queryFn: () => inventoryService.getItems(1, 10),
     keepPreviousData: true,
+    enabled: canView,
   });
 
   const { data: movimientosData, isError: movimientosError } = useQuery({
     queryKey: ['movimientos'],
     queryFn: () => movimientosService.getMovimientos({}, 1, 100),
     retry: 0,
+    enabled: canView,
   });
 
   const items = data?.items || [];
@@ -188,6 +218,14 @@ const InventoryPage = () => {
     setOpenMovementModal(false);
   };
 
+  if (!canView) {
+    return (
+      <div className="loading-container">
+        <Typography color="error">No tienes permisos para ver Inventario.</Typography>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="loading-container">
@@ -212,6 +250,7 @@ const InventoryPage = () => {
               startIcon={<Add />}
               onClick={handleNuevoInsumo}
               className="new-inventory-button"
+              disabled={!canCreate}
             >
               Nuevo Insumo
             </Button>
@@ -220,6 +259,7 @@ const InventoryPage = () => {
               startIcon={<CompareArrows />}
               onClick={handleNuevoMovimiento}
               className="new-movement-button"
+              disabled={!canMovements}
             >
               Nuevo Movimiento
             </Button>
@@ -242,8 +282,8 @@ const InventoryPage = () => {
 
         <InventoryTable
           items={displayItems}
-          onEdit={(item) => { setSelectedItem(item); setOpenItemModal(true); }}
-          onDelete={handleOpenConfirmDelete}
+          onEdit={canEdit ? ((item) => { setSelectedItem(item); setOpenItemModal(true); }) : undefined}
+          onDelete={canDelete ? handleOpenConfirmDelete : undefined}
         />
 
         <InventoryItemModal

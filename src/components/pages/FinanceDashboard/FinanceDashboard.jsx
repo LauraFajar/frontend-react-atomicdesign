@@ -6,6 +6,7 @@ import dayjs from 'dayjs';
 import financeService from '../../../services/financeService';
 import cropService from '../../../services/cropService';
 import './FinanceDashboard.css';
+import { useAuth } from '../../../contexts/AuthContext';
 import {
   ResponsiveContainer,
   LineChart,
@@ -43,6 +44,17 @@ const FinanceDashboard = () => {
   const [criterio, setCriterio] = useState('bc');
   const [umbral, setUmbral] = useState(1);
   const [tab, setTab] = useState(0);
+
+  const { hasAnyPermission } = useAuth();
+  const canExport = hasAnyPermission(['finanzas:*','finanzas:exportar']);
+
+  useEffect(() => {
+    try {
+      console.debug('[FinanceDashboard] permissions check', { canExport });
+    } catch (e) {
+      console.warn('[FinanceDashboard] debug log failed', e)
+    }
+  }, [canExport]);
 
   const { data: cropsData = { items: [] } } = useQuery({
     queryKey: ['crops', 1, 100],
@@ -569,10 +581,15 @@ const FinanceDashboard = () => {
                   backgroundColor: 'var(--primary-green)',
                   color: '#fff',
                   '&:hover': { backgroundColor: 'var(--primary-green)' }
-                }} disabled={!cultivoId} onClick={() => handleExport('excel')}>Exportar Excel</Button>
-                <Button size="small" variant="contained" color="primary" disabled={!cultivoId} onClick={() => handleExport('pdf')}>Exportar PDF</Button>
+                }} disabled={!cultivoId || !canExport} onClick={() => handleExport('excel')}>Exportar Excel</Button>
+                <Button size="small" variant="contained" color="primary" disabled={!cultivoId || !canExport} onClick={() => handleExport('pdf')}>Exportar PDF</Button>
                 
               </Box>
+              {!canExport && (
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+                  No tienes permiso para exportar datos financieros.
+                </Typography>
+              )}
               <Divider sx={{ my: 1 }} />
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                 Vista previa (primeras 4 filas)

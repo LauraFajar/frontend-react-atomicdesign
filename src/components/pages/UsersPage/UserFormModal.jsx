@@ -22,6 +22,16 @@ const documentTypeOptions = [
   { value: 'PAS', label: 'Pasaporte' }
 ];
 
+const normalizeTipoDocumento = (val) => {
+  if (!val && val !== '') return 'CC';
+  const v = String(val).toUpperCase().replace(/\./g, '').trim();
+  if (v === 'CC' || v === 'C' || v === 'CEDULA' || v === 'CEDULADECIUDADANIA') return 'CC';
+  if (v === 'CE' || v === 'CEX' || v === 'CEDULAEXTRANJERIA') return 'CE';
+  if (v === 'TI' || v === 'TARJETA' || v === 'TARJETADEIDENTIDAD') return 'TI';
+  if (v === 'PAS' || v === 'PASAPORTE') return 'PAS';
+  return 'CC';
+};
+
 const UserFormModal = ({ open, onClose, onSave, user, roles }) => {
   const [formData, setFormData] = useState({
     nombres: '',
@@ -36,12 +46,13 @@ const UserFormModal = ({ open, onClose, onSave, user, roles }) => {
 
   useEffect(() => {
     if (user) {
+      const roleExists = Array.isArray(roles) && roles.some(r => String(r.id_rol) === String(user.id_rol));
       setFormData({
         nombres: user.nombres || '',
         email: user.email || '',
-        tipo_documento: user.tipo_documento || 'CC',
+        tipo_documento: normalizeTipoDocumento(user.tipo_documento || 'CC'),
         numero_documento: user.numero_documento || '',
-        id_rol: user.id_rol || '',
+        id_rol: roleExists ? String(user.id_rol) : '',
         password: '' 
       });
     } else {
@@ -55,7 +66,7 @@ const UserFormModal = ({ open, onClose, onSave, user, roles }) => {
       });
     }
     setErrors({});
-  }, [user, open]);
+  }, [user, open, roles]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -124,7 +135,7 @@ const UserFormModal = ({ open, onClose, onSave, user, roles }) => {
         formattedData = {
           nombres: formData.nombres?.toString().trim(),
           email: formData.email?.toString().trim(),
-          tipo_documento: formData.tipo_documento,
+          tipo_documento: normalizeTipoDocumento(formData.tipo_documento),
           numero_documento: formData.numero_documento?.toString().trim(),
           id_rol: formData.id_rol ? parseInt(formData.id_rol, 10) : null
         };
@@ -136,7 +147,7 @@ const UserFormModal = ({ open, onClose, onSave, user, roles }) => {
         formattedData = {
           nombres: formData.nombres?.toString().trim(),
           email: formData.email?.toString().trim(),
-          tipo_documento: formData.tipo_documento,
+          tipo_documento: normalizeTipoDocumento(formData.tipo_documento),
           numero_documento: formData.numero_documento?.toString().trim(),
           id_rol: formData.id_rol ? parseInt(formData.id_rol, 10) : null,
           password: formData.password
@@ -275,7 +286,7 @@ const UserFormModal = ({ open, onClose, onSave, user, roles }) => {
               label="Rol"
             >
               {roles.map(role => (
-                <MenuItem key={role.id_rol} value={role.id_rol}>
+                <MenuItem key={role.id_rol} value={String(role.id_rol)}>
                   {role.nombre_rol}
                 </MenuItem>
               ))}

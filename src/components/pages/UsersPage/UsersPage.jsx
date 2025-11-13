@@ -4,10 +4,11 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { useAlert } from '../../../contexts/AlertContext';
 import userService from '../../../services/userService';
 import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, IconButton, Chip, CircularProgress, Pagination } from '@mui/material';
-import { Add, Edit, Delete, Search } from '@mui/icons-material';
+import { Add, Edit, Delete, Search, VpnKey } from '@mui/icons-material';
 import UserFormModal from './UserFormModal';
 import ConfirmModal from '../../molecules/ConfirmModal/ConfirmModal';
 import './UsersPage.css';
+import PermissionsModal from './PermissionsModal';
 
 const roleConfig = {
   1: { label: 'Instructor', color: '#1976d2', bgColor: '#e3f2fd' },
@@ -18,7 +19,7 @@ const roleConfig = {
 };
 
 const UsersPage = () => {
-  const { user } = useAuth();
+  const { user, hasPermission, hasAnyPermission } = useAuth();
   const queryClient = useQueryClient();
   const alert = useAlert();
 
@@ -28,12 +29,13 @@ const UsersPage = () => {
   const [openConfirmModal, setOpenConfirmModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [userToDelete, setUserToDelete] = useState(null);
+  const [openPermsModal, setOpenPermsModal] = useState(false);
 
-  const isAdmin = user?.role === 'administrador';
-  const canView = isAdmin;
-  const canCreate = isAdmin;
-  const canEdit = isAdmin;
-  const canDelete = isAdmin;
+  const isAdmin = user?.role === 'administrador' || user?.roleId === 4;
+  const canView = isAdmin || hasAnyPermission(['usuarios:ver','usuario:ver','usuarios:listar']);
+  const canCreate = isAdmin || hasAnyPermission(['usuarios:crear','usuario:crear']);
+  const canEdit = isAdmin || hasAnyPermission(['usuarios:editar','usuario:editar']);
+  const canDelete = isAdmin || hasAnyPermission(['usuarios:eliminar','usuario:eliminar']);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['users', page],
@@ -114,6 +116,16 @@ const UsersPage = () => {
   const handleOpenModal = (userData = null) => {
     setSelectedUser(userData);
     setOpenModal(true);
+  };
+
+  const openPermissionsModal = (userData) => {
+    setSelectedUser(userData);
+    setOpenPermsModal(true);
+  };
+
+  const closePermissionsModal = () => {
+    setOpenPermsModal(false);
+    setSelectedUser(null);
   };
 
   const handleCloseModal = () => {
@@ -262,6 +274,16 @@ const UsersPage = () => {
                           <Edit />
                         </IconButton>
                       )}
+                      {canEdit && (
+                        <IconButton
+                          onClick={() => openPermissionsModal(userData)}
+                          className="action-button perms-button"
+                          size="small"
+                          title="Permisos"
+                        >
+                          <VpnKey />
+                        </IconButton>
+                      )}
                       {canDelete && (
                         <IconButton
                           onClick={() => openDeleteConfirm(userData)}
@@ -305,6 +327,12 @@ const UsersPage = () => {
         onSave={handleSaveUser}
         user={selectedUser}
         roles={roles}
+      />
+
+      <PermissionsModal
+        open={openPermsModal}
+        onClose={closePermissionsModal}
+        user={selectedUser}
       />
 
       <ConfirmModal

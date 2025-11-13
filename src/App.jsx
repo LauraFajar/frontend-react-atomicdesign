@@ -20,8 +20,10 @@ import InventoryPage from './components/pages/InventoryPage/InventoryPage';
 import FinanceDashboard from './components/pages/FinanceDashboard/FinanceDashboard';
 
 const ProtectedRoute = ({ children, allowGuest = false }) => {
-  const { isAuthenticated, loading, user } = useAuth()
+  const { isAuthenticated, loading, user, permissions } = useAuth()
   const isGuest = user?.role === 'invitado' || user?.roleId === 5
+  const permsReady = Array.isArray(permissions)
+  const hasSomePermission = permsReady && permissions.length > 0
 
   if (loading) {
     return <div>Cargando...</div>;
@@ -32,7 +34,12 @@ const ProtectedRoute = ({ children, allowGuest = false }) => {
   }
 
   if (!allowGuest && isGuest) {
-    return <Navigate to="/acceso-restringido" replace />
+    if (!permsReady) {
+      return <div>Cargando...</div>
+    }
+    if (!hasSomePermission) {
+      return <Navigate to="/acceso-restringido" replace />
+    }
   }
 
   return children

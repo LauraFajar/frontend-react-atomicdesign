@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useAlert } from '../../../contexts/AlertContext';
@@ -10,7 +10,7 @@ import ConfirmModal from '../../molecules/ConfirmModal/ConfirmModal';
 import './LotsPage.css';
 
 const LotsPage = () => {
-  const { user } = useAuth();
+  const { user, hasAnyPermission, permissions, refreshPermissions } = useAuth();
   const queryClient = useQueryClient();
   const alert = useAlert();
 
@@ -20,15 +20,34 @@ const LotsPage = () => {
   const [selectedLot, setSelectedLot] = useState(null);
   const [lotToDelete, setLotToDelete] = useState(null);
 
-  const isAdmin = user?.role === 'administrador';
-  const isInstructor = user?.role === 'instructor';
-  const canCreate = isAdmin || isInstructor;
-  const canEdit = isAdmin || isInstructor;
-  const canDelete = isAdmin;
+  const isAdmin = user?.role === 'administrador' || user?.roleId === 4;
+  const isInstructor = user?.role === 'instructor' || user?.roleId === 1;
+  const permisosVer = ['lotes:ver','lote:ver','lotes:listar'];
+  const permisosCrear = ['lotes:crear','lote:crear'];
+  const permisosEditar = ['lotes:editar','lote:editar'];
+  const permisosEliminar = ['lotes:eliminar','lote:eliminar'];
+
+  const canView = isAdmin || isInstructor || hasAnyPermission(permisosVer);
+  const canCreate = isAdmin || hasAnyPermission(permisosCrear);
+  const canEdit = isAdmin || hasAnyPermission(permisosEditar);
+  const canDelete = isAdmin || hasAnyPermission(permisosEliminar);
+
+  useEffect(() => {
+    if (user?.id) {
+      refreshPermissions(user.id);
+    }
+  }, []);
+
+  useEffect(() => {
+    console.log('[LotsPage] user:', user);
+    console.log('[LotsPage] permissions:', permissions);
+    console.log('[LotsPage] flags:', { canView, canCreate, canEdit, canDelete, isAdmin, isInstructor });
+  }, [user, permissions, canView, canCreate, canEdit, canDelete, isAdmin, isInstructor]);
 
   const { data: lots = [], isLoading, isError, error } = useQuery({
     queryKey: ['lots'],
     queryFn: lotService.getLots,
+    enabled: canView,
     onError: (err) => {
       alert.error('Error de Carga', err.message || 'No se pudieron cargar los lotes.');
     }
@@ -116,6 +135,14 @@ const LotsPage = () => {
     setLotToDelete(lot);
     setOpenConfirmModal(true);
   };
+
+  if (!canView) {
+    return (
+      <div className="loading-container">
+        <Typography variant="h6" color="error">No tienes permisos para ver Lotes.</Typography>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

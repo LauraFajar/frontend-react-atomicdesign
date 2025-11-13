@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import Cookies from 'js-cookie';
 import config from '../config/environment';
+import permissionService from '../services/permissionService';
 
 const AuthContext = createContext()
 
@@ -120,7 +121,7 @@ const normalizeUser = (rawUser) => {
   const roleLabel = ROLE_ID_MAP[roleId] || formatRoleLabel(role)
 
   return {
-    id: rawUser.id || rawUser.id_usuarios || null,
+    id: rawUser.id || rawUser.id_usuarios || rawUser.id_usuario || rawUser.idUsuarios || rawUser.idUsuario || null,
     nombres: rawUser.nombres || rawUser.nombre || '',
     email: rawUser.email || rawUser.correo || '',
     imagen_url: rawUser.imagen_url || '',
@@ -143,35 +144,150 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [permissions, setPermissions] = useState(null)
+
+  const normalizeKey = (k) => {
+    const s = (k || '').toString().trim().toLowerCase()
+    if (!s) return ''
+    let n = s.replace(/[._]/g, ':')
+    n = n.replace(/:+/g, ':')
+    n = n.replace(/:\*+/g, ':*')
+    n = n.endsWith(':') ? n.slice(0, -1) : n
+    return n
+  }
+
+  const canonicalAction = (a) => {
+    const s = (a || '').toString().trim().toLowerCase()
+    if (!s) return ''
+    if (['ver', 'listar', 'read', 'list', 'view'].includes(s)) return 'read'
+    if (['crear', 'create', 'new', 'add'].includes(s)) return 'create'
+    if (['editar', 'update', 'edit', 'modificar'].includes(s)) return 'update'
+    if (['eliminar', 'delete', 'remove', 'borrar'].includes(s)) return 'delete'
+    if (['exportar', 'export', 'descargar', 'download', 'exportar_excel', 'exportar_pdf', 'export_excel', 'export_pdf'].includes(s)) return 'export'
+    return s
+  }
+
+  const hasPermission = (keyOrResource, action) => {
+    const roleId = user?.roleId
+    const role = user?.role
+    if (roleId === 4 || role === 'administrador') return true
+    const key = normalizeKey(action ? `${keyOrResource}:${action}` : keyOrResource)
+    const normalizedPerms = Array.isArray(permissions) ? permissions.map(p => normalizeKey(p)) : []
+    const set = new Set(normalizedPerms)
+    if (key.includes(':')) {
+      const [res, act] = key.split(':')
+      const canon = canonicalAction(act)
+      return set.has(key) || set.has(`${res}:${canon}`) || set.has(`${res}:*`)
+    }
+    return normalizedPerms.some(p => p.startsWith(`${key}:`))
+  }
+
+  const hasAnyPermission = (keys) => {
+    const roleId = user?.roleId
+    const role = user?.role
+    if (roleId === 4 || role === 'administrador') return true
+    if (!Array.isArray(keys) || !keys.length) return false
+    const normalizedPerms = Array.isArray(permissions) ? permissions.map(p => normalizeKey(p)) : []
+    const set = new Set(normalizedPerms)
+    const hasResourcePrefix = (resource) => normalizedPerms.some(p => p.startsWith(`${resource}:`))
+    const result = keys.some(k => {
+      const nk = normalizeKey(k)
+      if (!nk) return false
+      if (nk.includes(':*')) {
+        const resource = nk.split(':')[0]
+        return hasResourcePrefix(resource)
+      }
+      if (nk.includes(':')) {
+        const [res, act] = nk.split(':')
+        const canon = canonicalAction(act)
+        return set.has(nk) || set.has(`${res}:${canon}`) || set.has(`${res}:*`)
+      }
+      return hasResourcePrefix(nk)
+    })
+
+    try {
+      console.debug('[AuthContext] hasAnyPermission', { keys, normalizedPerms, result })
+    } catch (e) {
+      console.warn('[AuthContext] hasAnyPermission debug log failed', e)
+    }
+
+    return result
+  }
+
+  const loadPermissions = async (userId) => {
+    try {
+      const currentId = userId || user?.id
+      if (!currentId) return
+
+      let keys = []
+      try {
+        keys = await permissionService.getMyKeys()
+      } catch (errMe) {
+        const statusMe = errMe?.response?.status
+        console.warn('[AuthContext] getMyKeys falló con status:', statusMe)
+        const isAdmin = user?.role === 'administrador' || user?.roleId === 4
+        if (isAdmin && currentId) {
+          console.warn('[AuthContext] usuario admin: intentando cargar permisos vía /permisos/usuario/:id', currentId)
+          keys = await permissionService.getUserKeys(currentId)
+        } else {
+          console.warn('[AuthContext] no-admin: omito fallback /:id, estableciendo permisos vacíos')
+          keys = []
+        }
+      }
+
+      const normalized = Array.isArray(keys)
+        ? keys.filter(Boolean).map(k => normalizeKey(k))
+        : []
+      setPermissions(normalized)
+      console.log('[AuthContext] permisos cargados (me/id:', currentId, '):', normalized)
+    } catch (e) {
+      console.warn('[AuthContext] Unable to load permissions', e)
+      setPermissions([])
+    }
+  }
+
+  const refreshPermissions = async (userId) => {
+    await loadPermissions(userId || user?.id)
+  }
 
   useEffect(() => {
-    const token = Cookies.get('token');
-    const storedUser = Cookies.get('user');
+    (async () => {
+      const token = Cookies.get('token');
+      const storedUser = Cookies.get('user');
 
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setIsAuthenticated(true);
-      console.log('[AuthContext] token found in cookies');
-    }
-
-    if (storedUser) {
-      try {
-        const parsed = JSON.parse(storedUser);
-        const normalizedFromStorage = parsed?.raw
-          ? normalizeUser(parsed.raw)
-          : normalizeUser(parsed);
-        setUser(normalizedFromStorage);
-        console.log('[AuthContext] user loaded from cookies:', normalizedFromStorage);
-      } catch (e) {
-        console.error('Error parsing stored user:', e);
-        Cookies.remove('user');
+      if (token) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        setIsAuthenticated(true);
+        console.log('[AuthContext] token found in cookies');
       }
-    } else {
-      console.log('[AuthContext] no user in cookies');
-    }
 
-    setLoading(false);
-  }, []);
+      if (storedUser) {
+        try {
+          const parsed = JSON.parse(storedUser);
+          const normalizedFromStorage = parsed?.raw
+            ? normalizeUser(parsed.raw)
+            : normalizeUser(parsed);
+          setUser(normalizedFromStorage);
+          console.log('[AuthContext] user loaded from cookies:', normalizedFromStorage);
+          if (token && normalizedFromStorage?.id) {
+            await loadPermissions(normalizedFromStorage.id)
+          } else {
+            console.log('[AuthContext] skip loadPermissions: missing token or user id')
+            setPermissions([])
+          }
+        } catch (e) {
+          console.error('Error parsing stored user:', e);
+          Cookies.remove('user');
+          setPermissions([])
+        }
+      } else {
+        console.log('[AuthContext] no user in cookies');
+        setPermissions([])
+      }
+
+      setLoading(false);
+    })()
+  }, [])
 
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
@@ -195,18 +311,28 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     try {
-      const response = await axios.post('/auth/login', credentials)
+      const payload = {
+        password: credentials?.password
+      }
+      if (credentials?.email) payload.email = credentials.email
+      if (credentials?.numero_documento) payload.numero_documento = credentials.numero_documento
+
+      const response = await axios.post('/auth/login', payload)
       const { access_token, user: responseUser } = response.data
 
       // Guardar token y usuario en cookies
-      Cookies.set('token', access_token, { expires: 7, secure: true, sameSite: 'strict' });
+      const cookieOptions = { expires: 7, secure: config.isProduction(), sameSite: 'lax' };
+      Cookies.set('token', access_token, cookieOptions);
       axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
 
       const normalizedUser = normalizeUser(responseUser);
-      Cookies.set('user', JSON.stringify(normalizedUser), { expires: 7, secure: true, sameSite: 'strict' });
+      Cookies.set('user', JSON.stringify(normalizedUser), cookieOptions);
       setUser(normalizedUser);
       console.log('[AuthContext] login successful, user set:', normalizedUser)
       setIsAuthenticated(true)
+
+      // Cargar permisos tras login
+      await loadPermissions(normalizedUser?.id)
 
       return { success: true }
     } catch (error) {
@@ -218,7 +344,7 @@ export const AuthProvider = ({ children }) => {
 
       return {
         success: false,
-        message: error.response?.data?.message || 'Error al iniciar sesión'
+        message: error.response?.data?.message || (!error.response ? 'Servidor no disponible. Verifica que la API esté ejecutándose en http://localhost:3001' : 'Error al iniciar sesión')
       }
     }
   }
@@ -247,7 +373,8 @@ export const AuthProvider = ({ children }) => {
   const updateUser = (updatedUser) => {
     const normalizedUser = normalizeUser(updatedUser);
     setUser(normalizedUser);
-    Cookies.set('user', JSON.stringify(normalizedUser), { expires: 7, secure: true, sameSite: 'strict' });
+    const cookieOptions = { expires: 7, secure: config.isProduction(), sameSite: 'lax' };
+    Cookies.set('user', JSON.stringify(normalizedUser), cookieOptions);
     console.log('[AuthContext] user updated:', normalizedUser);
   };
 
@@ -258,7 +385,11 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     register,
-    updateUser
+    updateUser,
+    permissions,
+    hasPermission,
+    hasAnyPermission,
+    refreshPermissions
   }
 
   return (

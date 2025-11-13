@@ -29,7 +29,7 @@ const statusConfig = {
 };
 
 const CropsPage = () => {
-  const { user } = useAuth();
+  const { user, hasAnyPermission } = useAuth();
   const queryClient = useQueryClient();
   const alert = useAlert();
 
@@ -40,16 +40,23 @@ const CropsPage = () => {
   const [selectedCrop, setSelectedCrop] = useState(null);
   const [cropToDelete, setCropToDelete] = useState(null);
 
-  const isAdmin = user?.role === 'administrador';
-  const isInstructor = user?.role === 'instructor';
-  const canCreate = isAdmin || isInstructor;
-  const canEdit = isAdmin || isInstructor;
-  const canDelete = isAdmin;
+  const isAdmin = user?.role === 'administrador' || user?.roleId === 4;
+  const isInstructor = user?.role === 'instructor' || user?.roleId === 1;
+  const permisosVer = ['cultivos:ver','cultivo:ver','cultivos:listar'];
+  const permisosCrear = ['cultivos:crear','cultivo:crear'];
+  const permisosEditar = ['cultivos:editar','cultivo:editar'];
+  const permisosEliminar = ['cultivos:eliminar','cultivo:eliminar'];
+
+  const canView = isAdmin || isInstructor || hasAnyPermission(permisosVer);
+  const canCreate = isAdmin || hasAnyPermission(permisosCrear);
+  const canEdit = isAdmin || hasAnyPermission(permisosEditar);
+  const canDelete = isAdmin || hasAnyPermission(permisosEliminar);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['crops', page],
     queryFn: () => cropService.getCrops(page, 10),
     keepPreviousData: true,
+    enabled: canView,
   });
 
   const crops = data?.items || [];
@@ -146,6 +153,16 @@ const CropsPage = () => {
     if (!dateString) return 'No definida';
     return new Date(dateString).toLocaleDateString();
   };
+
+  if (!canView) {
+    return (
+      <div className="dashboard-content">
+        <div className="loading-container">
+          <Typography variant="h5" color="error">No tienes permisos para ver Cultivos.</Typography>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

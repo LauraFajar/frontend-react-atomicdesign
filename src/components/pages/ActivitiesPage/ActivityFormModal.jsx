@@ -210,7 +210,7 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
               </MenuItem>
               {crops.map(crop => (
                 <MenuItem key={crop.id} value={crop.id}>
-                  {crop.tipo_cultivo}
+                  {crop.displayName || crop.nombre_cultivo || crop.tipo_cultivo}
                 </MenuItem>
               ))}
             </Select>
@@ -288,7 +288,7 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
                   {photos.map((photo) => (
                     <Box key={photo.id_foto} sx={{ border: '1px solid #ddd', borderRadius: '8px', p: 2 }}>
                       <img 
-                        src={`${process.env.REACT_APP_API_URL}/${photo.ruta_foto}`}
+                        src={`/${photo.ruta_foto?.startsWith('/') ? photo.ruta_foto.substring(1) : photo.ruta_foto}`}
                         alt={photo.descripcion}
                         style={{ width: '100%', maxHeight: '300px', objectFit: 'cover', borderRadius: '4px' }}
                       />

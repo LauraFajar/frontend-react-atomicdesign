@@ -2,8 +2,10 @@ import React from 'react'
 import { FiHome, FiZap, FiPackage, FiDroplet, FiDollarSign, FiBox, FiActivity, FiChevronDown, FiChevronRight, FiCalendar, FiMapPin, FiUsers, FiLayers, FiShield, FiMap } from 'react-icons/fi';
 import { Link } from 'react-router-dom'
 import './Sidebar.css'
+import { useAuth } from '../../../contexts/AuthContext'
 
 const Sidebar = ({ activeItem = 'inicio', onItemClick, expandedItems = {}, user }) => {
+  const { hasPermission, hasAnyPermission } = useAuth();
   const getFilteredMenuItems = () => {
     const allMenuItems = [
       { id: 'inicio', label: 'Inicio', icon: <FiHome size={20} /> },
@@ -63,7 +65,12 @@ const Sidebar = ({ activeItem = 'inicio', onItemClick, expandedItems = {}, user 
         item.id === 'inicio' || 
         item.id === 'iot' ||
         item.id === 'cultivos' ||
-        item.id === 'fitosanitario'
+        item.id === 'fitosanitario' ||
+        // Mostrar Finanzas si el usuario tiene permisos explícitos sobre finanzas
+        (item.id === 'finanzas' && hasAnyPermission([
+          'finanzas:*','finanzas:ver','finanzas:listar','finanzas:exportar'
+        ])) ||
+        (item.id === 'usuarios' && hasAnyPermission(['usuarios:ver','usuario:ver','usuarios:listar']))
       );
     }
 
@@ -73,12 +80,24 @@ const Sidebar = ({ activeItem = 'inicio', onItemClick, expandedItems = {}, user 
         item.id === 'inicio' ||
         item.id === 'iot' ||
         item.id === 'cultivos' ||
-        item.id === 'fitosanitario'
+        item.id === 'fitosanitario' ||
+        (item.id === 'finanzas' && hasAnyPermission([
+          'finanzas:*','finanzas:ver','finanzas:listar','finanzas:exportar'
+        ])) ||
+        (item.id === 'usuarios' && hasAnyPermission(['usuarios:ver','usuario:ver','usuarios:listar']))
       );
     }
 
-    console.log('[Sidebar] Admin/Instructor user, showing all modules');
-    return allMenuItems.filter(item => !item.adminOnly || roleId === 4 || userRole === 'administrador');
+    console.log('[Sidebar] Admin/Instructor user, showing modules with permissions');
+    return allMenuItems.filter(item =>
+      !item.adminOnly ||
+      roleId === 4 ||
+      userRole === 'administrador' ||
+      (item.id === 'usuarios' && hasAnyPermission([
+        'usuarios:*','usuario:*',
+        'usuarios:ver','usuario:ver','usuarios:listar'
+      ]))
+    );
   };
 
   const menuItems = getFilteredMenuItems();

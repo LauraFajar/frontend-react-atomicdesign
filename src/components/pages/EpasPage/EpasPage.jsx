@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useAlert } from '../../../contexts/AlertContext';
@@ -41,7 +41,7 @@ const typeConfig = {
 };
 
 const EpasPage = () => {
-  const { user } = useAuth();
+  const { user, permissions, hasAnyPermission, refreshPermissions } = useAuth();
   const queryClient = useQueryClient();
   const alert = useAlert();
 
@@ -55,16 +55,49 @@ const EpasPage = () => {
   const [epaToChangeStatus, setEpaToChangeStatus] = useState(null);
   const [epaToDelete, setEpaToDelete] = useState(null);
 
-  const isAdmin = user?.role === 'administrador';
-  const isInstructor = user?.role === 'instructor';
-  const canCreate = isAdmin || isInstructor;
-  const canEdit = isAdmin || isInstructor;
-  const canChangeStatus = isAdmin || isInstructor;
+  const isAdmin = user?.role === 'administrador' || user?.roleId === 4;
+  const isInstructor = user?.role === 'instructor' || user?.roleId === 1;
+  const permisosVer = ['epas:ver','epa:ver','epas:listar'];
+  const permisosCrear = ['epas:crear','epa:crear'];
+  const permisosEditar = ['epas:editar','epa:editar'];
+  const permisosEliminar = ['epas:eliminar','epa:eliminar'];
+  const permisosEstado = ['epas:estado','epa:estado','epas:editar','epa:editar'];
+
+  const canView = isAdmin || isInstructor || hasAnyPermission(permisosVer);
+  const canCreate = isAdmin || isInstructor || hasAnyPermission(permisosCrear);
+  const canEdit = isAdmin || isInstructor || hasAnyPermission(permisosEditar);
+  const canDelete = isAdmin || hasAnyPermission(permisosEliminar);
+  const canChangeStatus = isAdmin || isInstructor || hasAnyPermission(permisosEstado);
+
+  useEffect(() => {
+    if (user?.id && (!Array.isArray(permissions) || permissions.length === 0)) {
+      refreshPermissions(user.id);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      console.log('[EpasPage] user:', user);
+      console.log('[EpasPage] permissions:', permissions);
+      console.log('[EpasPage] flags:', {
+        isAdmin,
+        isInstructor,
+        canView,
+        canCreate,
+        canEdit,
+        canDelete,
+        canChangeStatus,
+      });
+    } catch (e) {
+      console.warn('[EpasPage] error logging flags', e);
+    }
+  }, [user, permissions, isAdmin, isInstructor, canView, canCreate, canEdit, canDelete, canChangeStatus]);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['epas', page],
     queryFn: () => epaService.getEpas(page, 10),
     keepPreviousData: true,
+    enabled: canView,
     onError: (err) => {
       alert.error('Error de Carga', err.message || 'No se pudieron cargar las EPAs.');
     }
@@ -207,6 +240,16 @@ const EpasPage = () => {
     updateStatusMutation.mutate({ id: epa.id, data: { estado: newStatus } });
   };
 
+  if (!canView) {
+    return (
+      <div className="dashboard-content">
+        <div className="loading-container">
+          <Typography variant="h6" color="error">No tienes permisos para ver EPAs.</Typography>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="dashboard-content">
@@ -288,7 +331,8 @@ const EpasPage = () => {
                             <Switch
                               checked={epa.estado === 'activo'}
                               color="success"
-                              onChange={(e) => handleToggleStatus(epa, e.target.checked)}
+                              onChange={(e) => canChangeStatus && handleToggleStatus(epa, e.target.checked)}
+                              disabled={!canChangeStatus}
                               inputProps={{ 'aria-label': 'Estado EPA' }}
                             />
                             <Typography variant="body2" color={epa.estado === 'activo' ? 'success.main' : 'text.secondary'}>
@@ -313,13 +357,15 @@ const EpasPage = () => {
                               <Edit />
                             </IconButton>
                           )}
-                          <IconButton
-                            onClick={() => openDeleteConfirm(epa)}
-                            className="action-button delete-button"
-                            title="Eliminar"
-                          >
-                            <Delete style={{ color: '#d32f2f' }} />
-                          </IconButton>
+                          {canDelete && (
+                            <IconButton
+                              onClick={() => openDeleteConfirm(epa)}
+                              className="action-button delete-button"
+                              title="Eliminar"
+                            >
+                              <Delete style={{ color: '#d32f2f' }} />
+                            </IconButton>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))

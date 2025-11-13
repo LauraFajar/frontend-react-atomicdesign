@@ -34,12 +34,16 @@ const InventoryTable = ({ items, onEdit, onDelete }) => {
               <TableCell>{item.unidad}</TableCell>
               <TableCell>{item.ultima_fecha || '-'}</TableCell>
               <TableCell align="right">
-                <IconButton aria-label="Editar" onClick={() => onEdit(item)} className="action-button edit-button">
-                  <Edit fontSize="small" />
-                </IconButton>
-                <IconButton aria-label="Eliminar" onClick={() => onDelete(item)} className="action-button delete-button">
-                  <Delete fontSize="small" />
-                </IconButton>
+                {typeof onEdit === 'function' && (
+                  <IconButton aria-label="Editar" onClick={() => onEdit(item)} className="action-button edit-button">
+                    <Edit fontSize="small" />
+                  </IconButton>
+                )}
+                {typeof onDelete === 'function' && (
+                  <IconButton aria-label="Eliminar" onClick={() => onDelete(item)} className="action-button delete-button">
+                    <Delete fontSize="small" />
+                  </IconButton>
+                )}
               </TableCell>
             </TableRow>
           ))}

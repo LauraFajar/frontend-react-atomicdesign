@@ -128,6 +128,14 @@
   color: #D32F2F !important;
 }
 
+.perms-button {
+  color: #757575 !important; 
+}
+
+.perms-button:hover {
+  color: #616161 !important;
+}
+
 @media (max-width: 600px) {
   .users-page {
     padding: var(--spacing-md);

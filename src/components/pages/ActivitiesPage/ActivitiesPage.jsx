@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useAlert } from '../../../contexts/AlertContext';
@@ -39,7 +39,7 @@ const statusConfig = {
 };
 
 const ActivitiesPage = () => {
-  const { user } = useAuth();
+  const { user, hasAnyPermission, permissions, refreshPermissions } = useAuth();
   const queryClient = useQueryClient();
   const alert = useAlert();
 
@@ -56,12 +56,30 @@ const ActivitiesPage = () => {
   const [endDate, setEndDate] = useState(null);
   const [page, setPage] = useState(1);
 
-  const isAdmin = user?.role === 'administrador';
-  const isInstructor = user?.role === 'instructor';
+  const isAdmin = user?.role === 'administrador' || user?.roleId === 4;
+  const isInstructor = user?.role === 'instructor' || user?.roleId === 1;
   const isApprenticeOrIntern = user?.role === 'aprendiz' || user?.role === 'pasante';
-  const canCreate = isAdmin || isInstructor;
-  const canEdit = isAdmin || isInstructor;
-  const canDelete = isAdmin;
+  const permisosVer = ['actividades:ver','actividad:ver','actividades:listar'];
+  const permisosCrear = ['actividades:crear','actividad:crear'];
+  const permisosEditar = ['actividades:editar','actividad:editar'];
+  const permisosEliminar = ['actividades:eliminar','actividad:eliminar'];
+
+  const canView = isAdmin || isInstructor || hasAnyPermission(permisosVer);
+  const canCreate = isAdmin || hasAnyPermission(permisosCrear);
+  const canEdit = isAdmin || hasAnyPermission(permisosEditar);
+  const canDelete = isAdmin || hasAnyPermission(permisosEliminar);
+
+  useEffect(() => {
+    if (user?.id) {
+      refreshPermissions(user.id);
+    }
+  }, []);
+
+  useEffect(() => {
+    console.log('[ActivitiesPage] user:', user);
+    console.log('[ActivitiesPage] permissions:', permissions);
+    console.log('[ActivitiesPage] flags:', { canView, canCreate, canEdit, canDelete, isAdmin, isInstructor });
+  }, [user, permissions, canView, canCreate, canEdit, canDelete, isAdmin, isInstructor]);
 
   const filters = useMemo(() => ({
     id_cultivo: selectedCrop,
@@ -73,6 +91,7 @@ const ActivitiesPage = () => {
     queryKey: ['activities', page, filters],
     queryFn: () => activityService.getActivities(filters, page, 10),
     keepPreviousData: true,
+    enabled: canView,
     onError: (err) => {
       alert.error('Error de Carga', err.message || 'No se pudieron cargar las actividades.');
     }
@@ -189,13 +208,23 @@ const ActivitiesPage = () => {
 
   const getCropName = (cropId) => {
     const crop = crops.find(c => c.id === cropId);
-    return crop ? crop.tipo_cultivo : 'N/A';
+    return crop ? (crop.displayName || crop.nombre_cultivo || crop.tipo_cultivo) : 'N/A';
   };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'No definida';
     return new Date(dateString).toLocaleDateString('es-ES');
   };
+
+  if (!canView) {
+    return (
+      <div className="dashboard-content">
+        <div className="loading-container">
+          <Typography variant="h6" color="error">No tienes permisos para ver Actividades.</Typography>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoadingActivities) {
     return (
@@ -249,7 +278,7 @@ const ActivitiesPage = () => {
               </MenuItem>
               {crops.map(crop => (
                 <MenuItem key={crop.id} value={crop.id}>
-                  {crop.tipo_cultivo}
+                  {crop.displayName || crop.nombre_cultivo || crop.tipo_cultivo}
                 </MenuItem>
               ))}
             </Select>

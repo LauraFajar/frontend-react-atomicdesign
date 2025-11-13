@@ -16,7 +16,7 @@ const UserProfile = ({ onRequestCloseParent, onRequestOpenEdit }) => {
         <div className="user-profile__avatar">
           {user.imagen_url ? (
             <img
-              src={`http://localhost:3001${user.imagen_url}`}
+              src={user.imagen_url.startsWith('http') ? user.imagen_url : (user.imagen_url.startsWith('/') ? user.imagen_url : `/${user.imagen_url}`)}
               alt="Avatar"
               style={{
                 width: '100%',

@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '../../../contexts/AuthContext';
 import { useAlert } from '../../../contexts/AlertContext';
 import { 
   Box, Button, Card, CardContent, CardActions, Chip, Dialog, DialogActions, 
@@ -18,13 +19,21 @@ import TratamientoForm from '../../TratamientoForm';
 import TratamientoDetail from '../../TratamientoDetail';
 import ConfirmModal from '../../molecules/ConfirmModal/ConfirmModal';
 
-const rolesCanEdit = ['Admin','Instructor', 'administrador', 'instructor'];
-const rolesCanView = ['Admin','Instructor','Learner','Intern', 'administrador', 'instructor', 'aprendiz', 'pasante'];
+const permisosVer = [
+  'tratamientos:*', 'tratamiento:*',
+  'tratamientos:ver', 'tratamiento:ver',
+  'tratamientos:listar', 'tratamiento:listar',
+  'tratamientos:consultar', 'tratamiento:consultar'
+];
+const permisosEditar = ['tratamientos:editar','tratamiento:editar','tratamientos:actualizar','tratamiento:actualizar'];
+const permisosCrear = ['tratamientos:crear','tratamiento:crear'];
+const permisosEliminar = ['tratamientos:eliminar','tratamiento:eliminar'];
 
 const TratamientosPage = ({ currentUser }) => {
   const queryClient = useQueryClient();
   const alert = useAlert();
-  const role = currentUser?.role || currentUser?.Role || currentUser?.roleLabel || 'Learner';
+  const { user, permissions, hasAnyPermission, refreshPermissions } = useAuth();
+  const role = (currentUser?.role || currentUser?.Role || currentUser?.roleLabel || user?.roleLabel || 'Learner');
 
   const [filterEpaId, setFilterEpaId] = useState('');
   const [filterTipo, setFilterTipo] = useState('');
@@ -34,8 +43,24 @@ const TratamientosPage = ({ currentUser }) => {
   const [openConfirmModal, setOpenConfirmModal] = useState(false);
   const [tratamientoToDelete, setTratamientoToDelete] = useState(null);
 
-  const canEdit = rolesCanEdit.includes(role);
-  const canView = rolesCanView.includes(role);
+  const isAdmin = (user?.role === 'administrador' || user?.roleId === 4);
+  const isInstructor = (user?.role === 'instructor' || user?.roleId === 1);
+  const canView = isAdmin || isInstructor || hasAnyPermission(permisosVer);
+  const canCreate = isAdmin || hasAnyPermission(permisosCrear);
+  const canEdit = isAdmin || hasAnyPermission(permisosEditar);
+  const canDelete = isAdmin || hasAnyPermission(permisosEliminar);
+
+  useEffect(() => {
+    if (user?.id) {
+      refreshPermissions(user.id);
+    }
+  }, []);
+
+  useEffect(() => {
+    console.log('[TratamientosPage] user:', user);
+    console.log('[TratamientosPage] permissions:', permissions);
+    console.log('[TratamientosPage] flags:', { canView, canCreate, canEdit, canDelete, isAdmin, isInstructor });
+  }, [user, permissions, canView, canCreate, canEdit, canDelete, isAdmin, isInstructor]);
 
   const { data: epas = [] } = useQuery({
     queryKey: ['allEpas'],
@@ -98,10 +123,11 @@ const TratamientosPage = ({ currentUser }) => {
 
   const handleCreate = () => {
     setSelected(null);
-    setOpenForm(true);
+    if (canCreate) setOpenForm(true);
   };
 
   const handleEdit = (t) => {
+    if (!canEdit) return;
     setSelected(t);
     setOpenForm(true);
   };
@@ -112,7 +138,7 @@ const TratamientosPage = ({ currentUser }) => {
   };
 
   const handleConfirmDelete = () => {
-    if (!canEdit || !tratamientoToDelete) return;
+    if (!canDelete || !tratamientoToDelete) return;
     deleteMutation.mutate(tratamientoToDelete.id);
   };
 
@@ -123,8 +149,10 @@ const TratamientosPage = ({ currentUser }) => {
 
   const handleSave = (values) => {
     if (selected) {
+      if (!canEdit) return;
       updateMutation.mutate(values);
     } else {
+      if (!canCreate) return;
       createMutation.mutate(values);
     }
   };
@@ -178,7 +206,7 @@ const TratamientosPage = ({ currentUser }) => {
     <Box className="page-wrapper">
       <Box className="page-header">
         <Typography variant="h5" className="page-title">Tratamientos</Typography>
-        {canEdit && (
+        {canCreate && (
           <Button 
             variant="contained" 
             color="success" 
@@ -275,7 +303,7 @@ const TratamientosPage = ({ currentUser }) => {
               
               <Grid container spacing={3} className="tratamientos-grid">
                 {group.tratamientos.map((t) => (
-                  <Grid item xs={12} sm={6} md={4} lg={3} key={t.id}>
+                  <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={t.id}>
                     <Card 
                       className={`tratamiento-card ${t.tipo === 'biologico' ? 'biologico' : 'quimico'}`}
                       elevation={2}
@@ -314,26 +342,26 @@ const TratamientosPage = ({ currentUser }) => {
                         </Tooltip>
                         
                         {canEdit && (
-                          <>
-                            <Tooltip title="Editar">
-                              <IconButton 
-                                size="small" 
-                                onClick={() => handleEdit(t)} 
-                                className="action-button edit-button"
-                              >
-                                <EditIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Eliminar">
-                                <IconButton 
-                                  size="small" 
-                                  onClick={() => handleDeleteClick(t)} 
-                                  className="action-button delete-button"
-                                >
-                                  <DeleteIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                          </>
+                          <Tooltip title="Editar">
+                            <IconButton 
+                              size="small" 
+                              onClick={() => handleEdit(t)} 
+                              className="action-button edit-button"
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        {canDelete && (
+                          <Tooltip title="Eliminar">
+                            <IconButton 
+                              size="small" 
+                              onClick={() => handleDeleteClick(t)} 
+                              className="action-button delete-button"
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
                         )}
                       </CardActions>
                     </Card>

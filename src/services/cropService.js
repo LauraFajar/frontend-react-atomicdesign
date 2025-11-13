@@ -13,6 +13,7 @@ const mapCrop = (c) => ({
   id: c.id_cultivo || c.id,
   nombre_cultivo: c.nombre_cultivo,
   tipo_cultivo: c.tipo_cultivo,
+  displayName: c.nombre_cultivo || c.nombre || c.tipo_cultivo || `Cultivo ${c.id_cultivo || c.id}`,
   fecha_siembra: c.fecha_siembra,
   fecha_cosecha_estimada: c.fecha_cosecha_estimada,
   fecha_cosecha_real: c.fecha_cosecha_real,

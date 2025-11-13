@@ -59,7 +59,8 @@ const TratamientoForm = ({ open, onClose, onSubmit, tratamiento, epas = [] }) =>
     if (Object.keys(vErrors).length === 0) {
       setLoading(true);
       try {
-        await onSubmit({ ...values, id_epa: Number(values.id_epa) });
+        const tipoNormalized = String(values.tipo || '').toLowerCase();
+        await onSubmit({ ...values, id_epa: Number(values.id_epa), tipo: tipoNormalized });
       } catch (err) {
         console.error(err);
       } finally {
@@ -117,8 +118,8 @@ const TratamientoForm = ({ open, onClose, onSubmit, tratamiento, epas = [] }) =>
               value={values.tipo}
               onChange={handleChange}
             >
-              <MenuItem value="Biologico" className="tipo-biologico">Biológico</MenuItem>
-              <MenuItem value="Quimico" className="tipo-quimico">Químico</MenuItem>
+              <MenuItem value="biologico" className="tipo-biologico">Biológico</MenuItem>
+              <MenuItem value="quimico" className="tipo-quimico">Químico</MenuItem>
             </Select>
             {errors.tipo && (
               <Typography variant="caption" color="error">
