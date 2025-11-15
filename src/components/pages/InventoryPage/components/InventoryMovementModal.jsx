@@ -18,8 +18,8 @@ const tipoOptions = [
   { value: 'salida', label: 'Salida' },
 ];
 
-const InventoryMovementModal = ({ open, onCancel, onSave }) => {
-  const [form, setForm] = useState({ id_insumo: '', tipo_movimiento: '', cantidad: 0, unidad: '', fecha: '', responsable: '', observacion: '' });
+const InventoryMovementModal = ({ open, onCancel, onSave, movement }) => {
+  const [form, setForm] = useState({ id_insumo: '', tipo_movimiento: '', cantidad: 0, unidad: '', fecha: '' });
   const [insumos, setInsumos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -38,13 +38,49 @@ const InventoryMovementModal = ({ open, onCancel, onSave }) => {
 
   useEffect(() => {
     if (!open) return;
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    const todayStr = `${yyyy}-${mm}-${dd}`;
-    setForm({ id_insumo: '', tipo_movimiento: 'entrada', cantidad: 0, unidad: '', fecha: todayStr, responsable: '', observacion: '' });
-  }, [open]);
+    const toDateInput = (value) => {
+      if (!value) {
+        const d = new Date();
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+      }
+      const d = new Date(value);
+      if (!isNaN(d.getTime())) {
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+      }
+      return typeof value === 'string' ? value : '';
+    };
+
+    if (movement?.id) {
+      setForm({
+        id_insumo: String(movement.id_insumo || ''),
+        tipo_movimiento: String(movement.tipo_movimiento || 'entrada').toLowerCase(),
+        cantidad: Number(movement.cantidad || 0),
+        unidad: movement.unidad_medida || movement.unidad || '',
+        fecha: toDateInput(movement.fecha_movimiento || movement.fecha),
+      });
+    } else {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${yyyy}-${mm}-${dd}`;
+      const base = { id_insumo: '', tipo_movimiento: 'entrada', cantidad: 0, unidad: '', fecha: todayStr };
+      const prefill = movement ? {
+        id_insumo: movement.id_insumo != null ? String(movement.id_insumo) : base.id_insumo,
+        tipo_movimiento: movement.tipo_movimiento ? String(movement.tipo_movimiento).toLowerCase() : base.tipo_movimiento,
+        cantidad: movement.cantidad != null ? Number(movement.cantidad) : base.cantidad,
+        unidad: movement.unidad_medida || movement.unidad || base.unidad,
+        fecha: toDateInput(movement.fecha_movimiento || movement.fecha) || base.fecha,
+      } : base;
+      setForm(prefill);
+    }
+  }, [open, movement]);
 
   const handleChange = (field) => (e) => {
     const value = field === 'cantidad' ? Number(e.target.value) : e.target.value;
@@ -71,14 +107,12 @@ const InventoryMovementModal = ({ open, onCancel, onSave }) => {
       cantidad: Number(form.cantidad),
       unidad_medida: form.unidad,
       fecha_movimiento: form.fecha,
-      responsable: form.responsable,
-      observacion: form.observacion,
     });
   };
 
   return (
     <Dialog open={open} onClose={onCancel} fullWidth maxWidth="sm">
-      <DialogTitle>Registrar movimiento</DialogTitle>
+      <DialogTitle>{movement?.id ? 'Editar movimiento' : 'Registrar movimiento'}</DialogTitle>
       <DialogContent>
         {loading ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
@@ -147,23 +181,7 @@ const InventoryMovementModal = ({ open, onCancel, onSave }) => {
               className="modal-form-field"
             />
 
-            <TextField
-              label="Responsable"
-              value={form.responsable}
-              onChange={handleChange('responsable')}
-              fullWidth
-              className="modal-form-field"
-            />
 
-            <TextField
-              label="Observación"
-              value={form.observacion}
-              onChange={handleChange('observacion')}
-              fullWidth
-              multiline
-              rows={3}
-              className="modal-form-field"
-            />
           </>
         )}
       </DialogContent>

@@ -30,12 +30,18 @@ const Sidebar = ({ activeItem = 'inicio', onItemClick, expandedItems = {}, user 
           { id: 'fitosanitario-tratamientos', label: 'Tratamientos', icon: <FiShield size={16} /> }
         ]
       },
+      { id: 'finanzas', label: 'Finanzas', icon: <FiDollarSign size={20} /> },
       {
-        id: 'finanzas',
-        label: 'Finanzas',
-        icon: <FiDollarSign size={20} />
+        id: 'inventario',
+        label: 'Inventario',
+        icon: <FiBox size={20} />,
+        submodules: [
+          { id: 'inventario-gestion', label: 'Gestión de Inventario', icon: <FiBox size={16} /> },
+          { id: 'inventario-almacenes', label: 'Almacenes', icon: <FiBox size={16} /> },
+          { id: 'inventario-categorias', label: 'Categorías', icon: <FiLayers size={16} /> },
+          { id: 'inventario-reportes', label: 'Reportes', icon: <FiActivity size={16} /> },
+        ]
       },
-      { id: 'inventario', label: 'Inventario', icon: <FiBox size={20} /> },
       {
         id: 'usuarios',
         label: 'Usuarios',
@@ -66,7 +72,7 @@ const Sidebar = ({ activeItem = 'inicio', onItemClick, expandedItems = {}, user 
         item.id === 'iot' ||
         item.id === 'cultivos' ||
         item.id === 'fitosanitario' ||
-        // Mostrar Finanzas si el usuario tiene permisos explícitos sobre finanzas
+        item.id === 'inventario' ||
         (item.id === 'finanzas' && hasAnyPermission([
           'finanzas:*','finanzas:ver','finanzas:listar','finanzas:exportar'
         ])) ||
@@ -81,6 +87,7 @@ const Sidebar = ({ activeItem = 'inicio', onItemClick, expandedItems = {}, user 
         item.id === 'iot' ||
         item.id === 'cultivos' ||
         item.id === 'fitosanitario' ||
+        item.id === 'inventario' ||
         (item.id === 'finanzas' && hasAnyPermission([
           'finanzas:*','finanzas:ver','finanzas:listar','finanzas:exportar'
         ])) ||

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -8,10 +8,12 @@ import {
   TextField,
   Typography
 } from '@mui/material';
+import { FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 
-const InventoryItemModal = ({ open, selectedItem, onCancel, onSave }) => {
-  const [form, setForm] = useState({ nombre: '', cantidad: 0, unidad: '', ultima_fecha: '', observacion: '' });
+const InventoryItemModal = ({ open, selectedItem, onCancel, onSave, categorias = [], almacenes = [] }) => {
+  const [form, setForm] = useState({ nombre: '', cantidad: 0, unidad: '', ultima_fecha: '', observacion: '', id_categoria: '', id_almacen: '' });
   const [error, setError] = useState(null);
+  const firstInputRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
@@ -22,10 +24,16 @@ const InventoryItemModal = ({ open, selectedItem, onCancel, onSave }) => {
         unidad: selectedItem.unidad ?? '',
         ultima_fecha: selectedItem.ultima_fecha ?? '',
         observacion: selectedItem.observacion ?? '',
+        id_categoria: '',
+        id_almacen: '',
       });
     } else {
-      setForm({ nombre: '', cantidad: 0, unidad: '', ultima_fecha: '', observacion: '' });
+      setForm({ nombre: '', cantidad: 0, unidad: '', ultima_fecha: '', observacion: '', id_categoria: '', id_almacen: '' });
     }
+    setTimeout(() => {
+      const el = firstInputRef.current;
+      if (el && typeof el.focus === 'function') { el.focus(); }
+    }, 0);
   }, [open, selectedItem]);
 
   const handleChange = (e) => {
@@ -35,7 +43,21 @@ const InventoryItemModal = ({ open, selectedItem, onCancel, onSave }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave?.(form);
+    if (!form.nombre || !form.unidad) {
+      setError('Completa Nombre y Unidad');
+      return;
+    }
+    const creatingNew = !selectedItem;
+    if (creatingNew && (!form.id_categoria || !form.id_almacen)) {
+      setError('Selecciona Categoría y Almacén');
+      return;
+    }
+    const payload = {
+      ...form,
+      id_categoria: form.id_categoria ? Number(form.id_categoria) : undefined,
+      id_almacen: form.id_almacen ? Number(form.id_almacen) : undefined,
+    };
+    onSave?.(payload);
   };
 
   return (
@@ -58,6 +80,7 @@ const InventoryItemModal = ({ open, selectedItem, onCancel, onSave }) => {
             onChange={handleChange}
             required
             className="modal-form-field"
+            inputRef={firstInputRef}
           />
 
           <TextField
@@ -72,21 +95,58 @@ const InventoryItemModal = ({ open, selectedItem, onCancel, onSave }) => {
             inputProps={{ min: 0 }}
           />
 
-          <TextField
-            fullWidth
-            name="unidad"
-            label="Unidad"
-            value={form.unidad}
+        <TextField
+          fullWidth
+          name="unidad"
+          label="Unidad"
+          value={form.unidad}
+          onChange={handleChange}
+          required
+          className="modal-form-field"
+        />
+
+        <FormControl fullWidth className="modal-form-field">
+          <InputLabel id="categoria-label">Categoría</InputLabel>
+          <Select
+            labelId="categoria-label"
+            label="Categoría"
+            name="id_categoria"
+            value={form.id_categoria}
             onChange={handleChange}
             required
-            className="modal-form-field"
-          />
+            error={!selectedItem && !form.id_categoria}
+          >
+            <MenuItem value=""><em>Seleccione categoría</em></MenuItem>
+            {(Array.isArray(categorias?.items) ? categorias.items : categorias).map((c) => (
+              <MenuItem key={c.id} value={c.id}>{c.nombre}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <FormControl fullWidth className="modal-form-field">
+          <InputLabel id="almacen-label">Almacén</InputLabel>
+          <Select
+            labelId="almacen-label"
+            label="Almacén"
+            name="id_almacen"
+            value={form.id_almacen}
+            onChange={handleChange}
+            required
+            error={!selectedItem && !form.id_almacen}
+          >
+            <MenuItem value=""><em>Seleccione almacén</em></MenuItem>
+            {(Array.isArray(almacenes?.items) ? almacenes.items : almacenes).map((a) => (
+              <MenuItem key={a.id} value={a.id}>{a.nombre}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
           <TextField
             type="date"
             fullWidth
             name="ultima_fecha"
-            label="Última fecha"
+            label="Fecha de entrada"
+            placeholder="YYYY-MM-DD"
             value={form.ultima_fecha}
             onChange={handleChange}
             className="modal-form-field"

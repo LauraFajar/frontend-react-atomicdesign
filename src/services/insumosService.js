@@ -28,6 +28,8 @@ const mapInsumo = (i) => ({
   nombre: i?.nombre_insumo ?? i?.nombre ?? '',
   unidad: i?.unidad_medida ?? i?.unidad ?? '',
   codigo: i?.codigo ?? '',
+  categoria: i?.id_categoria?.nombre ?? i?.categoria ?? '',
+  almacen: i?.id_almacen?.nombre_almacen ?? i?.almacen ?? '',
   raw: i,
 });
 
@@ -61,6 +63,8 @@ const insumosService = {
       codigo: data.codigo,
       fecha_entrada: normalizeDate(data.fecha_entrada ?? data.fecha),
       observacion: obsSanitized,
+      ...(data.id_categoria != null ? { id_categoria: Number(data.id_categoria) } : {}),
+      ...(data.id_almacen != null ? { id_almacen: Number(data.id_almacen) } : {}),
     };
 
     Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
@@ -100,6 +104,8 @@ const insumosService = {
       ...(data.codigo !== undefined ? { codigo: data.codigo } : {}),
       ...(data.fecha_entrada ?? data.fecha ? { fecha_entrada: normalizeDate(data.fecha_entrada ?? data.fecha) } : {}),
       ...(data.observacion !== undefined ? { observacion: data.observacion } : {}),
+      ...(data.id_categoria !== undefined ? { id_categoria: Number(data.id_categoria) } : {}),
+      ...(data.id_almacen !== undefined ? { id_almacen: Number(data.id_almacen) } : {}),
     };
 
     Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);

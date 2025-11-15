@@ -25,6 +25,7 @@
     "http-proxy-middleware": "^3.0.5",
     "js-cookie": "^3.0.5",
     "leaflet": "^1.9.4",
+    "mqtt": "^5.14.1",
     "react": "^18.2.0",
     "react-calendar": "^6.0.0",
     "react-dom": "^18.2.0",
@@ -33,7 +34,8 @@
     "react-router-dom": "^6.20.1",
     "react-scripts": "5.0.1",
     "recharts": "^3.3.0",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "xlsx": "^0.18.5"
   },
   "browserslist": {
     "production": [

@@ -11,17 +11,29 @@ import EpasPage from '../EpasPage/EpasPage';
 import TratamientosPage from '../TratamientosPage/TratamientosPage';
 import InventoryPage from '../InventoryPage/InventoryPage';
 import FinanceDashboard from '../FinanceDashboard/FinanceDashboard';
+import AlmacenesPage from '../AlmacenesPage/AlmacenesPage';
+import CategoriasPage from '../CategoriasPage/CategoriasPage';
+import IotPage from '../IotPage/IotPage';
+import ReportesPage from '../ReportesPage/ReportesPage';
 import { useAuth } from '../../../contexts/AuthContext';
 import LotsMapPage from '../LotsMapPage/LotsMapPage';
 import './DashboardPage.css';
 
 const DashboardPage = () => {
-  const { user } = useAuth();
+  const { user, hasAnyPermission } = useAuth();
   const [activeSection, setActiveSection] = useState('inicio');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [expandedItems, setExpandedItems] = useState({ 'cultivos': true });
   const [currentSlide, setCurrentSlide] = useState(0);
   const slideInterval = useRef();
+
+  const isAdmin = user?.role === 'administrador' || user?.roleId === 4;
+  const isInstructor = user?.role === 'instructor' || user?.roleId === 1;
+  const canIot = isAdmin || isInstructor || hasAnyPermission(['iot:*','iot:ver','sensores:*','sensores:ver','mqtt:*']);
+  const canAlmacenes = isAdmin || isInstructor || hasAnyPermission(['almacenes:*','almacenes:ver','inventario:*']);
+  const canCategorias = isAdmin || isInstructor || hasAnyPermission(['categorias:*','categorias:ver','inventario:*']);
+  const canInventarioReportes = isAdmin || isInstructor || hasAnyPermission(['inventario:reportes','reportes:*','reportes:ver','inventario:*']);
+  const canFinanzasDashboard = isAdmin || hasAnyPermission(['finanzas:*','finanzas:ver','finanzas:listar','finanzas:exportar']);
 
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
@@ -63,6 +75,15 @@ const DashboardPage = () => {
       return;
     }
 
+    if (parentId === null && sectionId === 'inventario') {
+      setExpandedItems(prev => ({ ...prev, inventario: !prev.inventario }));
+      return;
+    }
+
+    if (parentId === null && sectionId === 'finanzas') {
+      setActiveSection('finanzas-dashboard');
+      return;
+    }
     if (parentId === null && (sectionId === 'cultivos' || sectionId === 'fitosanitario')) {
       console.log('[Dashboard] Expanding module:', sectionId);
       setExpandedItems(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
@@ -151,12 +172,15 @@ const DashboardPage = () => {
       case 'cultivos-calendario':
         return <CalendarPage />;
       case 'iot':
-        return (
-          <div className="dashboard-content">
-            <h2>Módulo IoT</h2>
-            <p>Monitoreo de sensores en tiempo real</p>
-          </div>
-        );
+        if (!canIot) {
+          return (
+            <div className="dashboard-content">
+              <h2>Permisos</h2>
+              <p>No tienes permisos para ver IoT</p>
+            </div>
+          );
+        }
+        return <IotPage />;
       case 'fitosanitario':
         return (
           <div className="dashboard-content">
@@ -169,10 +193,58 @@ const DashboardPage = () => {
       case 'fitosanitario-tratamientos':
         return <TratamientosPage currentUser={user} />;
       case 'finanzas':
+        return (
+          <div className="dashboard-content">
+            <h2>Gestión Financiera</h2>
+            <p>Control de ingresos, egresos y rentabilidad</p>
+          </div>
+        );
       case 'finanzas-dashboard':
+        if (!canFinanzasDashboard) {
+          return (
+            <div className="dashboard-content">
+              <h2>Permisos</h2>
+              <p>No tienes permisos para ver Finanzas</p>
+            </div>
+          );
+        }
         return <FinanceDashboard />;
+      case 'inventario-reportes':
+        if (!canInventarioReportes) {
+          return (
+            <div className="dashboard-content">
+              <h2>Permisos</h2>
+              <p>No tienes permisos para ver Reportes</p>
+            </div>
+          );
+        }
+        return <ReportesPage />;
       case 'inventario':
         return <InventoryPage />;
+      case 'inventario-gestion':
+        return <InventoryPage />;
+      case 'almacenes':
+      case 'inventario-almacenes':
+        if (!canAlmacenes) {
+          return (
+            <div className="dashboard-content">
+              <h2>Permisos</h2>
+              <p>No tienes permisos para ver Almacenes</p>
+            </div>
+          );
+        }
+        return <AlmacenesPage />;
+      case 'categorias':
+      case 'inventario-categorias':
+        if (!canCategorias) {
+          return (
+            <div className="dashboard-content">
+              <h2>Permisos</h2>
+              <p>No tienes permisos para ver Categorías</p>
+            </div>
+          );
+        }
+        return <CategoriasPage />;
       case 'usuarios':
         return <UsersPage />;
       default:
