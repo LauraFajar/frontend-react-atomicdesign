@@ -17,6 +17,7 @@ const mapCrop = (c) => ({
   fecha_siembra: c.fecha_siembra,
   fecha_cosecha_estimada: c.fecha_cosecha_estimada,
   fecha_cosecha_real: c.fecha_cosecha_real,
+  fecha_cosecha: c.fecha_cosecha || c.fecha_cosecha_real || null,
   estado_cultivo: c.estado_cultivo,
   observaciones: c.observaciones,
   id_lote: c.id_lote,

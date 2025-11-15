@@ -130,6 +130,12 @@ const CropFormModal = ({ open, onClose, onSave, crop }) => {
         fecha_siembra: formData.fecha_siembra ? formData.fecha_siembra.toISOString() : null,
         fecha_cosecha_estimada: formData.fecha_cosecha_estimada ? formData.fecha_cosecha_estimada.toISOString() : null,
       };
+
+      const wasCosechado = crop?.estado_cultivo === 'cosechado';
+      const willBeCosechado = formattedData.estado_cultivo === 'cosechado';
+      if (!wasCosechado && willBeCosechado) {
+        formattedData.fecha_cosecha_real = new Date().toISOString();
+      }
       
       await onSave(formattedData, !!crop);
       onClose();
