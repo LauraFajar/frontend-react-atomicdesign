@@ -12,6 +12,7 @@ import LotFormModal from '../CropsPage/LotFormModal';
 import SublotFormModal from '../SublotsPage/SublotFormModal';
 import { useAlert } from '../../../contexts/AlertContext';
 import './LotsMapPage.css';
+import '../SublotsPage/SublotFormModal.css';
 
 const swapCoords = (coords) => {
   if (!coords) return [];
@@ -144,12 +145,12 @@ const DrawPolygonButton = ({ onSaved }) => {
       <Dialog open={saveOpen} onClose={() => setSaveOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Guardar coordenadas</DialogTitle>
         <DialogContent dividers>
-          <TextField label="ID de Lote (opcional)" value={lotId} onChange={(e) => setLotId(e.target.value)} fullWidth sx={{ mb: 2 }} />
-          <TextField label="Nombre de Lote (si no hay ID)" value={lotName} onChange={(e) => setLotName(e.target.value)} fullWidth />
+          <TextField label="ID de Lote (opcional)" value={lotId} onChange={(e) => setLotId(e.target.value)} fullWidth variant="outlined" className="modal-form-field" sx={{ mb: 2 }} />
+          <TextField label="Nombre de Lote (si no hay ID)" value={lotName} onChange={(e) => setLotName(e.target.value)} fullWidth variant="outlined" className="modal-form-field" />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => { setSaveOpen(false); toggleActive(); }} color="inherit">Cancelar</Button>
-          <Button onClick={handleSave} variant="contained">Guardar</Button>
+        <DialogActions className="dialog-actions">
+          <Button onClick={() => { setSaveOpen(false); toggleActive(); }} variant="outlined" className="btn-cancel">Cancelar</Button>
+          <Button onClick={handleSave} variant="contained" className="btn-save">Guardar</Button>
         </DialogActions>
       </Dialog>
     </>

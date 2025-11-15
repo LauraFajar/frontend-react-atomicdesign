@@ -12,6 +12,7 @@ import {
   Switch
 } from '@mui/material';
 import './LotFormModal.css';
+import '../SublotsPage/SublotFormModal.css';
 
 const LotFormModal = ({ open, onClose, onSave, lot, isLoading, error: serverError }) => {
   const [formData, setFormData] = useState({
@@ -182,32 +183,12 @@ const LotFormModal = ({ open, onClose, onSave, lot, isLoading, error: serverErro
           )}
         </DialogContent>
 
-        <DialogActions>
-          <Button
-            onClick={handleClose}
-            disabled={isLoading}
-            sx={{
-              color: '#4CAF50',
-              '&:hover': {
-                backgroundColor: 'rgba(76, 175, 80, 0.04)',
-              }
-            }}
-          >
+        <DialogActions className="dialog-actions">
+          <Button onClick={handleClose} disabled={isLoading} variant="outlined" className="btn-cancel">
             Cancelar
           </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={isLoading}
-            startIcon={isLoading ? <CircularProgress size={16} /> : null}
-            sx={{
-              backgroundColor: '#4CAF50',
-              '&:hover': {
-                backgroundColor: '#45a049',
-              }
-            }}
-          >
-            {isLoading ? 'Guardando...' : (lot ? 'Actualizar' : 'Crear')}
+          <Button type="submit" variant="contained" disabled={isLoading} className="btn-save">
+            {isLoading ? <CircularProgress size={24} /> : (lot ? 'Actualizar' : 'Crear')}
           </Button>
         </DialogActions>
       </form>
