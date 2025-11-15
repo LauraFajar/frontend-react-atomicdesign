@@ -50,21 +50,28 @@
 }
 
 .filters-row {
-  display: flex;
-  gap: var(--spacing-lg);
+  display: grid;
+  grid-template-columns: minmax(440px, 1fr) minmax(440px, 1fr);
+  column-gap: var(--spacing-lg);
+  row-gap: var(--spacing-md);
   margin-bottom: var(--spacing-lg);
 }
 
 @media (max-width: 768px) {
   .filters-row {
-    flex-direction: column;
-    gap: var(--spacing-md);
+    grid-template-columns: 1fr;
+    column-gap: 0;
+    row-gap: var(--spacing-md);
   }
 }
 
 .filter-field {
-  flex: 1;
-  min-width: 200px;
+  width: 100%;
+}
+
+.filters-row .MuiFormControl-root,
+.filters-row .MuiTextField-root {
+  width: 100%;
 }
 
 .search-input {
@@ -75,12 +82,14 @@
   transition: all 0.3s ease;
 }
 
-.search-input .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
-  border-color: var(--primary-green);
-}
-
 .search-input .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
   border-color: var(--primary-green);
+  border-width: 2px;
+  box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.1);
+}
+.filters-row .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline,
+.filters-row .MuiInputBase-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: var(--primary-green) !important;
   border-width: 2px;
   box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.1);
 }

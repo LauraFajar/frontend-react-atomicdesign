@@ -251,8 +251,9 @@ const ActivitiesPage = () => {
       </div>
 
       {/* Filtros */}
+      <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
       <div className="filters-container">
-        <div className="filters-row">
+        <div className="filters-row" style={{ gridTemplateColumns: 'minmax(560px, 1fr) minmax(560px, 1fr)' }}>
           <TextField
             fullWidth
             variant="outlined"
@@ -266,7 +267,7 @@ const ActivitiesPage = () => {
             className="filter-field"
           />
 
-          <FormControl variant="outlined" className="filter-field">
+          <FormControl variant="outlined" className="filter-field" fullWidth>
             <InputLabel>Cultivo</InputLabel>
             <Select
               value={selectedCrop}
@@ -285,8 +286,7 @@ const ActivitiesPage = () => {
           </FormControl>
         </div>
 
-        <div className="filters-row">
-          <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
+        <div className="filters-row" style={{ gridTemplateColumns: 'minmax(560px, 1fr) minmax(560px, 1fr)' }}>
             <DatePicker
               label="Fecha inicio"
               value={startDate}
@@ -294,7 +294,19 @@ const ActivitiesPage = () => {
               slotProps={{
                 textField: {
                   className: "filter-field",
-                  sx: { minWidth: '200px' }
+                  variant: 'outlined',
+                  sx: {
+                    width: '100%',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'var(--medium-gray)'
+                    },
+                    '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'var(--primary-green)'
+                    },
+                    '& .MuiOutlinedInput-root.Mui-focused': {
+                      boxShadow: '0 0 0 4px rgba(76, 175, 80, 0.1)'
+                    }
+                  }
                 }
               }}
             />
@@ -307,13 +319,25 @@ const ActivitiesPage = () => {
               slotProps={{
                 textField: {
                   className: "filter-field",
-                  sx: { minWidth: '200px' }
+                  variant: 'outlined',
+                  sx: {
+                    width: '100%',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'var(--medium-gray)'
+                    },
+                    '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'var(--primary-green)'
+                    },
+                    '& .MuiOutlinedInput-root.Mui-focused': {
+                      boxShadow: '0 0 0 4px rgba(76, 175, 80, 0.1)'
+                    }
+                  }
                 }
               }}
             />
-          </LocalizationProvider>
         </div>
       </div>
+      </LocalizationProvider>
 
       {isActivitiesError && (
         <Typography color="error" sx={{ mb: 2 }}>
@@ -361,15 +385,6 @@ const ActivitiesPage = () => {
                         <Edit />
                       </IconButton>
                     )}
-                    {canDelete && (
-                      <IconButton
-                        onClick={() => openDeleteConfirm(activity)}
-                        className="action-button delete-button"
-                        size="small"
-                      >
-                        <Delete />
-                      </IconButton>
-                    )}
                     {(isApprenticeOrIntern || isAdmin) && (
                       <IconButton
                         onClick={() => handleOpenPhotoModal(activity)}
@@ -377,6 +392,15 @@ const ActivitiesPage = () => {
                         size="small"
                       >
                         <CameraAlt />
+                      </IconButton>
+                    )}
+                    {canDelete && (
+                      <IconButton
+                        onClick={() => openDeleteConfirm(activity)}
+                        className="action-button delete-button"
+                        size="small"
+                      >
+                        <Delete />
                       </IconButton>
                     )}
                   </TableCell>
