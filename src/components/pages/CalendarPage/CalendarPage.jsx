@@ -55,7 +55,7 @@ const CalendarPage = () => {
   const filteredEvents = useMemo(() => {
     let filtered = [...events];
     if (selectedCrop) {
-      filtered = filtered.filter(event => event.id_cultivo === selectedCrop);
+      filtered = filtered.filter(event => Number(event.id_cultivo) === Number(selectedCrop));
     }
     if (dateFrom) {
       const from = new Date(dateFrom);
@@ -75,7 +75,8 @@ const CalendarPage = () => {
   };
 
   const handleCropFilter = (event) => {
-    setSelectedCrop(event.target.value);
+    const val = event.target.value;
+    setSelectedCrop(val === '' ? '' : Number(val));
   };
 
   const handleEventClick = (event) => {
@@ -154,28 +155,28 @@ const CalendarPage = () => {
 
       <div className="filters-container">
         <Grid container spacing={3} className="filters-grid">
-          <Grid item xs={12} sm={6} md={3}>
-            <FormControl fullWidth>
+          <Grid item xs={12} sm={6} md={5}>
+            <FormControl fullWidth variant="outlined" className="calendar-filter-field" sx={{ width: '100%', minWidth: 440 }}>
               <InputLabel>Cultivo</InputLabel>
               <Select value={selectedCrop} onChange={handleCropFilter} label="Cultivo">
                 <MenuItem value=""><em>Todos los cultivos</em></MenuItem>
                 {crops.map(crop => (
-                  <MenuItem key={crop.id} value={crop.id}>{crop.tipo_cultivo}</MenuItem>
+                  <MenuItem key={crop.id} value={crop.id}>{crop.nombre_cultivo || crop.displayName || crop.tipo_cultivo}</MenuItem>
                 ))}
               </Select>
             </FormControl>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
-              <DatePicker label="Fecha desde" value={dateFrom} onChange={setDateFrom} renderInput={(params) => <TextField {...params} fullWidth />} />
+              <DatePicker label="Fecha desde" value={dateFrom} onChange={setDateFrom} renderInput={(params) => <TextField {...params} fullWidth variant="outlined" className="calendar-filter-field" />} />
             </LocalizationProvider>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
-              <DatePicker label="Fecha hasta" value={dateTo} onChange={setDateTo} renderInput={(params) => <TextField {...params} fullWidth />} />
+              <DatePicker label="Fecha hasta" value={dateTo} onChange={setDateTo} renderInput={(params) => <TextField {...params} fullWidth variant="outlined" className="calendar-filter-field" />} />
             </LocalizationProvider>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={1}>
             <Button variant="outlined" onClick={resetFilters} fullWidth className="reset-filters-button">Limpiar Filtros</Button>
           </Grid>
         </Grid>
@@ -210,14 +211,18 @@ const CalendarPage = () => {
             <DialogContent>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}><Typography variant="subtitle2" color="text.secondary">Fecha</Typography><Typography variant="body1">{new Date(selectedEvent.fecha).toLocaleDateString('es-ES')}</Typography></Grid>
-                <Grid item xs={12} sm={6}><Typography variant="subtitle2" color="text.secondary">Cultivo</Typography><Typography variant="body1">{crops.find(c => c.id === selectedEvent.id_cultivo)?.tipo_cultivo || 'N/A'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography variant="subtitle2" color="text.secondary">Cultivo</Typography><Typography variant="body1">{(() => {
+                  const id = Number(selectedEvent?.id_cultivo ?? selectedEvent?.cultivo_id ?? selectedEvent?.cultivo?.id ?? selectedEvent?.cultivoId);
+                  const c = crops.find(c => Number(c.id) === id || Number(c.id_cultivo) === id);
+                  return c?.nombre_cultivo || c?.displayName || c?.tipo_cultivo || selectedEvent?.nombre_cultivo || selectedEvent?.tipo_cultivo || 'N/A';
+                })()}</Typography></Grid>
                 {selectedEvent.descripcion && <Grid item xs={12}><Typography variant="subtitle2" color="text.secondary">Descripción</Typography><Typography variant="body1">{selectedEvent.descripcion}</Typography></Grid>}
                 {selectedEvent.estado && <Grid item xs={12} sm={6}><Typography variant="subtitle2" color="text.secondary">Estado</Typography><Typography variant="body1">{selectedEvent.estado}</Typography></Grid>}
                 {selectedEvent.responsable && <Grid item xs={12} sm={6}><Typography variant="subtitle2" color="text.secondary">Responsable</Typography><Typography variant="body1">{selectedEvent.responsable}</Typography></Grid>}
               </Grid>
             </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setOpenEventModal(false)} sx={{ color: 'var(--primary-green) !important', '& .MuiButton-label': { color: 'white !important' } }}>Cerrar</Button>
+            <DialogActions className="calendar-dialog-actions">
+              <Button onClick={() => setOpenEventModal(false)} variant="outlined" className="calendar-btn-cancel">Cerrar</Button>
             </DialogActions>
           </>
         )}
