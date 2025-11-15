@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, Typography, Paper, Box, CircularProgress, Fab, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Switch, List, ListItem, ListItemText, Divider } from '@mui/material';
-import { AddLocationAlt, AddRoad, MyLocation } from '@mui/icons-material';
+import { Button, Typography, Paper, Box, CircularProgress, Fab, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Switch, List, ListItem, ListItemText, Divider, TextField } from '@mui/material';
+import { AddLocationAlt, AddRoad, MyLocation, Edit } from '@mui/icons-material';
 import { MapContainer, TileLayer, Polygon, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -67,6 +67,92 @@ const FitToDataButton = ({ mapData }) => {
     <Fab className="map-fab" color="primary" size="small" onClick={handleFit} aria-label="Centrar mapa">
       <MyLocation />
     </Fab>
+  );
+};
+
+const DrawPolygonButton = ({ onSaved }) => {
+  const alert = useAlert();
+  const map = useMap();
+  const [active, setActive] = useState(false);
+  const [points, setPoints] = useState([]);
+  const [polyLayer, setPolyLayer] = useState(null);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [lotId, setLotId] = useState('');
+  const [lotName, setLotName] = useState('');
+
+  const handleMapClick = (e) => {
+    if (!active) return;
+    const { lat, lng } = e.latlng;
+    setPoints((prev) => [...prev, [lat, lng]]);
+  };
+
+  const toggleActive = () => {
+    const next = !active;
+    setActive(next);
+    if (!next) {
+      setPoints([]);
+      if (polyLayer) {
+        polyLayer.remove();
+        setPolyLayer(null);
+      }
+    }
+  };
+
+  if (active && map && !map._ag_draw_listener) {
+    map.on('click', handleMapClick);
+    map._ag_draw_listener = true;
+  }
+  if (!active && map && map._ag_draw_listener) {
+    map.off('click', handleMapClick);
+    map._ag_draw_listener = false;
+  }
+
+  if (active && points.length >= 2) {
+    const latlngs = points.map(([lat, lng]) => L.latLng(lat, lng));
+    if (!polyLayer) {
+      const layer = L.polygon(latlngs, { color: '#4CAF50' }).addTo(map);
+      setPolyLayer(layer);
+    } else {
+      polyLayer.setLatLngs(latlngs);
+    }
+  }
+
+  const handleSave = async () => {
+    try {
+      const ring = points.map(([lat, lng]) => [lng, lat]);
+      const geometry = { type: 'Polygon', coordinates: [ring] };
+      let targetId = lotId ? parseInt(lotId, 10) : null;
+      if (!targetId) {
+        const created = await lotService.createLot({ nombre_lote: lotName || 'Lote', descripcion: 'Geometría trazada', activo: true });
+        targetId = created?.id || created?.id_lote;
+      }
+      await lotService.updateCoordinates(targetId, geometry);
+      alert.success('Mapa', 'Coordenadas guardadas');
+      setSaveOpen(false);
+      toggleActive();
+      if (onSaved) onSaved();
+    } catch (e) {
+      alert.error('Error', e?.response?.data?.message || e.message || 'No se pudieron guardar las coordenadas');
+    }
+  };
+
+  return (
+    <>
+      <Fab className="map-fab draw" color={active ? 'success' : 'default'} size="small" onClick={() => active ? setSaveOpen(true) : toggleActive()} aria-label="Dibujar lote">
+        <Edit />
+      </Fab>
+      <Dialog open={saveOpen} onClose={() => setSaveOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Guardar coordenadas</DialogTitle>
+        <DialogContent dividers>
+          <TextField label="ID de Lote (opcional)" value={lotId} onChange={(e) => setLotId(e.target.value)} fullWidth sx={{ mb: 2 }} />
+          <TextField label="Nombre de Lote (si no hay ID)" value={lotName} onChange={(e) => setLotName(e.target.value)} fullWidth />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setSaveOpen(false); toggleActive(); }} color="inherit">Cancelar</Button>
+          <Button onClick={handleSave} variant="contained">Guardar</Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 };
 
@@ -407,6 +493,7 @@ const LotsMapPage = () => {
                     subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
                     attribution='&copy; <a href="https://www.google.com/maps">Google Maps</a>'
                   />
+                  <DrawPolygonButton onSaved={() => queryClient.invalidateQueries(['lotesMapData'])} />
                   <FitToDataButton mapData={mapData} />
                   {mapData.map((lote) => {
                     const lotePositions = swapCoords(lote.coordenadas?.coordinates);

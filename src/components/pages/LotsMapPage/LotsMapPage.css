@@ -86,9 +86,14 @@
 
 .map-fab {
   position: absolute;
-  left: 450px;
+  left: 415px;
   top: 10px;
   z-index: 1000;
+}
+
+.map-fab.draw {
+  left: 455px;
+  top: 60px;
 }
 
 .map-loading {
