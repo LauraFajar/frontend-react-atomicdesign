@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit, Delete } from '@mui/icons-material';
+import { Edit, Delete, ArrowUpward, ArrowDownward } from '@mui/icons-material';
 import {
   Table,
   TableBody,
@@ -11,7 +11,7 @@ import {
   IconButton
 } from '@mui/material';
 
-const InventoryTable = ({ items, onEdit, onDelete }) => {
+const InventoryTable = ({ items, onEdit, onDelete, onQuickEntrada, onQuickSalida }) => {
   return (
     <TableContainer component={Paper} className="inventory-table-container">
       <Table className="inventory-table">
@@ -19,6 +19,8 @@ const InventoryTable = ({ items, onEdit, onDelete }) => {
           <TableRow>
             <TableCell>ID</TableCell>
             <TableCell>Nombre</TableCell>
+            <TableCell>Categoría</TableCell>
+            <TableCell>Almacén</TableCell>
             <TableCell>Cantidad</TableCell>
             <TableCell>Unidad</TableCell>
             <TableCell>Última fecha</TableCell>
@@ -27,20 +29,36 @@ const InventoryTable = ({ items, onEdit, onDelete }) => {
         </TableHead>
         <TableBody>
           {items.map((item) => (
-            <TableRow key={item.id} hover>
+            <TableRow key={item.id} hover className={`stock-row ${item.stockStatus || ''}`}>
               <TableCell>{item.id}</TableCell>
               <TableCell>{item.nombre}</TableCell>
-              <TableCell className={`quantity-cell ${item.stockStatus || ''}`}>{item.cantidad}</TableCell>
+              <TableCell>{item.categoria || '-'}</TableCell>
+              <TableCell>{item.almacen || '-'}</TableCell>
+              <TableCell className={`quantity-cell ${item.stockStatus || ''}`}>
+                <span className={`stock-badge ${item.stockStatus || ''}`}>
+                  {Math.max(0, Number(item.cantidad || 0))}
+                </span>
+              </TableCell>
               <TableCell>{item.unidad}</TableCell>
               <TableCell>{item.ultima_fecha || '-'}</TableCell>
               <TableCell align="right">
                 {typeof onEdit === 'function' && (
-                  <IconButton aria-label="Editar" onClick={() => onEdit(item)} className="action-button edit-button">
+                  <IconButton title="Editar inventario" aria-label="Editar inventario" onClick={() => onEdit(item)} className="action-button edit-button">
                     <Edit fontSize="small" />
                   </IconButton>
                 )}
+                {typeof onQuickEntrada === 'function' && (
+                  <IconButton title="Registrar entrada" aria-label="Registrar entrada" onClick={() => onQuickEntrada(item)} className="action-button entrada-button">
+                    <ArrowUpward fontSize="small" />
+                  </IconButton>
+                )}
+                {typeof onQuickSalida === 'function' && (
+                  <IconButton title="Registrar salida" aria-label="Registrar salida" onClick={() => onQuickSalida(item)} className="action-button salida-button">
+                    <ArrowDownward fontSize="small" />
+                  </IconButton>
+                )}
                 {typeof onDelete === 'function' && (
-                  <IconButton aria-label="Eliminar" onClick={() => onDelete(item)} className="action-button delete-button">
+                  <IconButton title="Eliminar inventario" aria-label="Eliminar inventario" onClick={() => onDelete(item)} className="action-button delete-button">
                     <Delete fontSize="small" />
                   </IconButton>
                 )}

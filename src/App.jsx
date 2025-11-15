@@ -18,6 +18,7 @@ import CultivosMapPage from './components/pages/CultivosMapPage/CultivosMapPage'
 import LotsMapPage from './components/pages/LotsMapPage/LotsMapPage';
 import InventoryPage from './components/pages/InventoryPage/InventoryPage';
 import FinanceDashboard from './components/pages/FinanceDashboard/FinanceDashboard';
+import IotPage from './components/pages/IotPage/IotPage';
 
 const ProtectedRoute = ({ children, allowGuest = false }) => {
   const { isAuthenticated, loading, user, permissions } = useAuth()
@@ -148,6 +149,12 @@ function App() {
               <Route path="/finanzas/dashboard" element={
                 <ProtectedRoute>
                   <FinanceDashboard />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/iot" element={
+                <ProtectedRoute>
+                  <IotPage />
                 </ProtectedRoute>
               } />
 

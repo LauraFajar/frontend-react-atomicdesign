@@ -31,14 +31,32 @@
   max-width: 1400px;
   margin: 0 auto;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
 }
+
+.header__left { display: flex; align-items: center; }
+.header__quick-actions { display: flex; gap: 10px; }
+.quick-action-btn {
+  background-color: var(--primary-green);
+  color: #fff;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  box-shadow: var(--shadow-md);
+}
+.quick-action-btn:hover { background-color: var(--dark-green); }
 
 .header__actions {
   display: flex;
   align-items: center;
   gap: 1rem;
   position: relative;
+  margin-left: auto;
 }
 
 .header__action-button,
@@ -219,6 +237,7 @@
     padding: 0 var(--spacing-md);
     height: 60px;
   }
+  .header__quick-actions { display: none; }
   
   .header__title h1 {
     font-size: var(--font-size-lg);

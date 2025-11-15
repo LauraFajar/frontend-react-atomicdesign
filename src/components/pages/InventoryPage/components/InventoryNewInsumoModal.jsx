@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 
-const InventoryNewInsumoModal = ({ open, onCancel, onSave }) => {
-  const [form, setForm] = useState({ nombre: '', codigo: '', unidad: '', fecha_entrada: '', observacion: '' });
+const InventoryNewInsumoModal = ({ open, onCancel, onSave, categorias = [], almacenes = [] }) => {
+  const [form, setForm] = useState({ nombre: '', codigo: '', unidad: '', fecha_entrada: '', observacion: '', id_categoria: '', id_almacen: '' });
 
   useEffect(() => {
     if (!open) {
-      setForm({ nombre: '', codigo: '', unidad: '', fecha_entrada: '', observacion: '' });
+      setForm({ nombre: '', codigo: '', unidad: '', fecha_entrada: '', observacion: '', id_categoria: '', id_almacen: '' });
     }
   }, [open]);
 
@@ -16,15 +16,27 @@ const InventoryNewInsumoModal = ({ open, onCancel, onSave }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave?.(form);
+    const payload = {
+      ...form,
+      id_categoria: form.id_categoria ? Number(form.id_categoria) : undefined,
+      id_almacen: form.id_almacen ? Number(form.id_almacen) : undefined,
+    };
+    onSave?.(payload);
   };
 
   if (!open) return null;
 
+  const firstInputRef = useRef(null);
+  useEffect(() => {
+    if (open && firstInputRef.current) {
+      try { firstInputRef.current.focus(); } catch {}
+    }
+  }, [open]);
+
   return (
     <div className="inventory-modal-backdrop" onClick={onCancel}>
-      <div className="inventory-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="modal-title">Nuevo insumo</h2>
+      <div className="inventory-modal" role="dialog" aria-modal="true" aria-labelledby="nuevo-insumo-title" onClick={(e) => e.stopPropagation()}>
+        <h2 id="nuevo-insumo-title" className="modal-title">Nuevo insumo</h2>
         <form onSubmit={handleSubmit}>
           <input
             type="text"
@@ -32,6 +44,7 @@ const InventoryNewInsumoModal = ({ open, onCancel, onSave }) => {
             placeholder="Nombre"
             value={form.nombre}
             onChange={handleChange}
+            ref={firstInputRef}
             required
           />
           <input
@@ -48,6 +61,28 @@ const InventoryNewInsumoModal = ({ open, onCancel, onSave }) => {
             value={form.unidad}
             onChange={handleChange}
           />
+          <select
+            name="id_categoria"
+            value={form.id_categoria}
+            onChange={handleChange}
+            required
+          >
+            <option value="">Seleccione categoría</option>
+            {(categorias || []).map((c) => (
+              <option key={c.id} value={c.id}>{c.nombre}</option>
+            ))}
+          </select>
+          <select
+            name="id_almacen"
+            value={form.id_almacen}
+            onChange={handleChange}
+            required
+          >
+            <option value="">Seleccione almacén</option>
+            {(almacenes || []).map((a) => (
+              <option key={a.id} value={a.id}>{a.nombre}</option>
+            ))}
+          </select>
           <input
             type="date"
             name="fecha_entrada"

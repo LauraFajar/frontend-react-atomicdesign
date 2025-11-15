@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, TextField, Typography, CircularProgress } from '@mui/material';
-import { Add, Search as SearchIcon, CompareArrows } from '@mui/icons-material';
+import { Button, TextField, Typography, CircularProgress, Table, TableHead, TableRow, TableCell, TableBody, IconButton } from '@mui/material';
+import { Add, Search as SearchIcon, ArrowDownward, ArrowUpward, Delete, Edit } from '@mui/icons-material';
 import { useAlert } from '../../../contexts/AlertContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import InventoryTable from './components/InventoryTable';
@@ -11,6 +11,8 @@ import ConfirmModal from '../../molecules/ConfirmModal/ConfirmModal';
 import inventoryService from '../../../services/inventoryService';
 import insumosService from '../../../services/insumosService';
 import movimientosService from '../../../services/movimientosService';
+import categoriasService from '../../../services/categoriasService';
+import almacenesService from '../../../services/almacenesService';
 import './InventoryPage.css';
 
 const InventoryPage = () => {
@@ -18,8 +20,11 @@ const InventoryPage = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [openItemModal, setOpenItemModal] = useState(false);
   const [openConfirmModal, setOpenConfirmModal] = useState(false);
+  const [openConfirmMovModal, setOpenConfirmMovModal] = useState(false);
   const [openMovementModal, setOpenMovementModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [movementToDelete, setMovementToDelete] = useState(null);
+  
   const [filterTerm, setFilterTerm] = useState('');
   const alert = useAlert();
   const queryClient = useQueryClient();
@@ -57,15 +62,76 @@ const InventoryPage = () => {
     enabled: canView,
   });
 
-  const { data: movimientosData, isError: movimientosError } = useQuery({
+  const { data: lowStockData } = useQuery({
+    queryKey: ['inventory', 'low-stock'],
+    queryFn: () => inventoryService.getLowStock(10),
+    staleTime: 30 * 1000,
+  });
+
+
+
+  const { data: movimientosData, isError: movimientosError, isFetching: movimientosFetching } = useQuery({
     queryKey: ['movimientos'],
     queryFn: () => movimientosService.getMovimientos({}, 1, 100),
     retry: 0,
     enabled: canView,
   });
 
+  const { data: categorias = [] } = useQuery({
+    queryKey: ['categorias', 'inventory-page'],
+    queryFn: () => categoriasService.getCategorias(1, 100),
+    staleTime: 60 * 1000,
+  });
+
+  const { data: almacenes = [] } = useQuery({
+    queryKey: ['almacenes', 'inventory-page'],
+    queryFn: () => almacenesService.getAlmacenes(1, 100),
+    staleTime: 60 * 1000,
+  });
+
+  const { data: insumosList = [] } = useQuery({
+    queryKey: ['insumos', 'inventory-page'],
+    queryFn: () => insumosService.getInsumos(1, 1000),
+    staleTime: 60 * 1000,
+  });
+
+
   const items = data?.items || [];
   const movimientosEnabled = !!movimientosData?.items && !movimientosError;
+  const catNameById = useMemo(() => {
+    const m = new Map();
+    const list = Array.isArray(categorias?.items) ? categorias.items : (Array.isArray(categorias) ? categorias : []);
+    list.forEach((c) => m.set(Number(c.id), c.nombre));
+    return m;
+  }, [categorias]);
+  const almacenNameById = useMemo(() => {
+    const m = new Map();
+    const list = Array.isArray(almacenes?.items) ? almacenes.items : (Array.isArray(almacenes) ? almacenes : []);
+    list.forEach((a) => m.set(Number(a.id), a.nombre));
+    return m;
+  }, [almacenes]);
+
+  const insumoCatIdById = useMemo(() => {
+    const m = new Map();
+    const list = Array.isArray(insumosList) ? insumosList : [];
+    list.forEach((ins) => {
+      const rel = ins?.raw?.id_categoria ?? ins?.id_categoria;
+      const id = typeof rel === 'object' ? (rel?.id_categoria ?? rel?.id ?? rel) : rel;
+      if (id != null) m.set(Number(ins.id), Number(id));
+    });
+    return m;
+  }, [insumosList]);
+
+  const insumoAlmIdById = useMemo(() => {
+    const m = new Map();
+    const list = Array.isArray(insumosList) ? insumosList : [];
+    list.forEach((ins) => {
+      const rel = ins?.raw?.id_almacen ?? ins?.id_almacen;
+      const id = typeof rel === 'object' ? (rel?.id_almacen ?? rel?.id ?? rel) : rel;
+      if (id != null) m.set(Number(ins.id), Number(id));
+    });
+    return m;
+  }, [insumosList]);
   const stockByInsumo = useMemo(() => {
     if (!movimientosEnabled) return {};
     const acc = {};
@@ -87,15 +153,25 @@ const InventoryPage = () => {
 
   const displayItems = useMemo(() => {
     const enriched = items.map((i) => {
-      const computedCantidad = movimientosEnabled ? Number(stockByInsumo[i.insumoId] ?? i.cantidad) : i.cantidad;
-      return { ...i, cantidad: computedCantidad, stockStatus: getStockStatus(computedCantidad) };
+      const computedCantidad = Math.max(0, Number(i.cantidad || 0));
+      const catId = i?.idCategoria ?? insumoCatIdById.get(Number(i.insumoId)) ?? (() => {
+        const rc = i?.raw?.insumo?.id_categoria ?? i?.raw?.id_categoria;
+        return typeof rc === 'object' ? Number(rc?.id ?? rc?.id_categoria) : Number(rc);
+      })();
+      const almId = i?.idAlmacen ?? insumoAlmIdById.get(Number(i.insumoId)) ?? (() => {
+        const ra = i?.raw?.insumo?.id_almacen ?? i?.raw?.id_almacen;
+        return typeof ra === 'object' ? Number(ra?.id ?? ra?.id_almacen) : Number(ra);
+      })();
+      const catName = i.categoria || (catId ? (catNameById.get(Number(catId)) || '') : '');
+      const almName = i.almacen || (almId ? (almacenNameById.get(Number(almId)) || '') : '');
+      return { ...i, cantidad: computedCantidad, stockStatus: getStockStatus(computedCantidad), categoria: catName, almacen: almName };
     });
     if (!filterTerm) return enriched;
     return enriched.filter(i => (
       String(i.nombre).toLowerCase().includes(filterTerm.toLowerCase()) ||
       String(i.unidad).toLowerCase().includes(filterTerm.toLowerCase())
     ));
-  }, [items, filterTerm, movimientosEnabled, stockByInsumo]);
+  }, [items, filterTerm, catNameById, almacenNameById, insumoCatIdById, insumoAlmIdById]);
 
   const createMutation = useMutation({
     mutationFn: inventoryService.createItem,
@@ -127,13 +203,148 @@ const InventoryPage = () => {
     onError: (e) => alert.error('Error', e.message || 'No se pudo eliminar el insumo'),
   });
 
+
+
+  const [refreshingMovs, setRefreshingMovs] = useState(false);
+
+  const createMovimientoMutation = useMutation({
+    mutationFn: movimientosService.createMovimiento,
+    onSuccess: async () => {
+      setRefreshingMovs(true);
+      await Promise.all([
+        queryClient.invalidateQueries(['movimientos']),
+        queryClient.invalidateQueries(['inventory']),
+        queryClient.invalidateQueries(['inventory', 'low-stock']),
+      ]);
+      setRefreshingMovs(false);
+      alert.success('Inventario', 'Movimiento registrado correctamente');
+    },
+    onError: (e) => alert.error('Error', e?.response?.data?.message || e.message || 'No se pudo registrar el movimiento'),
+  });
+
+  const deleteMovimientoMutation = useMutation({
+    mutationFn: (id) => movimientosService.deleteMovimiento(id),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries(['movimientos']),
+        queryClient.invalidateQueries(['inventory']),
+        queryClient.invalidateQueries(['inventory', 'low-stock']),
+      ]);
+      alert.success('Inventario', 'Movimiento eliminado correctamente');
+    },
+    onError: (e) => alert.error('Error', e?.response?.data?.message || e.message || 'No se pudo eliminar el movimiento'),
+  });
+
+  const handleDeleteMovimiento = (mov) => {
+    if (!canDelete) { alert.error('Permisos', 'No tienes permisos para eliminar movimientos'); return; }
+    if (!mov?.id) { alert.error('Error', 'Movimiento inválido'); return; }
+    deleteMovimientoMutation.mutate(mov.id);
+  };
+
+  const [movementToEdit, setMovementToEdit] = useState(null);
+  const updateMovimientoMutation = useMutation({
+    mutationFn: ({ id, data }) => movimientosService.updateMovimiento(id, data),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries(['movimientos']),
+        queryClient.invalidateQueries(['inventory']),
+        queryClient.invalidateQueries(['inventory', 'low-stock']),
+      ]);
+      alert.success('Inventario', 'Movimiento actualizado correctamente');
+    },
+    onError: (e) => alert.error('Error', e?.response?.data?.message || e.message || 'No se pudo actualizar el movimiento'),
+  });
+
+  const effectSign = (tipo) => (String(tipo).toLowerCase() === 'salida' ? -1 : 1);
+  const adjustInventoryForEdit = (original, updated) => {
+    const origSign = effectSign(original.tipo_movimiento);
+    const newSign = effectSign(updated.tipo_movimiento);
+    const origInsumoId = Number(original.id_insumo);
+    const newInsumoId = Number(updated.id_insumo);
+    const origQty = Number(original.cantidad || 0);
+    const newQty = Number(updated.cantidad || 0);
+
+    const itemOrig = items.find((it) => Number(it.insumoId) === origInsumoId);
+    const itemNew = items.find((it) => Number(it.insumoId) === newInsumoId);
+
+    if (origInsumoId === newInsumoId) {
+      const delta = (newSign * newQty) - (origSign * origQty);
+      if (delta !== 0 && itemOrig) {
+        const nuevaCantidad = Number(itemOrig.cantidad || 0) + delta;
+        if (nuevaCantidad < 0) {
+          alert.error('Validación', 'La edición produciría stock negativo');
+          return false;
+        }
+        updateMutation.mutate({ id: itemOrig.id, data: { cantidad: nuevaCantidad, unidad: updated.unidad_medida, ultima_fecha: updated.fecha_movimiento } });
+      }
+      return true;
+    } else {
+      if (itemOrig) {
+        const revertDelta = -(origSign * origQty);
+        const nuevaCantidadOrig = Number(itemOrig.cantidad || 0) + revertDelta;
+        if (nuevaCantidadOrig < 0) {
+          alert.error('Validación', 'La reversión produce stock negativo');
+          return false;
+        }
+        updateMutation.mutate({ id: itemOrig.id, data: { cantidad: nuevaCantidadOrig, unidad: original.unidad_medida, ultima_fecha: updated.fecha_movimiento } });
+      }
+      const applyDelta = newSign * newQty;
+      if (itemNew) {
+        const nuevaCantidadNew = Number(itemNew.cantidad || 0) + applyDelta;
+        if (nuevaCantidadNew < 0) {
+          alert.error('Validación', 'La edición produciría stock negativo en el nuevo insumo');
+          return false;
+        }
+        updateMutation.mutate({ id: itemNew.id, data: { cantidad: nuevaCantidadNew, unidad: updated.unidad_medida, ultima_fecha: updated.fecha_movimiento } });
+      } else {
+        if (applyDelta < 0) {
+          alert.error('Validación', 'No existe inventario para disminuir en el nuevo insumo');
+          return false;
+        }
+        createMutation.mutate({ id_insumo: newInsumoId, cantidad: applyDelta, unidad: updated.unidad_medida, ultima_fecha: updated.fecha_movimiento });
+      }
+      return true;
+    }
+  };
+
   const handleAddOrUpdate = async (formData) => {
-    // Actualización de inventario existente
     if (selectedItem?.id) {
-      updateMutation.mutate({ id: selectedItem.id, data: formData });
+      if (!canEdit) { alert.error('Permisos', 'No tienes permisos para editar inventario'); return; }
+      try {
+        const invPayload = {
+          cantidad: formData.cantidad,
+          unidad: formData.unidad,
+          ultima_fecha: formData.ultima_fecha,
+        };
+        const insumoId = Number(selectedItem.insumoId);
+        const insumoPayload = {
+          ...(formData.nombre ? { nombre_insumo: String(formData.nombre).trim() } : {}),
+          ...(formData.observacion !== undefined ? { observacion: formData.observacion } : {}),
+          ...(formData.id_categoria ? { id_categoria: Number(formData.id_categoria) } : {}),
+          ...(formData.id_almacen ? { id_almacen: Number(formData.id_almacen) } : {}),
+        };
+
+        const requests = [];
+        if (Object.values(invPayload).some(v => v !== undefined)) {
+          requests.push(inventoryService.updateItem(selectedItem.id, invPayload));
+        }
+        if (insumoId && Object.keys(insumoPayload).length > 0) {
+          requests.push(insumosService.updateInsumo(insumoId, insumoPayload));
+        }
+        await Promise.all(requests);
+        await Promise.all([
+          queryClient.invalidateQueries(['inventory']),
+          queryClient.invalidateQueries(['insumos', 'inventory-page']),
+        ]);
+        setSelectedItem(null);
+        alert.success('¡Éxito!', 'Elemento actualizado correctamente.');
+      } catch (e) {
+        alert.error('Error', e?.response?.data?.message || e.message || 'No se pudo actualizar el elemento');
+      }
       return;
     }
 
+    if (!canCreate) { alert.error('Permisos', 'No tienes permisos para crear inventario'); return; }
     if (formData?.id_insumo) {
       createMutation.mutate(formData);
       return;
@@ -150,8 +361,11 @@ const InventoryPage = () => {
         const nuevoInsumo = await insumosService.createInsumo({
           nombre_insumo: String(formData.nombre || '').trim(),
           codigo: `GEN-${Date.now()}`,
+          unidad_medida: formData.unidad,
           fecha_entrada: formData.ultima_fecha || hoy,
           observacion: obsSanitized,
+          id_categoria: formData.id_categoria,
+          id_almacen: formData.id_almacen,
         });
 
         await inventoryService.createItem({
@@ -174,9 +388,12 @@ const InventoryPage = () => {
   };
 
   const handleOpenConfirmDelete = (item) => {
+    if (!canDelete) { alert.error('Permisos', 'No tienes permisos para eliminar inventario'); return; }
     setItemToDelete(item);
     setOpenConfirmModal(true);
   };
+
+
 
   const handleConfirmDelete = () => {
     if (itemToDelete) {
@@ -185,38 +402,28 @@ const InventoryPage = () => {
     }
   };
 
+  const handleOpenConfirmDeleteMovement = (mov) => {
+    if (!canDelete) { alert.error('Permisos', 'No tienes permisos para eliminar movimientos'); return; }
+    if (!mov?.id) { alert.error('Error', 'Movimiento inválido'); return; }
+    setMovementToDelete(mov);
+    setOpenConfirmMovModal(true);
+  };
+
+  const handleConfirmDeleteMovement = () => {
+    if (movementToDelete?.id) {
+      deleteMovimientoMutation.mutate(movementToDelete.id);
+      setOpenConfirmMovModal(false);
+      setMovementToDelete(null);
+    }
+  };
+
   const handleNuevoInsumo = () => {
+    if (!canCreate) { alert.error('Permisos', 'No tienes permisos para crear inventario'); return; }
     setSelectedItem(null);
     setOpenItemModal(true);
+    setTimeout(() => { const el = document.activeElement; if (el && typeof el.blur === 'function') { el.blur(); } }, 0);
   };
 
-  const handleNuevoMovimiento = () => {
-    setOpenMovementModal(true);
-  };
-
-  const handleGuardarMovimiento = (mov) => {
-    const itemMatch = items.find((it) => Number(it.insumoId) === Number(mov.id_insumo));
-    const cantidad = Number(mov.cantidad || 0);
-    if (cantidad <= 0) {
-      alert.error('Validación', 'La cantidad debe ser mayor a 0');
-      return;
-    }
-
-    if (mov.tipo_movimiento === 'salida') {
-      if (!itemMatch) { alert.error('Validación', 'No se encontró el insumo en inventario'); return; }
-      const nuevaCantidad = Number(itemMatch.cantidad || 0) - cantidad;
-      if (nuevaCantidad < 0) { alert.error('Validación', 'La salida excede el stock disponible'); return; }
-      updateMutation.mutate({ id: itemMatch.id, data: { cantidad: nuevaCantidad, unidad: mov.unidad_medida, ultima_fecha: mov.fecha_movimiento } });
-    } else if (mov.tipo_movimiento === 'entrada') {
-      if (itemMatch) {
-        const nuevaCantidad = Number(itemMatch.cantidad || 0) + cantidad;
-        updateMutation.mutate({ id: itemMatch.id, data: { cantidad: nuevaCantidad, unidad: mov.unidad_medida, ultima_fecha: mov.fecha_movimiento } });
-      } else {
-        createMutation.mutate({ id_insumo: mov.id_insumo, cantidad: cantidad, unidad: mov.unidad_medida, ultima_fecha: mov.fecha_movimiento });
-      }
-    }
-    setOpenMovementModal(false);
-  };
 
   if (!canView) {
     return (
@@ -245,26 +452,22 @@ const InventoryPage = () => {
         <div className="container-header">
           <h1 className="page-title">Gestión de Inventario</h1>
           <div className="header-actions">
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              onClick={handleNuevoInsumo}
-              className="new-inventory-button"
-              disabled={!canCreate}
-            >
-              Nuevo Insumo
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<CompareArrows />}
-              onClick={handleNuevoMovimiento}
-              className="new-movement-button"
-              disabled={!canMovements}
-            >
-              Nuevo Movimiento
-            </Button>
+            {canCreate && (
+              <Button
+                variant="contained"
+                startIcon={<Add />}
+                onClick={handleNuevoInsumo}
+                className="new-inventory-button"
+                disabled={!canCreate}
+              >
+                Nuevo Insumo
+              </Button>
+            )}
+            
           </div>
         </div>
+
+       
 
         <div className="search-container">
           <TextField
@@ -279,37 +482,259 @@ const InventoryPage = () => {
             }}
           />
         </div>
-
         <InventoryTable
           items={displayItems}
           onEdit={canEdit ? ((item) => { setSelectedItem(item); setOpenItemModal(true); }) : undefined}
           onDelete={canDelete ? handleOpenConfirmDelete : undefined}
+          onQuickEntrada={canMovements ? ((item) => { setMovementToEdit({ id_insumo: item.insumoId, tipo_movimiento: 'entrada', unidad: item.unidad }); setOpenMovementModal(true); }) : undefined}
+          onQuickSalida={canMovements ? ((item) => { setMovementToEdit({ id_insumo: item.insumoId, tipo_movimiento: 'salida', unidad: item.unidad }); setOpenMovementModal(true); }) : undefined}
         />
+
 
         <InventoryItemModal
           open={openItemModal}
           selectedItem={selectedItem}
           onCancel={() => { setOpenItemModal(false); setSelectedItem(null); }}
           onSave={(values) => { handleAddOrUpdate(values); setOpenItemModal(false); setSelectedItem(null); }}
+          categorias={Array.isArray(categorias?.items) ? categorias.items : (Array.isArray(categorias) ? categorias : [])}
+          almacenes={Array.isArray(almacenes?.items) ? almacenes.items : (Array.isArray(almacenes) ? almacenes : [])}
         />
 
         <InventoryMovementModal
           open={openMovementModal}
-          onCancel={() => setOpenMovementModal(false)}
-          onSave={handleGuardarMovimiento}
+          movement={movementToEdit}
+          onCancel={() => { setOpenMovementModal(false); setMovementToEdit(null); }}
+          onSave={async (mov) => {
+            const itemMatch = items.find((it) => Number(it.insumoId) === Number(mov.id_insumo));
+            const cantidad = Number(mov.cantidad || 0);
+            if (cantidad <= 0) {
+              alert.error('Validación', 'La cantidad debe ser mayor a 0');
+              return;
+            }
+            try {
+              if (movementToEdit?.id) {
+                const ok = adjustInventoryForEdit(movementToEdit, mov);
+                if (!ok) return;
+                await movimientosService.updateMovimiento(movementToEdit.id, mov);
+              } else {
+                try {
+                  await movimientosService.createMovimiento({
+                    id_insumo: mov.id_insumo,
+                    tipo_movimiento: mov.tipo_movimiento,
+                    cantidad: mov.cantidad,
+                    unidad_medida: mov.unidad_medida,
+                    fecha_movimiento: mov.fecha_movimiento,
+                    responsable: mov.responsable,
+                    observacion: mov.observacion,
+                  });
+                } catch (e) {
+                  const msg = e?.response?.data?.message || e.message || '';
+                  const msgStr = Array.isArray(msg) ? msg.join(' ') : String(msg);
+                  if (!/id_insumo should not exist/i.test(msgStr) && !/insumo should not exist/i.test(msgStr)) {
+                    throw e;
+                  }
+                }
+                if (mov.tipo_movimiento === 'salida') {
+                  if (!itemMatch) { alert.error('Validación', 'No se encontró el insumo en inventario'); return; }
+                  const nuevaCantidad = Number(itemMatch.cantidad || 0) - cantidad;
+                  if (nuevaCantidad < 0) { alert.error('Validación', 'La salida excede el stock disponible'); return; }
+                  await inventoryService.updateItem(itemMatch.id, { cantidad: nuevaCantidad, unidad: mov.unidad_medida, ultima_fecha: mov.fecha_movimiento });
+                } else if (mov.tipo_movimiento === 'entrada') {
+                  if (itemMatch) {
+                    const nuevaCantidad = Number(itemMatch.cantidad || 0) + cantidad;
+                    await inventoryService.updateItem(itemMatch.id, { cantidad: nuevaCantidad, unidad: mov.unidad_medida, ultima_fecha: mov.fecha_movimiento });
+                  } else {
+                    await inventoryService.createItem({ id_insumo: mov.id_insumo, cantidad: cantidad, unidad: mov.unidad_medida, ultima_fecha: mov.fecha_movimiento });
+                  }
+                }
+              }
+              await Promise.all([
+                queryClient.invalidateQueries(['movimientos']),
+                queryClient.invalidateQueries(['inventory']),
+                queryClient.invalidateQueries(['inventory', 'low-stock']),
+              ]);
+              alert.success('Inventario', movementToEdit?.id ? 'Movimiento actualizado correctamente' : 'Movimiento registrado correctamente');
+              setOpenMovementModal(false);
+              setMovementToEdit(null);
+            } catch (e) {
+              alert.error('Error', e?.response?.data?.message || e.message || 'No se pudo registrar/actualizar el movimiento');
+            }
+          }}
         />
 
+
+
+        {/* Tablas de movimientos: Entradas y Salidas */}
+        <div className="users-table-container" style={{ marginTop: 8 }}>
+          {(movimientosFetching || refreshingMovs) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <CircularProgress size={18} />
+              <Typography variant="body2" color="text.secondary">Actualizando movimientos…</Typography>
+            </div>
+          )}
+          <div className="section-header entradas">
+            <Typography variant="h6" className="section-title section-title--entrada">Entradas</Typography>
+          </div>
+          <Table className="inventory-table">
+            <TableHead>
+              <TableRow>
+                <TableCell>Fecha</TableCell>
+                <TableCell>Insumo</TableCell>
+                <TableCell>Categoría</TableCell>
+                <TableCell>Almacén</TableCell>
+                <TableCell>Cantidad</TableCell>
+                <TableCell>Unidad</TableCell>
+                <TableCell align="right">Acciones</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {((movimientosData?.items || []).filter(m => m.tipo_movimiento === 'entrada')).length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6}>
+                    <Typography variant="body2" color="text.secondary">Sin entradas registradas.</Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                (movimientosData?.items || [])
+                  .filter(m => m.tipo_movimiento === 'entrada')
+                  .map((m) => {
+                    const itemMatch = items.find((it) => Number(it.insumoId) === Number(m.id_insumo));
+                    const nombre = itemMatch?.nombre || `#${m.id_insumo}`;
+                    const catIdForInsumo = (itemMatch?.idCategoria != null ? Number(itemMatch.idCategoria) : insumoCatIdById.get(Number(m.id_insumo))) || undefined;
+                    const almIdForInsumo = (itemMatch?.idAlmacen != null ? Number(itemMatch.idAlmacen) : insumoAlmIdById.get(Number(m.id_insumo))) || undefined;
+                    const categoria = m.insumo_categoria || (catIdForInsumo ? (catNameById.get(Number(catIdForInsumo)) || '') : '') || itemMatch?.categoria || '-';
+                    const almacen = m.insumo_almacen || (almIdForInsumo ? (almacenNameById.get(Number(almIdForInsumo)) || '') : '') || itemMatch?.almacen || '-';
+                    const fecha = m.fecha_movimiento ? new Date(m.fecha_movimiento) : null;
+                    const fechaStr = fecha && !Number.isNaN(fecha.getTime()) ? fecha.toLocaleString() : '-';
+                    return (
+                      <TableRow key={`entrada-${m.id}`}>
+                        <TableCell>{fechaStr}</TableCell>
+                        <TableCell>{nombre}</TableCell>
+                        <TableCell>{categoria}</TableCell>
+                        <TableCell>{almacen}</TableCell>
+                        <TableCell>{m.cantidad}</TableCell>
+                        <TableCell>{m.unidad_medida}</TableCell>
+                        <TableCell align="right">
+                          <IconButton
+                            title="Editar movimiento"
+                            aria-label="Editar movimiento"
+                            onClick={() => { setMovementToEdit(m); setOpenMovementModal(true); }}
+                            className="action-button edit-button"
+                          >
+                            <Edit fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            title="Eliminar movimiento"
+                            aria-label="Eliminar movimiento"
+                            onClick={() => handleOpenConfirmDeleteMovement(m)}
+                            className="action-button delete-button"
+                          >
+                            <Delete fontSize="small" />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div className="users-table-container" style={{ marginTop: 8 }}>
+          <div className="section-header salidas">
+            <Typography variant="h6" className="section-title section-title--salida">Salidas</Typography>
+          </div>
+          <Table className="inventory-table">
+            <TableHead>
+              <TableRow>
+                <TableCell>Fecha</TableCell>
+                <TableCell>Insumo</TableCell>
+                <TableCell>Categoría</TableCell>
+                <TableCell>Almacén</TableCell>
+                <TableCell>Cantidad</TableCell>
+                <TableCell>Unidad</TableCell>
+                <TableCell align="right">Acciones</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {((movimientosData?.items || []).filter(m => m.tipo_movimiento === 'salida')).length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6}>
+                    <Typography variant="body2" color="text.secondary">Sin salidas registradas.</Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                (movimientosData?.items || [])
+                  .filter(m => m.tipo_movimiento === 'salida')
+                  .map((m) => {
+                    const itemMatch = items.find((it) => Number(it.insumoId) === Number(m.id_insumo));
+                    const nombre = itemMatch?.nombre || `#${m.id_insumo}`;
+                    const catIdForInsumo = (itemMatch?.idCategoria != null ? Number(itemMatch.idCategoria) : insumoCatIdById.get(Number(m.id_insumo))) || undefined;
+                    const almIdForInsumo = (itemMatch?.idAlmacen != null ? Number(itemMatch.idAlmacen) : insumoAlmIdById.get(Number(m.id_insumo))) || undefined;
+                    const categoria = m.insumo_categoria || (catIdForInsumo ? (catNameById.get(Number(catIdForInsumo)) || '') : '') || itemMatch?.categoria || '-';
+                    const almacen = m.insumo_almacen || (almIdForInsumo ? (almacenNameById.get(Number(almIdForInsumo)) || '') : '') || itemMatch?.almacen || '-';
+                    const fecha = m.fecha_movimiento ? new Date(m.fecha_movimiento) : null;
+                    const fechaStr = fecha && !Number.isNaN(fecha.getTime()) ? fecha.toLocaleString() : '-';
+                    return (
+                      <TableRow key={`salida-${m.id}`}>
+                        <TableCell>{fechaStr}</TableCell>
+                        <TableCell>{nombre}</TableCell>
+                        <TableCell>{categoria}</TableCell>
+                        <TableCell>{almacen}</TableCell>
+                        <TableCell>{m.cantidad}</TableCell>
+                        <TableCell>{m.unidad_medida}</TableCell>
+                        <TableCell align="right">
+                          <IconButton
+                            title="Editar movimiento"
+                            aria-label="Editar movimiento"
+                            onClick={() => { setMovementToEdit(m); setOpenMovementModal(true); }}
+                            className="action-button edit-button"
+                          >
+                            <Edit fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            title="Eliminar movimiento"
+                            aria-label="Eliminar movimiento"
+                            onClick={() => handleOpenConfirmDeleteMovement(m)}
+                            className="action-button delete-button"
+                          >
+                            <Delete fontSize="small" />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Confirmación para eliminar registro de inventario */}
         <ConfirmModal
           isOpen={openConfirmModal}
           onClose={() => setOpenConfirmModal(false)}
           onConfirm={handleConfirmDelete}
-          title="Eliminar Insumo"
-          message={`¿Estás seguro de que deseas eliminar el insumo "${itemToDelete?.nombre}"? Esta acción no se puede deshacer.`}
+          title="Eliminar del Inventario"
+          message={`¿Eliminar el registro de inventario de "${itemToDelete?.nombre}"? No afectará el Insumo base.`}
           confirmText="Eliminar"
           cancelText="Cancelar"
           type="danger"
           loading={deleteMutation.isLoading}
         />
+
+        <ConfirmModal
+          isOpen={openConfirmMovModal}
+          onClose={() => setOpenConfirmMovModal(false)}
+          onConfirm={handleConfirmDeleteMovement}
+          title="Eliminar Movimiento"
+          message={`¿Eliminar el movimiento #${movementToDelete?.id} de ${movementToDelete?.tipo_movimiento}?`}
+          confirmText="Eliminar"
+          cancelText="Cancelar"
+          type="danger"
+          loading={deleteMovimientoMutation.isLoading}
+        />
+
+
       </div>
     </div>
   );
