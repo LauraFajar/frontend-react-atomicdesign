@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography, CircularProgress, IconButton, Button } from '@mui/material';
+import { Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography, CircularProgress, IconButton, Button, Pagination } from '@mui/material';
 import { Add, Edit, Delete } from '@mui/icons-material';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useAlert } from '../../../contexts/AlertContext';
@@ -33,6 +33,7 @@ const CategoriasPage = () => {
   });
 
   const categorias = data?.items || [];
+  const serverTotalPages = data?.meta?.totalPages || 0;
 
   const filtered = useMemo(() => {
     if (!searchTerm) return categorias;
@@ -42,6 +43,15 @@ const CategoriasPage = () => {
       String(c.descripcion || '').toLowerCase().includes(term)
     );
   }, [searchTerm, categorias]);
+
+  const isServerPaginated = serverTotalPages > 1;
+  const totalPages = isServerPaginated ? serverTotalPages : Math.max(1, Math.ceil(filtered.length / 10));
+  const displayed = useMemo(() => {
+    if (isServerPaginated) return filtered;
+    const start = (page - 1) * 10;
+    const end = start + 10;
+    return filtered.slice(start, end);
+  }, [filtered, isServerPaginated, page]);
 
   const createMutation = useMutation({
     mutationFn: categoriasService.createCategoria,
@@ -112,6 +122,10 @@ const CategoriasPage = () => {
     deleteMutation.mutate(toDelete.id);
   };
 
+  const handlePageChange = (event, value) => {
+    setPage(value);
+  };
+
   return (
     <div className="dashboard-content">
       <div className="inventory-page">
@@ -163,8 +177,8 @@ const CategoriasPage = () => {
                   </TableCell>
                 </TableRow>
               )}
-              {!isLoading && filtered.length > 0 ? (
-                filtered.map((c) => (
+              {!isLoading && displayed.length > 0 ? (
+                displayed.map((c) => (
                   <TableRow key={c.id}>
                     <TableCell>{c.id}</TableCell>
                     <TableCell>{c.nombre}</TableCell>
@@ -222,6 +236,16 @@ const CategoriasPage = () => {
           confirmText="Eliminar"
           type="danger"
         />
+        {totalPages > 1 && (
+          <div className="pagination-container">
+            <Pagination
+              count={totalPages}
+              page={page}
+              onChange={handlePageChange}
+              color="primary"
+            />
+          </div>
+        )}
       </div>
     </div>
   );
