@@ -229,6 +229,7 @@ const CropsPage = () => {
                   <Chip
                     label={crop.estado_cultivo}
                     className={`status-chip ${crop.estado_cultivo.toLowerCase()}`}
+                    sx={{ borderRadius: 'var(--border-radius-sm)', '& .MuiChip-label': { fontWeight: 400 } }}
                   />
                 </TableCell>
                 <TableCell>{formatDate(crop.fecha_siembra)}</TableCell>

@@ -103,7 +103,10 @@
   padding: var(--spacing-xs) var(--spacing-md);
   border-radius: var(--border-radius-sm);
   font-size: var(--font-size-sm);
-  font-weight: 500;
+  font-weight: 400;
+}
+.status-chip .MuiChip-label {
+  font-weight: 400 !important;
 }
 
 .status-chip.sembrado {

@@ -324,6 +324,7 @@ const EpasPage = () => {
                               color: typeConfig[epa.tipo]?.color || '#333333'
                             }}
                             className="type-chip"
+                            sx={{ borderRadius: 'var(--border-radius-sm)', '& .MuiChip-label': { fontWeight: 400 } }}
                           />
                         </TableCell>
                         <TableCell>
@@ -335,9 +336,6 @@ const EpasPage = () => {
                               disabled={!canChangeStatus}
                               inputProps={{ 'aria-label': 'Estado EPA' }}
                             />
-                            <Typography variant="body2" color={epa.estado === 'activo' ? 'success.main' : 'text.secondary'}>
-                              {epa.estado === 'activo' ? 'Activado' : 'Desactivada'}
-                            </Typography>
                           </div>
                         </TableCell>
                         <TableCell align="right">

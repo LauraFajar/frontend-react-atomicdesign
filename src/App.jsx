@@ -19,6 +19,8 @@ import LotsMapPage from './components/pages/LotsMapPage/LotsMapPage';
 import InventoryPage from './components/pages/InventoryPage/InventoryPage';
 import FinanceDashboard from './components/pages/FinanceDashboard/FinanceDashboard';
 import IotPage from './components/pages/IotPage/IotPage';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
 
 const ProtectedRoute = ({ children, allowGuest = false }) => {
   const { isAuthenticated, loading, user, permissions } = useAuth()
@@ -66,18 +68,68 @@ const PublicRoute = ({ children }) => {
 }
 
 function App() {
+  const theme = createTheme({
+    palette: {
+      primary: { main: '#4CAF50' },
+      success: { main: '#4CAF50' }
+      ,info: { main: '#2196F3' }
+    },
+    shape: { borderRadius: 8 },
+    components: {
+      MuiButton: {
+        styleOverrides: {
+          root: {
+            textTransform: 'none'
+          },
+          contained: {
+            color: '#fff'
+          },
+          containedPrimary: {
+            color: '#fff'
+          }
+        }
+      },
+      MuiPaginationItem: {
+        styleOverrides: {
+          root: {
+            '&.Mui-selected': {
+              color: '#fff'
+            }
+          }
+        }
+      },
+      MuiOutlinedInput: {
+        styleOverrides: {
+          root: {
+            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+              borderColor: '#4CAF50',
+              borderWidth: '2px'
+            }
+          }
+        }
+      },
+      MuiChip: {
+        styleOverrides: {
+          root: {
+            borderRadius: 8
+          }
+        }
+      }
+    }
+  });
   return (
     <AuthProvider>
       <AlertProvider>
         <Router>
           <div className="App">
-            <Routes>
-              {/* Rutas públicas */}
-              <Route path="/login" element={
-                <PublicRoute>
-                  <LoginPage />
-                </PublicRoute>
-              } />
+            <ThemeProvider theme={theme}>
+              <CssBaseline />
+              <Routes>
+                <Route path="/login" element={
+                  <PublicRoute>
+                    <LoginPage />
+                  </PublicRoute>
+                } />
               <Route path="/forgot-password" element={
                 <PublicRoute>
                   <ForgotPassword />
@@ -164,7 +216,8 @@ function App() {
               {/* Redirecciones */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
-            </Routes>
+              </Routes>
+            </ThemeProvider>
           </div>
         </Router>
       </AlertProvider>

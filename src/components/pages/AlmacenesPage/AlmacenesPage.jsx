@@ -7,7 +7,7 @@ import { useAlert } from '../../../contexts/AlertContext';
 import almacenesService from '../../../services/almacenesService';
 import ConfirmModal from '../../molecules/ConfirmModal/ConfirmModal';
 import AlmacenFormModal from './AlmacenFormModal';
-import '../InventoryPage/InventoryPage.css';
+ 
 
 const AlmacenesPage = () => {
   const { user } = useAuth();
@@ -113,16 +113,15 @@ const AlmacenesPage = () => {
   };
 
   return (
-    <div className="dashboard-content">
-      <div className="inventory-page">
-        <div className="users-header">
-          <h1 className="users-title">Gestión de Almacenes</h1>
+    <div className="page-wrapper">
+        <div className="page-header">
+          <h1 className="page-title">Gestión de Almacenes</h1>
           {canCreate && (
             <Button
               variant="contained"
               onClick={() => handleOpenForm()}
               startIcon={<Add />}
-              className="new-user-button"
+              className="btn-primary"
             >
               Nuevo Almacén
             </Button>
@@ -145,8 +144,8 @@ const AlmacenesPage = () => {
           </Typography>
         )}
 
-        <div className="users-table-container">
-          <Table className="users-table">
+        <div className="table-container">
+          <Table className="table">
             <TableHead>
               <TableRow>
                 <TableCell>ID</TableCell>
@@ -222,7 +221,6 @@ const AlmacenesPage = () => {
           confirmText="Eliminar"
           type="danger"
         />
-      </div>
     </div>
   );
 };

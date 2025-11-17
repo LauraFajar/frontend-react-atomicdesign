@@ -100,15 +100,32 @@
 }
 
 .status-chip {
-  font-weight: 500 !important;
+  font-weight: 400 !important;
+  font-size: var(--font-size-sm) !important;
+  padding: var(--spacing-xs) var(--spacing-sm) !important;
+}
+.status-chip .MuiChip-label {
+  font-weight: 400 !important;
+}
+
+.status-chip.activo {
+  background-color: #E8F5E9 !important;
+  color: var(--primary-green) !important;
+}
+
+.status-chip.inactivo {
+  background-color: #FFEBEE !important;
+  color: #D32F2F !important;
+}
+
+.type-chip {
+  font-weight: 400 !important;
   font-size: var(--font-size-sm) !important;
   padding: var(--spacing-xs) var(--spacing-sm) !important;
 }
 
-.type-chip {
-  font-weight: 500 !important;
-  font-size: var(--font-size-sm) !important;
-  padding: var(--spacing-xs) var(--spacing-sm) !important;
+.type-chip .MuiChip-label {
+  font-weight: 400 !important;
 }
 
 .action-buttons {

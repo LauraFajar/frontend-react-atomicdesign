@@ -551,7 +551,7 @@ const LotsMapPage = () => {
             <Button size="small" variant="contained" color="success" onClick={() => setShowLots((v) => !v)}>
               Lotes
             </Button>
-            <Button size="small" variant="contained" color="primary" onClick={() => setShowSublots((v) => !v)}>
+            <Button size="small" variant="contained" color="info" onClick={() => setShowSublots((v) => !v)}>
               Sublotes
             </Button>
           </div>
