@@ -65,7 +65,7 @@ const FitToDataButton = ({ mapData }) => {
   };
 
   return (
-    <Fab className="map-fab" color="primary" size="small" onClick={handleFit} aria-label="Centrar mapa">
+    <Fab className="map-fab" color="default" size="small" onClick={handleFit} aria-label="Centrar mapa">
       <MyLocation />
     </Fab>
   );
@@ -408,6 +408,7 @@ const LotsMapPage = () => {
                   clickable
                   color={selectedCropType === t ? 'primary' : 'default'}
                   onClick={() => setSelectedCropType(selectedCropType === t ? null : t)}
+                  sx={selectedCropType === t ? { '& .MuiChip-label': { color: '#fff' } } : undefined}
                 />
               ))}
               {cropTypes.length === 0 && (
