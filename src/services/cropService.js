@@ -147,6 +147,22 @@ const cropService = {
       }
       throw error;
     }
+  },
+
+  getCropMargin: async ({ id, from, to } = {}) => {
+    const params = new URLSearchParams();
+    if (id) params.append('cultivoId', id);
+    if (from) params.append('from', from);
+    if (to) params.append('to', to);
+    const url = `${API_URL}/finanzas/resumen${params.toString() ? `?${params.toString()}` : ''}`;
+    const response = await axios.get(url, { headers: getAuthHeader() });
+    const d = response.data || {};
+    const ingresos = parseFloat(d.ingresosTotal ?? d.ingresos ?? 0) || 0;
+    const egresos = parseFloat(d.egresosTotal ?? d.egresos ?? 0) || 0;
+    const margen = parseFloat(d.margenTotal ?? d.margen ?? ingresos - egresos) || 0;
+    const beneficioCosto = egresos > 0 ? ingresos / egresos : null;
+    const margenPorcentaje = ingresos > 0 ? (margen / ingresos) * 100 : null;
+    return { ingresos, egresos, margen, beneficioCosto, margenPorcentaje };
   }
 };
 

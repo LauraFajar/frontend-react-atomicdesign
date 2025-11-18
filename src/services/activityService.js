@@ -10,12 +10,12 @@ const getAuthHeader = () => {
 
 const mapActivity = (a) => ({
   id: a.id_actividad || a.id,
-  tipo_actividad: a.tipo_actividad,
-  fecha: a.fecha,
-  responsable: a.responsable,
-  detalles: a.detalles,
+  tipo_actividad: a.tipo_actividad ?? a.tipo_de_actividad ?? a.tipo ?? a.tipoActividad ?? a.tipoDeActividad,
+  fecha: a.fecha_actividad ?? a.fecha,
+  responsable: a.responsable ?? a.usuario ?? a.user,
+  detalles: a.detalles ?? a.descripcion ?? a.description,
   estado: a.estado,
-  id_cultivo: a.id_cultivo,
+  id_cultivo: a.id_cultivo ?? a.cultivoId,
   createdAt: a.createdAt,
   updatedAt: a.updatedAt,
   raw: a
@@ -75,9 +75,28 @@ const activityService = {
 
   createActivity: async (activityData) => {
     try {
-      console.log('[activityService] POST /actividades payload:', activityData);
-      const response = await axios.post(`${API_URL}/actividades`, activityData, {
-        headers: getAuthHeader()
+      const normalizeType = (v) => {
+        const s = String(v || '').toLowerCase().trim()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const map = {
+          siembra: 'siembra',
+          cosecha: 'cosecha',
+          aplicacion: 'aplicacion',
+          aplicación: 'aplicacion',
+          general: 'general'
+        };
+        return map[s] || s || 'general';
+      };
+      const body = {
+        fecha: activityData?.fecha || activityData?.fecha_actividad || new Date().toISOString(),
+        id_cultivo: activityData?.id_cultivo != null ? Number(activityData.id_cultivo) : undefined,
+        detalles: activityData?.detalles != null ? String(activityData.detalles).trim() : undefined,
+        responsable: activityData?.responsable != null ? String(activityData.responsable).trim() : undefined,
+        tipo_de_actividad: normalizeType(activityData?.tipo_actividad ?? activityData?.tipoDeActividad)
+      };
+      console.log('[activityService] POST /actividades payload:', body);
+      const response = await axios.post(`${API_URL}/actividades`, body, {
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
       });
       return mapActivity(response.data);
     } catch (error) {
@@ -87,6 +106,10 @@ const activityService = {
         if (error.response.status === 403) {
           throw new Error('No tienes permisos para crear actividades');
         }
+        const msg = error.response?.data?.message || error.message;
+        if (/tipo_?de_?actividad/i.test(String(msg))) {
+          throw new Error('El tipo de actividad no es válido');
+        }
       }
       throw error;
     }
@@ -94,9 +117,22 @@ const activityService = {
 
   updateActivity: async (id, activityData) => {
     try {
-      console.log('[activityService] PATCH /actividades/' + id + ' payload:', activityData);
-      const response = await axios.patch(`${API_URL}/actividades/${id}`, activityData, {
-        headers: getAuthHeader()
+      const normalizeType = (v) => {
+        const s = String(v || '').toLowerCase().trim()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const map = { siembra: 'siembra', cosecha: 'cosecha', aplicacion: 'aplicacion', aplicación: 'aplicacion', general: 'general' };
+        return map[s] || s || undefined;
+      };
+      const body = {
+        ...(activityData?.fecha || activityData?.fecha_actividad ? { fecha: activityData.fecha || activityData.fecha_actividad } : {}),
+        ...(activityData?.id_cultivo != null ? { id_cultivo: Number(activityData.id_cultivo) } : {}),
+        ...(activityData?.detalles != null ? { detalles: String(activityData.detalles).trim() } : {}),
+        ...(activityData?.responsable != null ? { responsable: String(activityData.responsable).trim() } : {}),
+        ...(activityData?.tipo_actividad || activityData?.tipoDeActividad ? { tipo_de_actividad: normalizeType(activityData.tipo_actividad ?? activityData.tipoDeActividad) } : {})
+      };
+      console.log('[activityService] PATCH /actividades/' + id + ' payload:', body);
+      const response = await axios.patch(`${API_URL}/actividades/${id}`, body, {
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
       });
       return mapActivity(response.data);
     } catch (error) {
@@ -105,6 +141,10 @@ const activityService = {
         console.error('Server response:', error.response.status, error.response.data);
         if (error.response.status === 403) {
           throw new Error('No tienes permisos para actualizar esta actividad');
+        }
+        const msg = error.response?.data?.message || error.message;
+        if (/tipo_?de_?actividad/i.test(String(msg))) {
+          throw new Error('El tipo de actividad no es válido');
         }
       }
       throw error;
@@ -184,7 +224,8 @@ const activityService = {
       const response = await axios.get(url, {
         headers: getAuthHeader()
       });
-      return response.data;
+      const data = Array.isArray(response.data) ? response.data : response.data?.items || response.data?.data || [];
+      return Array.isArray(data) ? data.map(mapActivity) : [];
     } catch (error) {
       console.error('Error al obtener reporte de actividades:', error);
       if (error.response?.status === 403) {

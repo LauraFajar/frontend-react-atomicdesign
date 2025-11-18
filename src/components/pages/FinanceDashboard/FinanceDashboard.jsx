@@ -5,6 +5,8 @@ import { Box, Paper, Typography, FormControl, InputLabel, Select, MenuItem, Text
 import dayjs from 'dayjs';
 import financeService from '../../../services/financeService';
 import cropService from '../../../services/cropService';
+import movimientosService from '../../../services/movimientosService';
+import activityService from '../../../services/activityService';
 import './FinanceDashboard.css';
 import { useAuth } from '../../../contexts/AuthContext';
 import {
@@ -44,6 +46,10 @@ const FinanceDashboard = () => {
   const [criterio, setCriterio] = useState('bc');
   const [umbral, setUmbral] = useState(1);
   const [tab, setTab] = useState(0);
+  const [costoHora, setCostoHora] = useState(0);
+  const [horasPorTipo, setHorasPorTipo] = useState({});
+  const [depreciacionMensual, setDepreciacionMensual] = useState(0);
+  const [vidaUtilMeses, setVidaUtilMeses] = useState(24);
 
   const { hasAnyPermission } = useAuth();
   const canExport = hasAnyPermission(['finanzas:*','finanzas:exportar']);
@@ -61,6 +67,43 @@ const FinanceDashboard = () => {
     queryFn: () => cropService.getCrops(1, 100),
     staleTime: 60 * 1000,
   });
+
+  useEffect(() => {
+    if (!cultivoId) return;
+    try {
+      const key = `financeParams:${cultivoId}`;
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        if (parsed.costoHora != null) setCostoHora(parsed.costoHora);
+        if (parsed.depreciacionMensual != null) setDepreciacionMensual(parsed.depreciacionMensual);
+        if (parsed.vidaUtilMeses != null) setVidaUtilMeses(parsed.vidaUtilMeses);
+        if (parsed.horasPorTipo && typeof parsed.horasPorTipo === 'object') setHorasPorTipo(parsed.horasPorTipo);
+      }
+    } catch (e) {
+      console.warn('[FinanceDashboard] load params failed', e);
+    }
+  }, [cultivoId]);
+
+  useEffect(() => {
+    if (!cultivoId) return;
+    try {
+      const key = `financeParams:${cultivoId}`;
+      const data = {
+        costoHora: Number(costoHora || 0),
+        depreciacionMensual: Number(depreciacionMensual || 0),
+        vidaUtilMeses: Number(vidaUtilMeses || 0),
+        horasPorTipo: Object.keys(horasPorTipo || {}).reduce((acc, k) => {
+          acc[k] = Number(horasPorTipo[k] || 0);
+          return acc;
+        }, {})
+      };
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch (e) {
+      console.warn('[FinanceDashboard] save params failed', e);
+    }
+  }, [cultivoId, costoHora, depreciacionMensual, vidaUtilMeses, horasPorTipo]);
 
   const resumenQuery = useQuery({
     queryKey: ['finanzasResumen', cultivoId, from, to, groupBy, tipo],
@@ -120,6 +163,126 @@ const FinanceDashboard = () => {
       return { nombre: r.nombre_cultivo || r.cultivo || r.nombre, margen, bc, rentable };
     });
   }, [margenRows, umbral]);
+
+  const ingresosQuery = useQuery({
+    queryKey: ['finanzasIngresos', cultivoId, from, to],
+    queryFn: () => financeService.getIngresos({ cultivoId, from, to }),
+    enabled: Boolean(cultivoId),
+  });
+
+  const salidasQuery = useQuery({
+    queryKey: ['finanzasSalidas', cultivoId, from, to],
+    queryFn: () => financeService.getSalidas({ cultivoId, from, to }),
+    enabled: Boolean(cultivoId),
+  });
+
+  const actividadesQuery = useQuery({
+    queryKey: ['finanzasActividades', cultivoId, from, to],
+    queryFn: () => activityService.getActivityReport({ id_cultivo: cultivoId, fecha_inicio: from, fecha_fin: to }),
+    enabled: Boolean(cultivoId),
+  });
+
+  const actividadesFallbackQuery = useQuery({
+    queryKey: ['finanzasActividadesFallback', cultivoId],
+    queryFn: () => activityService.getActivities({ id_cultivo: cultivoId }, 1, 1000),
+    enabled: Boolean(cultivoId),
+  });
+
+  const movimientosQuery = useQuery({
+    queryKey: ['movimientosHerramientas'],
+    queryFn: () => movimientosService.getMovimientos({}, 1, 200),
+  });
+
+  const actividadesItems = useMemo(() => {
+    const d = actividadesQuery.data;
+    if (Array.isArray(d)) return d;
+    if (Array.isArray(d?.items)) return d.items;
+    if (Array.isArray(d?.data)) return d.data;
+    const f = actividadesFallbackQuery.data;
+    if (Array.isArray(f?.items)) return f.items;
+    if (Array.isArray(f)) return f;
+    if (Array.isArray(f?.data)) return f.data;
+    return [];
+  }, [actividadesQuery.data, actividadesFallbackQuery.data]);
+
+  const tiposActividad = useMemo(() => {
+    const set = new Set();
+    actividadesItems.forEach(a => set.add(String(a.tipo_actividad || '').toLowerCase()));
+    return Array.from(set).filter(Boolean);
+  }, [actividadesItems]);
+
+  useEffect(() => {
+    if (tiposActividad.length > 0) {
+      setHorasPorTipo(prev => {
+        const next = { ...prev };
+        tiposActividad.forEach(t => { if (next[t] == null) next[t] = 1; });
+        return next;
+      });
+    }
+  }, [tiposActividad]);
+
+  const actividadesPorTipo = useMemo(() => {
+    const acc = {};
+    tiposActividad.forEach(t => acc[t] = 0);
+    actividadesItems.forEach(a => {
+      const t = String(a.tipo_actividad || '').toLowerCase();
+      if (!acc[t]) acc[t] = 0;
+      acc[t] += 1;
+    });
+    return acc;
+  }, [actividadesItems, tiposActividad]);
+
+  const manoObraTotal = useMemo(() => {
+    let total = 0;
+    Object.keys(actividadesPorTipo).forEach(t => {
+      const count = Number(actividadesPorTipo[t] || 0);
+      const horas = Number(horasPorTipo[t] || 0);
+      total += count * horas * Number(costoHora || 0);
+    });
+    return total;
+  }, [actividadesPorTipo, horasPorTipo, costoHora]);
+
+  const egresosTotal = useMemo(() => {
+    const d = resumenQuery.data || {};
+    const v = parseFloat(d.egresosTotal ?? d.egresos ?? 0) || 0;
+    return v;
+  }, [resumenQuery.data]);
+
+  const monthsInPeriod = useMemo(() => {
+    const start = dayjs(from);
+    const end = dayjs(to);
+    const diffDays = Math.max(0, end.diff(start, 'day'));
+    const m = Math.max(1, Math.round(diffDays / 30));
+    return m;
+  }, [from, to]);
+
+  const depreciacionTotal = useMemo(() => {
+    const m = Number(depreciacionMensual || 0);
+    return m * monthsInPeriod;
+  }, [depreciacionMensual, monthsInPeriod]);
+
+  const costoProduccionTotal = useMemo(() => {
+    return Number(egresosTotal || 0) + Number(manoObraTotal || 0) + Number(depreciacionTotal || 0);
+  }, [egresosTotal, manoObraTotal, depreciacionTotal]);
+
+  const herramientasMovs = useMemo(() => {
+    const list = Array.isArray(movimientosQuery.data?.items) ? movimientosQuery.data.items : [];
+    return list.filter(m => {
+      const cat = String(m.insumo_categoria || '').toLowerCase();
+      const isEntrada = String(m.tipo_movimiento || '').toLowerCase() === 'entrada';
+      return isEntrada && /(herramienta|equipo|maquinaria)/.test(cat);
+    });
+  }, [movimientosQuery.data]);
+
+  const herramientasVida = useMemo(() => {
+    const vidaMeses = Number(vidaUtilMeses || 0);
+    return herramientasMovs.map(m => {
+      const fecha = dayjs(m.fecha_movimiento);
+      const edadMeses = dayjs().diff(fecha, 'month');
+      const restante = Math.max(0, vidaMeses - edadMeses);
+      return { nombre: m.raw?.insumo?.nombre_insumo || String(m.id_insumo), fecha_movimiento: m.fecha_movimiento, edadMeses, restanteMeses: restante };
+    });
+  }, [herramientasMovs, vidaUtilMeses]);
 
   const handleExport = async (type) => {
     if (!cultivoId) return;
@@ -382,6 +545,8 @@ const FinanceDashboard = () => {
         >
           <Tab label="Resumen" disableRipple sx={{ color: 'var(--primary-green)', '&.Mui-selected': { color: 'var(--primary-green)', fontWeight: 600 } }} />
           <Tab label="Ranking" disableRipple sx={{ color: 'var(--primary-green)', '&.Mui-selected': { color: 'var(--primary-green)', fontWeight: 600 } }} />
+          <Tab label="Costo" disableRipple sx={{ color: 'var(--primary-green)', '&.Mui-selected': { color: 'var(--primary-green)', fontWeight: 600 } }} />
+          <Tab label="Historial" disableRipple sx={{ color: 'var(--primary-green)', '&.Mui-selected': { color: 'var(--primary-green)', fontWeight: 600 } }} />
           <Tab label="Exportaciones" disableRipple sx={{ color: 'var(--primary-green)', '&.Mui-selected': { color: 'var(--primary-green)', fontWeight: 600 } }} />
         </Tabs>
       </Box>
@@ -570,7 +735,7 @@ const FinanceDashboard = () => {
         </div>
       )}
 
-      {tab === 2 && (
+      {tab === 4 && (
         <div className="content-grid">
           <div className="left-panel">
             <Paper className="export-card" elevation={1}>
@@ -618,6 +783,166 @@ const FinanceDashboard = () => {
               ) : (
                 <Typography variant="body2" color="text.secondary">Sin datos para exportar</Typography>
               )}
+            </Paper>
+          </div>
+        </div>
+      )}
+
+      {tab === 2 && (
+        <div className="content-grid">
+          <div className="left-panel">
+            <Paper className="kpi-card" elevation={1}>
+              <div className="kpi-row">
+                <div className="kpi-item">
+                  <div className="kpi-title">Egresos</div>
+                  <div className="kpi-value">{numberFmt(egresosTotal)}</div>
+                </div>
+                <div className="kpi-item">
+                  <div className="kpi-title">Mano de obra</div>
+                  <div className="kpi-value">{numberFmt(manoObraTotal)}</div>
+                </div>
+                <div className="kpi-item">
+                  <div className="kpi-title">Depreciación</div>
+                  <div className="kpi-value">{numberFmt(depreciacionTotal)}</div>
+                </div>
+              </div>
+              <Divider sx={{ my: 1 }} />
+              <div className="kpi-row">
+                <div className="kpi-item">
+                  <div className="kpi-title">Costo de producción</div>
+                  <div className="kpi-value">{numberFmt(costoProduccionTotal)}</div>
+                </div>
+              </div>
+            </Paper>
+
+            <Paper className="chart-card" elevation={1}>
+              <Typography variant="subtitle1">Parámetros</Typography>
+              <Divider sx={{ my: 1 }} />
+              <Box className="filters-row">
+                <TextField size="small" label="Costo hora" type="number" value={costoHora} onChange={(e) => setCostoHora(e.target.value)} className="filter-item" InputLabelProps={{ shrink: true }} />
+                <TextField size="small" label="Depreciación mensual" type="number" value={depreciacionMensual} onChange={(e) => setDepreciacionMensual(e.target.value)} className="filter-item" InputLabelProps={{ shrink: true }} />
+                <TextField size="small" label="Vida útil herramientas (meses)" type="number" value={vidaUtilMeses} onChange={(e) => setVidaUtilMeses(e.target.value)} className="filter-item" InputLabelProps={{ shrink: true }} />
+              </Box>
+            </Paper>
+
+            <Paper className="chart-card" elevation={1}>
+              <Typography variant="subtitle1">Mano de obra por tipo</Typography>
+              <Divider sx={{ my: 1 }} />
+              {tiposActividad.length > 0 ? (
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Tipo</TableCell>
+                      <TableCell align="right">Actividades</TableCell>
+                      <TableCell align="right">Horas por actividad</TableCell>
+                      <TableCell align="right">Subtotal</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {tiposActividad.map((t) => (
+                      <TableRow key={t}>
+                        <TableCell>{t}</TableCell>
+                        <TableCell align="right">{Number(actividadesPorTipo[t] || 0)}</TableCell>
+                        <TableCell align="right">
+                          <TextField size="small" type="number" value={horasPorTipo[t] || 0} onChange={(e) => setHorasPorTipo({ ...horasPorTipo, [t]: e.target.value })} sx={{ width: 100 }} />
+                        </TableCell>
+                        <TableCell align="right">{numberFmt(Number(actividadesPorTipo[t] || 0) * Number(horasPorTipo[t] || 0) * Number(costoHora || 0))}</TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow>
+                      <TableCell>Total</TableCell>
+                      <TableCell />
+                      <TableCell />
+                      <TableCell align="right">{numberFmt(manoObraTotal)}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              ) : (
+                <Typography variant="body2" color="text.secondary">Sin actividades en el rango</Typography>
+              )}
+            </Paper>
+          </div>
+          <div className="right-panel">
+            <Paper className="chart-card" elevation={1}>
+              <Typography variant="subtitle1">Vida útil herramientas</Typography>
+              <Divider sx={{ my: 1 }} />
+              {herramientasVida.length > 0 ? (
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Herramienta</TableCell>
+                      <TableCell>Entrada</TableCell>
+                      <TableCell align="right">Edad (meses)</TableCell>
+                      <TableCell align="right">Restante (meses)</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {herramientasVida.slice(0, 10).map(h => (
+                      <TableRow key={`${h.nombre}-${h.fecha_movimiento}`}>
+                        <TableCell>{h.nombre}</TableCell>
+                        <TableCell>{h.fecha_movimiento || '-'}</TableCell>
+                        <TableCell align="right">{h.edadMeses}</TableCell>
+                        <TableCell align="right">{h.restanteMeses}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <Typography variant="body2" color="text.secondary">Sin herramientas registradas</Typography>
+              )}
+            </Paper>
+          </div>
+        </div>
+      )}
+
+      {tab === 3 && (
+        <div className="content-grid">
+          <div className="left-panel">
+            <Paper className="chart-card" elevation={1}>
+              <Typography variant="subtitle1">Historial de actividades</Typography>
+              <Divider sx={{ my: 1 }} />
+              {actividadesItems.length > 0 ? (
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Fecha</TableCell>
+                      <TableCell>Tipo</TableCell>
+                      <TableCell>Responsable</TableCell>
+                      <TableCell>Detalles</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {actividadesItems.slice(0, 20).map(a => (
+                      <TableRow key={a.id}>
+                        <TableCell>{a.fecha || '-'}</TableCell>
+                        <TableCell>{a.tipo_actividad || '-'}</TableCell>
+                        <TableCell>{a.responsable || '-'}</TableCell>
+                        <TableCell>{a.detalles || '-'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <Typography variant="body2" color="text.secondary">Sin actividades</Typography>
+              )}
+            </Paper>
+          </div>
+          <div className="right-panel">
+            <Paper className="kpi-card" elevation={1}>
+              <div className="kpi-row">
+                <div className="kpi-item">
+                  <div className="kpi-title">Ingresos</div>
+                  <div className="kpi-value">{numberFmt(resumen.ingresosTotal)}</div>
+                </div>
+                <div className="kpi-item">
+                  <div className="kpi-title">Egresos</div>
+                  <div className="kpi-value">{numberFmt(resumen.egresosTotal)}</div>
+                </div>
+                <div className="kpi-item">
+                  <div className="kpi-title">Margen</div>
+                  <div className="kpi-value">{numberFmt(resumen.margenTotal)}</div>
+                </div>
+              </div>
             </Paper>
           </div>
         </div>
