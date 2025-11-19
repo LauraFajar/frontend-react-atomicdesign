@@ -59,8 +59,10 @@ const TratamientoForm = ({ open, onClose, onSubmit, tratamiento, epas = [] }) =>
     if (Object.keys(vErrors).length === 0) {
       setLoading(true);
       try {
-        const tipoNormalized = String(values.tipo || '').toLowerCase();
-        await onSubmit({ ...values, id_epa: Number(values.id_epa), tipo: tipoNormalized });
+        const tipoNormalized = String(values.tipo || '').toLowerCase()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const tipoBackend = tipoNormalized === 'biologico' ? 'Biologico' : 'Quimico';
+        await onSubmit({ ...values, id_epa: Number(values.id_epa), tipo: tipoBackend });
       } catch (err) {
         console.error(err);
       } finally {
