@@ -80,19 +80,26 @@ const activityService = {
           .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         const map = {
           siembra: 'siembra',
+          riego: 'riego',
+          fertilizacion: 'fertilizacion',
+          fertilización: 'fertilizacion',
+          poda: 'poda',
           cosecha: 'cosecha',
-          aplicacion: 'aplicacion',
-          aplicación: 'aplicacion',
-          general: 'general'
+          otro: 'otro',
+          control_plagas: 'otro',
+          mantenimiento: 'otro',
+          aplicacion: 'otro',
+          aplicación: 'otro',
+          general: 'otro'
         };
-        return map[s] || s || 'general';
+        return map[s] || 'otro';
       };
       const body = {
         fecha: activityData?.fecha || activityData?.fecha_actividad || new Date().toISOString(),
         id_cultivo: activityData?.id_cultivo != null ? Number(activityData.id_cultivo) : undefined,
         detalles: activityData?.detalles != null ? String(activityData.detalles).trim() : undefined,
         responsable: activityData?.responsable != null ? String(activityData.responsable).trim() : undefined,
-        tipo_de_actividad: normalizeType(activityData?.tipo_actividad ?? activityData?.tipoDeActividad)
+        tipo_actividad: normalizeType(activityData?.tipo_actividad ?? activityData?.tipoDeActividad)
       };
       console.log('[activityService] POST /actividades payload:', body);
       const response = await axios.post(`${API_URL}/actividades`, body, {
@@ -120,15 +127,28 @@ const activityService = {
       const normalizeType = (v) => {
         const s = String(v || '').toLowerCase().trim()
           .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        const map = { siembra: 'siembra', cosecha: 'cosecha', aplicacion: 'aplicacion', aplicación: 'aplicacion', general: 'general' };
-        return map[s] || s || undefined;
+        const map = {
+          siembra: 'siembra',
+          riego: 'riego',
+          fertilizacion: 'fertilizacion',
+          fertilización: 'fertilizacion',
+          poda: 'poda',
+          cosecha: 'cosecha',
+          otro: 'otro',
+          control_plagas: 'otro',
+          mantenimiento: 'otro',
+          aplicacion: 'otro',
+          aplicación: 'otro',
+          general: 'otro'
+        };
+        return map[s] || undefined;
       };
       const body = {
         ...(activityData?.fecha || activityData?.fecha_actividad ? { fecha: activityData.fecha || activityData.fecha_actividad } : {}),
         ...(activityData?.id_cultivo != null ? { id_cultivo: Number(activityData.id_cultivo) } : {}),
         ...(activityData?.detalles != null ? { detalles: String(activityData.detalles).trim() } : {}),
         ...(activityData?.responsable != null ? { responsable: String(activityData.responsable).trim() } : {}),
-        ...(activityData?.tipo_actividad || activityData?.tipoDeActividad ? { tipo_de_actividad: normalizeType(activityData.tipo_actividad ?? activityData.tipoDeActividad) } : {})
+        ...(activityData?.tipo_actividad || activityData?.tipoDeActividad ? { tipo_actividad: normalizeType(activityData.tipo_actividad ?? activityData.tipoDeActividad) } : {})
       };
       console.log('[activityService] PATCH /actividades/' + id + ' payload:', body);
       const response = await axios.patch(`${API_URL}/actividades/${id}`, body, {

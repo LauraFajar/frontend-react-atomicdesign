@@ -14,8 +14,6 @@ const activityTypes = [
   { value: 'fertilizacion', label: 'Fertilización' },
   { value: 'poda', label: 'Poda' },
   { value: 'cosecha', label: 'Cosecha' },
-  { value: 'control_plagas', label: 'Control de Plagas' },
-  { value: 'mantenimiento', label: 'Mantenimiento' },
   { value: 'otro', label: 'Otro' }
 ];
 
