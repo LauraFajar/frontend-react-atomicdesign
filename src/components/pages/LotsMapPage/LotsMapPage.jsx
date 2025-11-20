@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, Typography, Paper, Box, CircularProgress, Fab, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Switch, List, ListItem, ListItemText, Divider, TextField } from '@mui/material';
 import { AddLocationAlt, AddRoad, MyLocation, Edit } from '@mui/icons-material';
@@ -80,6 +80,7 @@ const DrawPolygonButton = ({ onSaved }) => {
   const [saveOpen, setSaveOpen] = useState(false);
   const [lotId, setLotId] = useState('');
   const [lotName, setLotName] = useState('');
+  const fabRef = useRef(null);
 
   const handleMapClick = (e) => {
     if (!active) return;
@@ -99,6 +100,23 @@ const DrawPolygonButton = ({ onSaved }) => {
     }
   };
 
+  const clearDrawing = () => {
+    setPoints([]);
+    if (polyLayer) {
+      try { polyLayer.remove(); } catch (err) { void err }
+      setPolyLayer(null);
+    }
+  };
+
+  useEffect(() => {
+    if (fabRef.current) {
+      try {
+        L.DomEvent.disableClickPropagation(fabRef.current);
+        L.DomEvent.disableScrollPropagation(fabRef.current);
+      } catch (err) { void err }
+    }
+  }, [fabRef]);
+
   if (active && map && !map._ag_draw_listener) {
     map.on('click', handleMapClick);
     map._ag_draw_listener = true;
@@ -106,6 +124,27 @@ const DrawPolygonButton = ({ onSaved }) => {
   if (!active && map && map._ag_draw_listener) {
     map.off('click', handleMapClick);
     map._ag_draw_listener = false;
+  }
+
+  const finishDrawing = (e) => {
+    if (!active) return;
+    try {
+      e?.originalEvent?.preventDefault?.();
+      e?.originalEvent?.stopPropagation?.();
+    } catch (err) { void err }
+    setSaveOpen(true);
+    setActive(false);
+  };
+
+  if (active && map && !map._ag_finish_listener) {
+    map.on('dblclick', finishDrawing);
+    map.on('contextmenu', finishDrawing);
+    map._ag_finish_listener = true;
+  }
+  if (!active && map && map._ag_finish_listener) {
+    map.off('dblclick', finishDrawing);
+    map.off('contextmenu', finishDrawing);
+    map._ag_finish_listener = false;
   }
 
   if (active && points.length >= 2) {
@@ -121,16 +160,19 @@ const DrawPolygonButton = ({ onSaved }) => {
   const handleSave = async () => {
     try {
       const ring = points.map(([lat, lng]) => [lng, lat]);
-      const geometry = { type: 'Polygon', coordinates: [ring] };
+      const closedRing = ring.length && (ring[0][0] !== ring[ring.length - 1][0] || ring[0][1] !== ring[ring.length - 1][1])
+        ? [...ring, ring[0]]
+        : ring;
       let targetId = lotId ? parseInt(lotId, 10) : null;
       if (!targetId) {
         const created = await lotService.createLot({ nombre_lote: lotName || 'Lote', descripcion: 'Geometría trazada', activo: true });
         targetId = created?.id || created?.id_lote;
       }
-      await lotService.updateCoordinates(targetId, geometry);
+      await lotService.updateCoordinates(targetId, closedRing);
       alert.success('Mapa', 'Coordenadas guardadas');
       setSaveOpen(false);
-      toggleActive();
+      clearDrawing();
+      setActive(false);
       if (onSaved) onSaved();
     } catch (e) {
       alert.error('Error', e?.response?.data?.message || e.message || 'No se pudieron guardar las coordenadas');
@@ -139,7 +181,18 @@ const DrawPolygonButton = ({ onSaved }) => {
 
   return (
     <>
-      <Fab className="map-fab draw" color={active ? 'success' : 'default'} size="small" onClick={() => active ? setSaveOpen(true) : toggleActive()} aria-label="Dibujar lote">
+      <Fab
+        className="map-fab draw"
+        color={active ? 'success' : 'default'}
+        size="small"
+        ref={fabRef}
+        onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        onMouseUp={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (active) { setSaveOpen(true); setActive(false); } else { toggleActive(); } }}
+        aria-label="Dibujar lote"
+      >
         <Edit />
       </Fab>
       <Dialog open={saveOpen} onClose={() => setSaveOpen(false)} maxWidth="xs" fullWidth>
@@ -148,10 +201,10 @@ const DrawPolygonButton = ({ onSaved }) => {
           <TextField label="ID de Lote (opcional)" value={lotId} onChange={(e) => setLotId(e.target.value)} fullWidth variant="outlined" className="modal-form-field" sx={{ mb: 2 }} />
           <TextField label="Nombre de Lote (si no hay ID)" value={lotName} onChange={(e) => setLotName(e.target.value)} fullWidth variant="outlined" className="modal-form-field" />
         </DialogContent>
-        <DialogActions className="dialog-actions">
-          <Button onClick={() => { setSaveOpen(false); toggleActive(); }} variant="outlined" className="btn-cancel">Cancelar</Button>
+      <DialogActions className="dialog-actions">
+          <Button onClick={() => { setSaveOpen(false); clearDrawing(); setActive(false); }} variant="outlined" className="btn-cancel">Cancelar</Button>
           <Button onClick={handleSave} variant="contained" className="btn-save">Guardar</Button>
-        </DialogActions>
+      </DialogActions>
       </Dialog>
     </>
   );
@@ -327,6 +380,25 @@ const LotsMapPage = () => {
     onError: (e) => alert.error('Error', e.message || 'No se pudo actualizar el estado del lote'),
   });
 
+  const clearLotCoordsMutation = useMutation({
+    mutationFn: (id) => lotService.clearCoordinates(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['lotesMapData']);
+      alert.success('Lotes', 'Coordenadas eliminadas del lote');
+    },
+    onError: (e) => alert.error('Error', e.message || 'No se pudieron eliminar las coordenadas')
+  });
+
+  const deleteLotMutation = useMutation({
+    mutationFn: (id) => lotService.deleteLot(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['lotesMapData']);
+      queryClient.invalidateQueries(['lots']);
+      alert.success('Lotes', 'Lote eliminado');
+    },
+    onError: (e) => alert.error('Error', e.message || 'No se pudo eliminar el lote')
+  });
+
   const handleToggleLot = async (lot) => {
     try {
       setTogglingId(lot.id);
@@ -489,7 +561,7 @@ const LotsMapPage = () => {
               </Typography>
             ) : (
               <>
-                <MapContainer center={[1.89, -76.09]} zoom={10} className="map-container">
+                <MapContainer center={[1.89, -76.09]} zoom={10} doubleClickZoom={false} className="map-container">
                   <TileLayer
                     url="https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
                     subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
@@ -522,6 +594,26 @@ const LotsMapPage = () => {
                                       sx={{ mt: 1 }}
                                     >
                                       {isActive ? 'Desactivar' : 'Activar'}
+                                    </Button>
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      color="warning"
+                                      disabled={clearLotCoordsMutation.isLoading}
+                                      onClick={() => clearLotCoordsMutation.mutate(lote.id_lote)}
+                                      sx={{ mt: 1, ml: 1 }}
+                                    >
+                                      Quitar coordenadas
+                                    </Button>
+                                    <Button
+                                      size="small"
+                                      variant="contained"
+                                      color="error"
+                                      disabled={deleteLotMutation.isLoading}
+                                      onClick={() => deleteLotMutation.mutate(lote.id_lote)}
+                                      sx={{ mt: 1, ml: 1 }}
+                                    >
+                                      Eliminar lote
                                     </Button>
                                   </div>
                                 );

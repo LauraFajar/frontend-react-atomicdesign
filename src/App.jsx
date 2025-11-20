@@ -148,7 +148,7 @@ function App() {
 
               {/* Rutas protegidas */}
               <Route path="/dashboard" element={
-                <ProtectedRoute>
+                <ProtectedRoute allowGuest={true}>
                   <DashboardPage />
                 </ProtectedRoute>
               } />
@@ -163,7 +163,7 @@ function App() {
                 </ProtectedRoute>
               } />
               <Route path="/calendar" element={
-                <ProtectedRoute>
+                <ProtectedRoute allowGuest={true}>
                   <CalendarPage />
                 </ProtectedRoute>
               } />
@@ -183,12 +183,12 @@ function App() {
                 </ProtectedRoute>
               } />
               <Route path="/mapa-cultivos" element={
-                <ProtectedRoute>
+                <ProtectedRoute allowGuest={true}>
                   <CultivosMapPage />
                 </ProtectedRoute>
               } />
               <Route path="/mapa-lotes" element={
-                <ProtectedRoute>
+                <ProtectedRoute allowGuest={true}>
                   <LotsMapPage />
                 </ProtectedRoute>
               } />

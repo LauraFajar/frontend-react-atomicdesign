@@ -118,18 +118,18 @@ const lotService = {
     }
   },
 
-  updateCoordinates: async (id, geometry) => {
+  updateCoordinates: async (id, ringCoordinates) => {
     try {
-      const body1 = { coordenadas: geometry };
+      const body1 = { coordenadas: [ringCoordinates] };
       try {
         const r1 = await axios.patch(`${API_URL}/lotes/${id}`, body1, { headers: getAuthHeader() });
         return r1.data;
       } catch (e1) {
         try {
-          const r2 = await axios.post(`${API_URL}/lotes/${id}/coordenadas`, geometry, { headers: getAuthHeader() });
+          const r2 = await axios.post(`${API_URL}/lotes/${id}/coordenadas`, { coordinates: [ringCoordinates] }, { headers: getAuthHeader() });
           return r2.data;
         } catch (e2) {
-          const r3 = await axios.put(`${API_URL}/lotes/${id}/coordenadas`, geometry, { headers: getAuthHeader() });
+          const r3 = await axios.put(`${API_URL}/lotes/${id}/coordenadas`, { coordinates: [ringCoordinates] }, { headers: getAuthHeader() });
           return r3.data;
         }
       }
@@ -150,6 +150,18 @@ const lotService = {
       if (error.response?.status === 403) {
         throw new Error('No tienes permisos para eliminar lotes');
       }
+      throw error;
+    }
+  },
+
+  clearCoordinates: async (id) => {
+    try {
+      const response = await axios.patch(`${API_URL}/lotes/${id}`, { coordenadas: [] }, {
+        headers: getAuthHeader()
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error al limpiar coordenadas del lote:', error);
       throw error;
     }
   },
