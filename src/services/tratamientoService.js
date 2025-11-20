@@ -32,7 +32,8 @@ const mapTratamiento = (t) => {
   const epaId = epaObj ? (epaObj.id_epa ?? epaObj.id ?? null) : epaField;
   const epaName = epaObj ? (epaObj.nombre_epa ?? epaObj.nombre ?? '') : '';
   
-  const tipo = t.tipo || inferTipoTratamiento(t.descripcion);
+  const tipoRaw = t.tipo || inferTipoTratamiento(t.descripcion);
+  const tipo = String(tipoRaw).toLowerCase() === 'biologico' ? 'biologico' : 'quimico';
 
   return {
     id: t.id_tratamiento || t.id,
@@ -50,11 +51,12 @@ const mapTratamiento = (t) => {
 
 const tratamientoService = {
   createTratamiento: async (data) => {
+    const idEpaNum = Number(data.id_epa);
     const payload = {
       descripcion: data.descripcion,
       dosis: data.dosis,
       frecuencia: data.frecuencia,
-      id_epa: Number(data.id_epa),
+      id_epa: idEpaNum,
       tipo: data.tipo || inferTipoTratamiento(data.descripcion)
     };
     const response = await axios.post(`${API_URL}/tratamientos`, payload, {
@@ -90,7 +92,7 @@ const tratamientoService = {
       ...(data.descripcion !== undefined ? { descripcion: data.descripcion } : {}),
       ...(data.dosis !== undefined ? { dosis: data.dosis } : {}),
       ...(data.frecuencia !== undefined ? { frecuencia: data.frecuencia } : {}),
-      ...(data.id_epa !== undefined ? { id_epa: Number(data.id_epa) } : {}),
+      ...(data.id_epa !== undefined && data.id_epa !== '' ? { id_epa: Number(data.id_epa) } : {}),
       ...(data.tipo !== undefined ? { tipo: data.tipo } : {})
     };
     const response = await axios.patch(`${API_URL}/tratamientos/${id}`, payload, {
