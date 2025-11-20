@@ -225,12 +225,15 @@ export const AuthProvider = ({ children }) => {
       } catch (errMe) {
         const statusMe = errMe?.response?.status
         console.warn('[AuthContext] getMyKeys falló con status:', statusMe)
-        const isAdmin = user?.role === 'administrador' || user?.roleId === 4
-        if (isAdmin && currentId) {
-          console.warn('[AuthContext] usuario admin: intentando cargar permisos vía /permisos/usuario/:id', currentId)
-          keys = await permissionService.getUserKeys(currentId)
+        if (currentId) {
+          console.warn('[AuthContext] intentando fallback vía /permisos/usuario/:id', currentId)
+          try {
+            keys = await permissionService.getUserKeys(currentId)
+          } catch (errById) {
+            console.warn('[AuthContext] fallback /:id también falló', errById?.response?.status)
+            keys = []
+          }
         } else {
-          console.warn('[AuthContext] no-admin: omito fallback /:id, estableciendo permisos vacíos')
           keys = []
         }
       }

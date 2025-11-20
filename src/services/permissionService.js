@@ -23,7 +23,20 @@ const permissionService = {
   },
 
   create: async ({ recurso, accion, nombre_permiso, descripcion, activo = true }) => {
-    const payload = { recurso, accion, nombre_permiso, descripcion, activo };
+    const normalizeAction = (a) => {
+      const lower = (a || '').toString().trim().toLowerCase();
+      const map = {
+        read: 'ver', view: 'ver', list: 'ver', listar: 'ver', ver: 'ver',
+        create: 'crear', add: 'crear', new: 'crear', crear: 'crear',
+        update: 'editar', edit: 'editar', modificar: 'editar', editar: 'editar',
+        delete: 'eliminar', remove: 'eliminar', borrar: 'eliminar', eliminar: 'eliminar',
+        export: 'exportar', download: 'exportar', exportar: 'exportar'
+      };
+      return map[lower] || lower;
+    };
+    const normAccion = normalizeAction(accion);
+    const clave = `${(recurso || '').toString().trim()}:${normAccion}`;
+    const payload = { clave, recurso, accion: normAccion, nombre_permiso, descripcion, activo };
     const response = await axios.post(`${API_URL}/permisos`, payload, { headers: getAuthHeader() });
     return response.data;
   },
