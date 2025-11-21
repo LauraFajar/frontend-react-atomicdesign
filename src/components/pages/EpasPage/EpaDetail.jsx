@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import config from '../../../config/environment';
 import { 
   Button, 
   Typography, 
@@ -38,6 +39,13 @@ const typeConfig = {
 };
 
 const EpaDetail = ({ open, epa, onClose }) => {
+  const raw = epa?.imagen_referencia || '';
+  const rel = raw.startsWith('/') ? raw : `/${raw}`;
+  const base = (config.api.baseURL || '').replace(/\/$/, '');
+  const srcAbs = raw.startsWith('http') ? raw : `${base}${rel}`;
+  const [imgSrc, setImgSrc] = useState(srcAbs);
+  useEffect(() => { setImgSrc(srcAbs); }, [srcAbs]);
+
   if (!epa) return null;
 
   return (
@@ -96,13 +104,10 @@ const EpaDetail = ({ open, epa, onClose }) => {
             {epa.imagen_referencia ? (
               <div className="image-container">
                 <img
-                  src={epa.imagen_referencia.startsWith('http') ? epa.imagen_referencia : (epa.imagen_referencia.startsWith('/') ? epa.imagen_referencia : `/${epa.imagen_referencia}`)}
+                  src={imgSrc}
                   alt={`Imagen de ${epa.nombre}`}
                   className="detail-image"
-                  onError={(e) => {
-                    console.error('Error loading EPA image:', e.target.src);
-                    e.target.style.display = 'none';
-                  }}
+                  onError={() => { setImgSrc(rel); }}
                   style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '4px' }}
                 />
                 <Typography variant="body2" color="textSecondary" style={{ marginTop: '4px' }}>

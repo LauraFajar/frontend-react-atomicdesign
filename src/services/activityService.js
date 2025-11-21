@@ -25,9 +25,13 @@ const activityService = {
   getActivities: async (filters = {}, page = 1, limit = 10) => {
     try {
       const params = new URLSearchParams();
-      if (filters.id_cultivo) params.append('id_cultivo', filters.id_cultivo);
-      params.append('page', page);
-      params.append('limit', limit);
+      const idVal = filters?.id_cultivo;
+      const hasId = idVal !== undefined && idVal !== null && idVal !== '' && !Number.isNaN(Number(idVal));
+      if (hasId) params.append('id_cultivo', String(Number(idVal)));
+      const safePage = Number(page);
+      const safeLimit = Number(limit);
+      params.append('page', String(Number.isFinite(safePage) && safePage > 0 ? safePage : 1));
+      params.append('limit', String(Number.isFinite(safeLimit) && safeLimit > 0 ? Math.min(safeLimit, 100) : 10));
 
       const queryString = params.toString();
       const url = `${API_URL}/actividades${queryString ? `?${queryString}` : ''}`;
@@ -221,7 +225,11 @@ const activityService = {
       const response = await axios.get(`${API_URL}/actividades/${activityId}/photos`, {
         headers: getAuthHeader(),
       });
-      return response.data;
+      const data = Array.isArray(response.data) ? response.data : [];
+      return data.map(p => ({
+        ...p,
+        ruta_foto: p.ruta_foto || p.url_imagen,
+      }));
     } catch (error) {
       console.error('Error al obtener las fotos de la actividad:', error);
       if (error.response?.status === 404) {
@@ -234,7 +242,9 @@ const activityService = {
   getActivityReport: async (filters = {}) => {
     try {
       const params = new URLSearchParams();
-      if (filters.id_cultivo) params.append('id_cultivo', filters.id_cultivo);
+      const idVal = filters?.id_cultivo;
+      const hasId = idVal !== undefined && idVal !== null && idVal !== '' && !Number.isNaN(Number(idVal));
+      if (hasId) params.append('id_cultivo', String(Number(idVal)));
       if (filters.fecha_inicio) params.append('fecha_inicio', filters.fecha_inicio);
       if (filters.fecha_fin) params.append('fecha_fin', filters.fecha_fin);
 

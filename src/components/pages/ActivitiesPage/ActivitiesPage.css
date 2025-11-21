@@ -138,6 +138,10 @@
   color: #D32F2F !important;
 }
 
+.info-button {
+  color: #1976D2 !important;
+}
+
 .edit-button:hover {
   background-color: rgba(76, 175, 80, 0.1) !important;
 }
@@ -146,7 +150,6 @@
   background-color: rgba(211, 47, 47, 0.1) !important;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .activities-page {
     padding: var(--spacing-md);

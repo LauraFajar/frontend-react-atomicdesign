@@ -6,6 +6,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import es from 'date-fns/locale/es';
 import './ActivityFormModal.css';
 import { useQuery } from '@tanstack/react-query';
+import config from '../../../config/environment';
 import activityService from '../../../services/activityService';
 
 const activityTypes = [
@@ -38,9 +39,9 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
   const [serverError, setServerError] = useState('');
 
   const { data: photos, isLoading: isLoadingPhotos } = useQuery({
-    queryKey: ['activityPhotos', activity?.id_actividad],
-    queryFn: () => activityService.getActivityPhotos(activity.id_actividad),
-    enabled: !!activity?.id_actividad, 
+    queryKey: ['activityPhotos', activity?.id],
+    queryFn: () => activityService.getActivityPhotos(activity.id),
+    enabled: !!activity?.id, 
   });
 
   useEffect(() => {
@@ -284,9 +285,16 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
               ) : photos && photos.length > 0 ? (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {photos.map((photo) => (
-                    <Box key={photo.id_foto} sx={{ border: '1px solid #ddd', borderRadius: '8px', p: 2 }}>
+                    <Box key={photo.id || photo.id_foto} sx={{ border: '1px solid #ddd', borderRadius: '8px', p: 2 }}>
                       <img 
-                        src={`/${photo.ruta_foto?.startsWith('/') ? photo.ruta_foto.substring(1) : photo.ruta_foto}`}
+                        src={(() => {
+                          const v = photo.ruta_foto || photo.url_imagen || '';
+                          if (!v) return '';
+                          if (v.startsWith('http')) return v;
+                          const base = (config.api.baseURL || '').replace(/\/$/, '');
+                          const rel = v.startsWith('/') ? v : `/${v}`;
+                          return `${base}${rel}`;
+                        })()}
                         alt={photo.descripcion}
                         style={{ width: '100%', maxHeight: '300px', objectFit: 'cover', borderRadius: '4px' }}
                       />

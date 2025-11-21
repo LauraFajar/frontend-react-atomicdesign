@@ -11,6 +11,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import es from 'date-fns/locale/es';
 import ActivityFormModal from './ActivityFormModal';
+import ActivityDetailModal from './ActivityDetailModal';
 import PhotoUploadModal from './PhotoUploadModal';
 import ConfirmModal from '../../molecules/ConfirmModal/ConfirmModal';
 import './ActivitiesPage.css';
@@ -49,6 +50,8 @@ const ActivitiesPage = () => {
   const [activityToDelete, setActivityToDelete] = useState(null);
   const [openPhotoModal, setOpenPhotoModal] = useState(false);
   const [activityForPhoto, setActivityForPhoto] = useState(null);
+  const [openDetailModal, setOpenDetailModal] = useState(false);
+  const [activityForDetail, setActivityForDetail] = useState(null);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCrop, setSelectedCrop] = useState('');
@@ -180,9 +183,22 @@ const ActivitiesPage = () => {
     setActivityForPhoto(null);
   };
 
+  const handleOpenDetailModal = (activity) => {
+    setActivityForDetail(activity);
+    setOpenDetailModal(true);
+  };
+
+  const handleCloseDetailModal = () => {
+    setOpenDetailModal(false);
+    setActivityForDetail(null);
+  };
+
   const handlePhotoUploaded = () => {
     alert.success('¡Éxito!', 'Foto subida correctamente.');
     queryClient.invalidateQueries(['activities']);
+    if (activityForPhoto?.id) {
+      queryClient.invalidateQueries(['activityPhotos', activityForPhoto.id]);
+    }
     handleClosePhotoModal();
   };
 
@@ -385,6 +401,16 @@ const ActivitiesPage = () => {
                         <Edit />
                       </IconButton>
                     )}
+                    {(isAdmin || isInstructor) && (
+                      <IconButton
+                        onClick={() => handleOpenDetailModal(activity)}
+                        className="action-button view-button"
+                        size="small"
+                        aria-label="Ver detalles"
+                      >
+                        <Search />
+                      </IconButton>
+                    )}
                     {(isApprenticeOrIntern || isAdmin) && (
                       <IconButton
                         onClick={() => handleOpenPhotoModal(activity)}
@@ -424,6 +450,12 @@ const ActivitiesPage = () => {
         onClose={handleClosePhotoModal}
         onSave={handlePhotoUploaded} 
         activity={activityForPhoto}
+      />
+
+      <ActivityDetailModal
+        open={openDetailModal}
+        onClose={handleCloseDetailModal}
+        activity={activityForDetail}
       />
 
       <ConfirmModal
