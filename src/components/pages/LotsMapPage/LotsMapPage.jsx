@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, Typography, Paper, Box, CircularProgress, Fab, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Switch, List, ListItem, ListItemText, Divider, TextField } from '@mui/material';
+import { Button, Typography, Paper, Box, CircularProgress, Fab, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Switch, List, ListItem, ListItemText, Divider, TextField, Autocomplete } from '@mui/material';
 import { AddLocationAlt, AddRoad, MyLocation, Edit } from '@mui/icons-material';
 import { MapContainer, TileLayer, Polygon, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -71,20 +71,47 @@ const FitToDataButton = ({ mapData }) => {
   );
 };
 
-const DrawPolygonButton = ({ onSaved }) => {
+const DrawPolygonButton = ({ onSaved, lots = [], mapData = [] }) => {
   const alert = useAlert();
   const map = useMap();
   const [active, setActive] = useState(false);
   const [points, setPoints] = useState([]);
   const [polyLayer, setPolyLayer] = useState(null);
   const [saveOpen, setSaveOpen] = useState(false);
+  const [chooseOpen, setChooseOpen] = useState(false);
+  const [drawType, setDrawType] = useState('lot');
   const [lotId, setLotId] = useState('');
   const [lotName, setLotName] = useState('');
+  const [subLotIdLote, setSubLotIdLote] = useState('');
+  const [subLotDesc, setSubLotDesc] = useState('');
+  const [subLotUbic, setSubLotUbic] = useState('');
   const fabRef = useRef(null);
 
   const handleMapClick = (e) => {
     if (!active) return;
     const { lat, lng } = e.latlng;
+    if (drawType === 'sublot' && subLotIdLote) {
+      const targetLot = (Array.isArray(mapData) ? mapData : []).find((l) => String(l.id_lote) === String(subLotIdLote));
+      const lotCoords = swapCoords(targetLot?.coordenadas?.coordinates);
+      const ring = Array.isArray(lotCoords[0]) ? lotCoords[0] : lotCoords;
+      const inside = (() => {
+        try {
+          let x = lat, y = lng;
+          let inside = false;
+          for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+            const xi = ring[i][0], yi = ring[i][1];
+            const xj = ring[j][0], yj = ring[j][1];
+            const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / ((yj - yi) || 1e-9) + xi);
+            if (intersect) inside = !inside;
+          }
+          return inside;
+        } catch { return true; }
+      })();
+      if (!inside) {
+        alert.error('Dibujo', 'El sublote debe estar dentro del lote seleccionado');
+        return;
+      }
+    }
     setPoints((prev) => [...prev, [lat, lng]]);
   };
 
@@ -149,27 +176,44 @@ const DrawPolygonButton = ({ onSaved }) => {
 
   if (active && points.length >= 2) {
     const latlngs = points.map(([lat, lng]) => L.latLng(lat, lng));
+    const drawColor = drawType === 'sublot' ? '#2196F3' : '#4CAF50';
     if (!polyLayer) {
-      const layer = L.polygon(latlngs, { color: '#4CAF50' }).addTo(map);
+      const layer = L.polygon(latlngs, { color: drawColor }).addTo(map);
       setPolyLayer(layer);
     } else {
       polyLayer.setLatLngs(latlngs);
+      try { polyLayer.setStyle({ color: drawColor }); } catch (err) { void err }
     }
   }
 
   const handleSave = async () => {
     try {
+      if (points.length < 3) {
+        alert.error('Dibujo', 'El polígono debe tener al menos 3 puntos');
+        return;
+      }
       const ring = points.map(([lat, lng]) => [lng, lat]);
       const closedRing = ring.length && (ring[0][0] !== ring[ring.length - 1][0] || ring[0][1] !== ring[ring.length - 1][1])
         ? [...ring, ring[0]]
         : ring;
-      let targetId = lotId ? parseInt(lotId, 10) : null;
-      if (!targetId) {
-        const created = await lotService.createLot({ nombre_lote: lotName || 'Lote', descripcion: 'Geometría trazada', activo: true });
-        targetId = created?.id || created?.id_lote;
+      if (drawType === 'lot') {
+        let targetId = lotId ? parseInt(lotId, 10) : null;
+        if (!targetId) {
+          const created = await lotService.createLot({ nombre_lote: lotName || 'Lote', descripcion: 'Geometría trazada', activo: true });
+          targetId = created?.id || created?.id_lote;
+        }
+        await lotService.updateCoordinates(targetId, closedRing);
+        alert.success('Mapa', 'Coordenadas del lote guardadas');
+      } else {
+        const loteId = subLotIdLote ? parseInt(subLotIdLote, 10) : null;
+        if (!loteId) {
+          throw new Error('Debe indicar el ID del lote padre');
+        }
+        const desc = subLotDesc?.trim() || 'Sublote';
+        const ubic = subLotUbic?.trim() || 'Ubicación';
+        await sublotService.createSublot({ descripcion: desc, ubicacion: ubic, id_lote: loteId, coordenadas: [closedRing] });
+        alert.success('Mapa', 'Sublote creado con coordenadas');
       }
-      await lotService.updateCoordinates(targetId, closedRing);
-      alert.success('Mapa', 'Coordenadas guardadas');
       setSaveOpen(false);
       clearDrawing();
       setActive(false);
@@ -190,16 +234,49 @@ const DrawPolygonButton = ({ onSaved }) => {
         onMouseUp={(e) => { e.preventDefault(); e.stopPropagation(); }}
         onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
         onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); }}
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (active) { setSaveOpen(true); setActive(false); } else { toggleActive(); } }}
-        aria-label="Dibujar lote"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (active) { setSaveOpen(true); setActive(false); } else { setChooseOpen(true); } }}
+        aria-label="Dibujar lote o sublote"
       >
         <Edit />
       </Fab>
+      <Dialog open={chooseOpen} onClose={() => setChooseOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>¿Qué desea dibujar?</DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button variant="contained" color="success" onClick={() => { setDrawType('lot'); setChooseOpen(false); toggleActive(); }}>Lote</Button>
+            <Button variant="contained" color="info" onClick={() => { setDrawType('sublot'); setChooseOpen(false); toggleActive(); }}>Sublote</Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
       <Dialog open={saveOpen} onClose={() => setSaveOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Guardar coordenadas</DialogTitle>
         <DialogContent dividers>
-          <TextField label="ID de Lote (opcional)" value={lotId} onChange={(e) => setLotId(e.target.value)} fullWidth variant="outlined" className="modal-form-field" sx={{ mb: 2 }} />
-          <TextField label="Nombre de Lote (si no hay ID)" value={lotName} onChange={(e) => setLotName(e.target.value)} fullWidth variant="outlined" className="modal-form-field" />
+          {drawType === 'lot' ? (
+            <>
+              <Autocomplete
+                options={Array.isArray(lots) ? lots : []}
+                getOptionLabel={(option) => option?.nombre ? String(option.nombre) : `Lote ${option?.id ?? ''}`}
+                onChange={(_, option) => setLotId(option?.id ? String(option.id) : '')}
+                renderInput={(params) => (
+                  <TextField {...params} label="Seleccionar lote existente" variant="outlined" className="modal-form-field" sx={{ mb: 2 }} />
+                )}
+              />
+              <TextField label="Nombre de Lote (si no hay selección)" value={lotName} onChange={(e) => setLotName(e.target.value)} fullWidth variant="outlined" className="modal-form-field" />
+            </>
+          ) : (
+            <>
+              <Autocomplete
+                options={Array.isArray(lots) ? lots : []}
+                getOptionLabel={(option) => option?.nombre ? String(option.nombre) : `Lote ${option?.id ?? ''}`}
+                onChange={(_, option) => setSubLotIdLote(option?.id ? String(option.id) : '')}
+                renderInput={(params) => (
+                  <TextField {...params} label="Lote padre" variant="outlined" className="modal-form-field" sx={{ mb: 2 }} />
+                )}
+              />
+              <TextField label="Descripción de Sublote" value={subLotDesc} onChange={(e) => setSubLotDesc(e.target.value)} fullWidth variant="outlined" className="modal-form-field" sx={{ mb: 2 }} />
+              <TextField label="Ubicación del Sublote" value={subLotUbic} onChange={(e) => setSubLotUbic(e.target.value)} fullWidth variant="outlined" className="modal-form-field" />
+            </>
+          )}
         </DialogContent>
       <DialogActions className="dialog-actions">
           <Button onClick={() => { setSaveOpen(false); clearDrawing(); setActive(false); }} variant="outlined" className="btn-cancel">Cancelar</Button>
@@ -219,7 +296,7 @@ const LotsMapPage = () => {
   const [togglingId, setTogglingId] = useState(null);
   const [showLots, setShowLots] = useState(true);
   const [showSublots, setShowSublots] = useState(true);
-  const [selectedCropType, setSelectedCropType] = useState('perennes');
+  const [selectedCropType, setSelectedCropType] = useState(null);
 
   const normalizeCropType = (t) => {
     if (!t) return null;
@@ -230,6 +307,21 @@ const LotsMapPage = () => {
     return s;
   };
   const CANONICAL_ORDER = ['perennes', 'transitorios', 'semiperennes'];
+
+  const getCropLotId = (c) => {
+    try {
+      const rel = c?.id_lote;
+      if (rel == null) return null;
+      if (typeof rel === 'object') {
+        const id = rel.id_lote ?? rel.id ?? rel.idLote;
+        return id != null ? Number(id) : null;
+      }
+      const n = Number(rel);
+      return Number.isFinite(n) ? n : null;
+    } catch {
+      return null;
+    }
+  };
 
   const { data: mapData = [], isLoading: mapLoading, isError: mapError, error: mapErr } = useQuery({
     queryKey: ['lotesMapData'],
@@ -333,10 +425,11 @@ const LotsMapPage = () => {
     const crops = Array.isArray(cropsData?.items) ? cropsData.items : (Array.isArray(cropsData) ? cropsData : []);
     const byLotIdCropTypes = new Map();
     crops.forEach((c) => {
-      const types = byLotIdCropTypes.get(c.id_lote) || new Set();
+      const lotId = getCropLotId(c);
+      const types = byLotIdCropTypes.get(lotId) || new Set();
       const norm = normalizeCropType(c.tipo_cultivo);
       if (norm) types.add(norm);
-      byLotIdCropTypes.set(c.id_lote, types);
+      byLotIdCropTypes.set(lotId, types);
     });
     const rows = items.map((l) => {
       const positions = swapCoords(l.coordenadas?.coordinates);
@@ -346,6 +439,22 @@ const LotsMapPage = () => {
     });
     const filtered = selectedCropType ? rows.filter((r) => r.tipos.includes(selectedCropType)) : rows;
     return filtered.sort((a, b) => b.area - a.area).slice(0, 5);
+  }, [mapData, cropsData, selectedCropType]);
+
+  const filteredMapData = useMemo(() => {
+    const items = Array.isArray(mapData) ? mapData : [];
+    if (!selectedCropType) return items;
+    const crops = Array.isArray(cropsData?.items) ? cropsData.items : (Array.isArray(cropsData) ? cropsData : []);
+    const target = normalizeCropType(selectedCropType);
+    const lotIds = new Set();
+    crops.forEach((c) => {
+      const norm = normalizeCropType(c.tipo_cultivo);
+      const lotId = getCropLotId(c);
+      if (norm === target && lotId != null) {
+        lotIds.add(Number(lotId));
+      }
+    });
+    return items.filter((l) => lotIds.has(Number(l.id_lote)));
   }, [mapData, cropsData, selectedCropType]);
 
   const createLotMutation = useMutation({
@@ -397,6 +506,16 @@ const LotsMapPage = () => {
       alert.success('Lotes', 'Lote eliminado');
     },
     onError: (e) => alert.error('Error', e.message || 'No se pudo eliminar el lote')
+  });
+
+  const deleteSublotMutation = useMutation({
+    mutationFn: (id) => sublotService.deleteSublot(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['lotesMapData']);
+      queryClient.invalidateQueries(['sublots']);
+      alert.success('Sublotes', 'Sublote eliminado');
+    },
+    onError: (e) => alert.error('Error', e.message || 'No se pudo eliminar el sublote')
   });
 
   const handleToggleLot = async (lot) => {
@@ -567,9 +686,9 @@ const LotsMapPage = () => {
                     subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
                     attribution='&copy; <a href="https://www.google.com/maps">Google Maps</a>'
                   />
-                  <DrawPolygonButton onSaved={() => queryClient.invalidateQueries(['lotesMapData'])} />
-                  <FitToDataButton mapData={mapData} />
-                  {mapData.map((lote) => {
+                  <DrawPolygonButton onSaved={() => { queryClient.invalidateQueries(['lotesMapData']); queryClient.invalidateQueries(['sublots']); }} lots={lots} mapData={mapData} />
+                  <FitToDataButton mapData={filteredMapData} />
+                  {filteredMapData.map((lote) => {
                     const lotePositions = swapCoords(lote.coordenadas?.coordinates);
                     return (
                       <React.Fragment key={`lote-${lote.id_lote}`}>
@@ -621,18 +740,32 @@ const LotsMapPage = () => {
                             </Popup>
                           </Polygon>
                         )}
-                        {showSublots && Array.isArray(lote.sublotes) && lote.sublotes.map((sublote) => {
-                          const subPositions = swapCoords(sublote.coordenadas?.coordinates);
-                          return subPositions.length > 0 ? (
-                            <Polygon key={`sublote-${sublote.id_sublote}`} pathOptions={sublotOptions} positions={subPositions}>
-                              <Popup>
-                                <b>Sublote: {sublote.descripcion}</b><br />
-                                Ubicación: {sublote.ubicacion}<br />
-                                Pertenece al lote: {lote.nombre_lote}
-                              </Popup>
-                            </Polygon>
-                          ) : null;
-                        })}
+                        {showSublots && Array.isArray(sublots) && sublots
+                          .filter((s) => String(s.id_lote?.id_lote || s.id_lote) === String(lote.id_lote))
+                          .map((sublote) => {
+                            const subPositions = swapCoords(sublote.coordenadas?.coordinates);
+                            return subPositions.length > 0 ? (
+                              <Polygon key={`sublote-${sublote.id_sublote}`} pathOptions={sublotOptions} positions={subPositions}>
+                                <Popup>
+                                  <b>Sublote: {sublote.descripcion}</b><br />
+                                  Ubicación: {sublote.ubicacion}<br />
+                                  Pertenece al lote: {lote.nombre_lote}
+                                  <div>
+                                    <Button
+                                      size="small"
+                                      variant="contained"
+                                      color="error"
+                                      disabled={deleteSublotMutation.isLoading}
+                                      onClick={() => deleteSublotMutation.mutate(sublote.id ?? sublote.id_sublote)}
+                                      sx={{ mt: 1, ml: 1 }}
+                                    >
+                                      Eliminar sublote
+                                    </Button>
+                                  </div>
+                                </Popup>
+                              </Polygon>
+                            ) : null;
+                          })}
                       </React.Fragment>
                     );
                   })}

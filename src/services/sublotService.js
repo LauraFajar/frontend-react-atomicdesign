@@ -16,6 +16,7 @@ const mapSublot = (s) => ({
   nombre_lote: s.id_lote?.nombre_lote || '',
   descripcion_lote: s.id_lote?.descripcion || '',
   activo_lote: s.id_lote?.activo || true,
+  coordenadas: s.coordenadas || null,
   raw: s
 });
 
@@ -55,7 +56,8 @@ const sublotService = {
       const formattedData = {
         descripcion: sublotData.descripcion.trim(),
         ubicacion: sublotData.ubicacion.trim(),
-        id_lote: sublotData.id_lote ? parseInt(sublotData.id_lote, 10) : null
+        id_lote: sublotData.id_lote ? parseInt(sublotData.id_lote, 10) : null,
+        ...(Array.isArray(sublotData.coordenadas) ? { coordenadas: sublotData.coordenadas } : {})
       };
 
       const response = await axios.post(`${API_URL}/sublotes`, formattedData, {
@@ -87,7 +89,8 @@ const sublotService = {
       const formattedData = {
         descripcion: sublotData.descripcion.trim(),
         ubicacion: sublotData.ubicacion.trim(),
-        id_lote: sublotData.id_lote ? parseInt(sublotData.id_lote, 10) : null
+        id_lote: sublotData.id_lote ? parseInt(sublotData.id_lote, 10) : null,
+        ...(Array.isArray(sublotData.coordenadas) ? { coordenadas: sublotData.coordenadas } : {})
       };
 
       const response = await axios.patch(`${API_URL}/sublotes/${id}`, formattedData, {

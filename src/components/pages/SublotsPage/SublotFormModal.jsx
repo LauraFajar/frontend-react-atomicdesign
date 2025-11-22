@@ -9,6 +9,9 @@ import {
   Typography,
   CircularProgress
 } from '@mui/material';
+import { Autocomplete } from '@mui/material';
+import { useQuery } from '@tanstack/react-query';
+import lotService from '../../../services/lotService';
 import './SublotFormModal.css';
 
 const SublotFormModal = ({ open, onClose, onSave, sublot }) => {
@@ -21,12 +24,23 @@ const SublotFormModal = ({ open, onClose, onSave, sublot }) => {
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState('');
 
+  const { data: lots = [] } = useQuery({
+    queryKey: ['lots'],
+    queryFn: lotService.getLots,
+    staleTime: 60 * 1000,
+  });
+
   useEffect(() => {
     if (sublot) {
       setFormData({
         descripcion: sublot.descripcion || '',
         ubicacion: sublot.ubicacion || '',
-        id_lote: sublot.id_lote || ''
+        id_lote: (() => {
+          const rel = sublot.id_lote;
+          if (rel == null) return '';
+          if (typeof rel === 'object') return rel.id_lote ?? rel.id ?? '';
+          return rel;
+        })()
       });
     } else {
       setFormData({
@@ -142,17 +156,22 @@ const SublotFormModal = ({ open, onClose, onSave, sublot }) => {
             className="modal-form-field"
           />
 
-          <TextField
-            label="ID del Lote Asociado"
-            name="id_lote"
-            value={formData.id_lote}
-            onChange={handleChange}
-            required
-            fullWidth
-            type="number"
-            error={!!errors.id_lote}
-            helperText={errors.id_lote}
-            className="modal-form-field"
+          <Autocomplete
+            options={Array.isArray(lots) ? lots : []}
+            getOptionLabel={(option) => option?.nombre ? String(option.nombre) : `Lote ${option?.id ?? ''}`}
+            value={(Array.isArray(lots) ? lots : []).find((l) => String(l.id) === String(formData.id_lote)) || null}
+            onChange={(_, option) => setFormData((prev) => ({ ...prev, id_lote: option?.id ?? '' }))}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Lote asociado"
+                required
+                fullWidth
+                error={!!errors.id_lote}
+                helperText={errors.id_lote}
+                className="modal-form-field"
+              />
+            )}
           />
         </DialogContent>
 
