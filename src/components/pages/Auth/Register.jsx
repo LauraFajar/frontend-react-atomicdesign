@@ -17,8 +17,6 @@ const Register = () => {
     numero_documento: '',
     id_rol: '5'
   });
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   
