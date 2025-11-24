@@ -80,6 +80,50 @@ const sensoresService = {
     const updated = response.data?.data ?? response.data;
     return updated;
   },
+
+  getTiempoReal: async () => {
+    const response = await axios.get(`${API_URL}/sensores/tiempo-real`, {
+      headers: getAuthHeader(),
+    });
+    return response.data?.data ?? response.data ?? [];
+  },
+
+  getHistorial: async (id, params = {}) => {
+    const response = await axios.get(`${API_URL}/sensores/${id}/historial`, {
+      params,
+      headers: getAuthHeader(),
+    });
+    return response.data?.data ?? response.data ?? [];
+  },
+
+  getGraficos: async (id, params = {}) => {
+    const response = await axios.get(`${API_URL}/sensores/${id}/graficos`, {
+      params,
+      headers: getAuthHeader(),
+    });
+    return response.data?.data ?? response.data ?? [];
+  },
+
+  configurarMQTT: async (id, config) => {
+    const response = await axios.post(`${API_URL}/sensores/${id}/mqtt/configurar`, config, {
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+    });
+    return response.data?.data ?? response.data;
+  },
+
+  getEstadoMQTT: async (id) => {
+    const response = await axios.get(`${API_URL}/sensores/${id}/mqtt/estado`, {
+      headers: getAuthHeader(),
+    });
+    return response.data?.data ?? response.data;
+  },
+
+  inicializarConexionesMQTT: async () => {
+    const response = await axios.post(`${API_URL}/sensores/mqtt/inicializar-conexiones`, {}, {
+      headers: getAuthHeader(),
+    });
+    return response.data?.data ?? response.data;
+  },
 };
 
 export default sensoresService;
