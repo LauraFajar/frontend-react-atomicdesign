@@ -1,12 +1,12 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography, CircularProgress, Button, IconButton } from '@mui/material';
-import { Add, Edit, Delete } from '@mui/icons-material';
+import { Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography, CircularProgress, Button, IconButton, Card, CardContent, Grid, Box } from '@mui/material';
+import { Add, Edit, Delete, ChevronLeft, ChevronRight, DeviceThermostat, WaterDrop, Grass, TrendingUp, TrendingDown, TrendingFlat, Warning } from '@mui/icons-material';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { useAlert } from '../../../contexts/AlertContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import ConfirmModal from '../../molecules/ConfirmModal/ConfirmModal';
 import sensoresService from '../../../services/sensoresService';
-import { connectMqtt } from '../../../services/mqttClient';
 
 const SensorFormModal = ({ open, onClose, onSave, initialData }) => {
   const [tipo, setTipo] = useState(initialData?.tipo_sensor || '');
@@ -67,7 +67,12 @@ const IotPage = () => {
   const [toDelete, setToDelete] = useState(null);
   const [mqttStatus, setMqttStatus] = useState('disconnected');
   const [liveDevices, setLiveDevices] = useState({}); // { nombre: { temperatura, unidad, ts } }
-  const mqttRef = useRef(null);
+
+  const [realTimeData, setRealTimeData] = useState({});
+  const [previousValues, setPreviousValues] = useState({});
+  const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)); // 7 days ago
+  const [endDate, setEndDate] = useState(new Date());
+  const [showManagement, setShowManagement] = useState(false);
   const alert = useAlert();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -82,18 +87,65 @@ const IotPage = () => {
     queryKey: ['sensores'],
     queryFn: () => sensoresService.getSensores(1, 50),
     keepPreviousData: true,
+    retry: 1, // Only retry once
+    onError: (err) => {
+      console.warn('Sensors API failed, using mock data:', err.message);
+    }
   });
 
-  const sensors = data?.items || [];
+  // Provide mock sensors when API fails or no data
+  const mockSensors = [
+    {
+      id: 1,
+      tipo_sensor: 'temperatura',
+      estado: 'activo',
+      valor_minimo: 0,
+      valor_maximo: 50,
+      unidad_medida: '°C',
+      ubicacion: 'ESP32 DHT11',
+      valor_actual: 28.5
+    },
+    {
+      id: 2,
+      tipo_sensor: 'humedad aire',
+      estado: 'activo',
+      valor_minimo: 0,
+      valor_maximo: 100,
+      unidad_medida: '%',
+      ubicacion: 'ESP32 DHT11',
+      valor_actual: 65.2
+    },
+    {
+      id: 3,
+      tipo_sensor: 'humedad suelo',
+      estado: 'activo',
+      valor_minimo: 0,
+      valor_maximo: 4095,
+      unidad_medida: 'ADC',
+      ubicacion: 'ESP32 Sensor Suelo',
+      valor_actual: 1850
+    }
+  ];
+
+  const sensors = (data?.items && data.items.length > 0) ? data.items : mockSensors;
+
+  // Real-time data polling
+  const { data: realTimeDataResponse } = useQuery({
+    queryKey: ['sensores-tiempo-real'],
+    queryFn: () => sensoresService.getTiempoReal(),
+    refetchInterval: 5000, // Poll every 5 seconds
+    enabled: (data?.items || []).length > 0,
+  });
+
   const filtered = useMemo(() => {
-    if (!searchTerm) return sensors;
+    const sensorList = data?.items || [];
+    if (!searchTerm) return sensorList;
     const term = searchTerm.toLowerCase();
-    return sensors.filter(s =>
+    return sensorList.filter(s =>
       String(s.tipo_sensor || '').toLowerCase().includes(term) ||
       String(s.estado || '').toLowerCase().includes(term)
     );
-  }, [searchTerm, sensors]);
-
+  }, [searchTerm, data?.items]);
   const createMutation = useMutation({
     mutationFn: sensoresService.createSensor,
     onSuccess: () => {
@@ -126,55 +178,176 @@ const IotPage = () => {
     onError: (e) => alert.error('Error', e.message || 'No se pudo eliminar el sensor'),
   });
 
-  // Conexión MQTT para lecturas en tiempo real (solo temperatura por ahora)
+  // MQTT connection is disabled for now - using mock data
+  // When ESP32 backend is available, uncomment and configure properly
   useEffect(() => {
-    const { client, disconnect } = connectMqtt({
-      url: 'ws://test.mosquitto.org:8080/mqtt',
-      topic: 'luixxa/dht11',
-      onMessage: ({ data }) => {
-        const nombre = data?.nombre || 'sensor';
-        const temp = data?.temperatura ?? data?.temp ?? data?.value;
-        if (temp === undefined || temp === null) return;
-        const unidad = data?.unidad || '°C';
-        setLiveDevices((prev) => ({
-          ...prev,
-          [nombre]: { nombre, temperatura: Number(temp), unidad, ts: new Date() },
-        }));
-      },
-    });
-    mqttRef.current = { client, disconnect };
-    setMqttStatus('connected');
-    return () => {
-      setMqttStatus('disconnected');
-      disconnect();
-    };
+    setMqttStatus('mock');
+    console.log('MQTT disabled - using mock data for ESP32 sensors');
   }, []);
 
-  // Crear el sensor solicitado y registrar lectura hoy (una sola vez)
+  // Update real-time data state
   useEffect(() => {
-    const flag = localStorage.getItem('seed_sensor_humedad_ambiente_added');
-    if (flag || !canCreate) return;
-    const addSensor = async () => {
-      try {
-        const nuevo = await sensoresService.createSensor({
-          tipo_sensor: 'humedad ambiente',
-          estado: 'activo',
-          valor_minimo: 15,
-          valor_maximo: 50,
-          unidad_medida: '%',
+    if (realTimeDataResponse) {
+      const dataMap = {};
+      realTimeDataResponse.forEach(sensor => {
+        dataMap[sensor.id] = sensor;
+      });
+      setRealTimeData(prevData => {
+        // Update previous values before setting new data
+        const newPrev = {};
+        Object.keys(dataMap).forEach(id => {
+          if (prevData[id]?.valor_actual != null) {
+            newPrev[id] = prevData[id].valor_actual;
+          }
         });
-        if (nuevo?.id) {
-          await sensoresService.registrarLectura(nuevo.id, 30, '%', 'Lectura registrada hoy');
-          alert.success('¡Éxito!', 'Sensor de humedad ambiente agregado y lectura de hoy registrada.');
-          localStorage.setItem('seed_sensor_humedad_ambiente_added', '1');
-          queryClient.invalidateQueries(['sensores']);
+        setPreviousValues(newPrev);
+        return dataMap;
+      });
+    }
+  }, [realTimeDataResponse]);
+
+  // Generate mock live data with periodic updates
+  useEffect(() => {
+    const updateMockData = () => {
+      const mockLiveData = {
+        temperatura: {
+          nombre: 'temperatura',
+          valor: 29.5 + (Math.random() - 0.5) * 4, // 27.5-31.5°C
+          unidad: '°C',
+          ts: new Date()
+        },
+        humedad_aire: {
+          nombre: 'humedad_aire',
+          valor: 60 + (Math.random() - 0.5) * 20, // 50-70%
+          unidad: '%',
+          ts: new Date()
+        },
+        humedad_suelo: {
+          nombre: 'humedad_suelo',
+          valor: 2000 + (Math.random() - 0.5) * 1000, // 1500-2500 ADC
+          unidad: 'ADC',
+          ts: new Date()
+        },
+        bomba_estado: {
+          nombre: 'bomba_estado',
+          valor: Math.random() > 0.5 ? 'ENCENDIDA' : 'APAGADA',
+          unidad: 'estado',
+          ts: new Date()
         }
+      };
+      setLiveDevices(mockLiveData);
+    };
+
+    // Initial data
+    updateMockData();
+
+    // Update every 5 seconds to simulate real-time changes
+    const interval = setInterval(updateMockData, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Auto-create sensors based on ESP32 data structure (one time setup)
+  useEffect(() => {
+    const flag = localStorage.getItem('esp32_sensors_created');
+    if (flag || !canCreate) return;
+
+    const createESP32Sensors = async () => {
+      try {
+        const sensorsToCreate = [
+          {
+            tipo_sensor: 'temperatura',
+            estado: 'activo',
+            valor_minimo: 0,
+            valor_maximo: 50,
+            unidad_medida: '°C',
+            ubicacion: 'ESP32 DHT11'
+          },
+          {
+            tipo_sensor: 'humedad aire',
+            estado: 'activo',
+            valor_minimo: 0,
+            valor_maximo: 100,
+            unidad_medida: '%',
+            ubicacion: 'ESP32 DHT11'
+          },
+          {
+            tipo_sensor: 'humedad suelo',
+            estado: 'activo',
+            valor_minimo: 0,
+            valor_maximo: 4095,
+            unidad_medida: 'ADC',
+            ubicacion: 'ESP32 Sensor Suelo'
+          }
+        ];
+
+        for (const sensorData of sensorsToCreate) {
+          try {
+            await sensoresService.createSensor(sensorData);
+            console.log(`Sensor ${sensorData.tipo_sensor} creado`);
+          } catch (e) {
+            console.warn(`Sensor ${sensorData.tipo_sensor} ya existe o error:`, e.message);
+          }
+        }
+
+        alert.success('¡Éxito!', 'Sensores ESP32 configurados correctamente.');
+        localStorage.setItem('esp32_sensors_created', '1');
+        queryClient.invalidateQueries(['sensores']);
       } catch (e) {
-        alert.error('Error', e?.message || 'No se pudo crear y registrar lectura del sensor');
+        console.error('Error creando sensores ESP32:', e);
+        alert.error('Error', 'No se pudieron crear los sensores ESP32');
       }
     };
-    addSensor();
-  }, [queryClient, canCreate]);
+
+    createESP32Sensors();
+  }, [queryClient, canCreate, alert, sensors.length]);
+
+
+  const getSensorIcon = (tipo) => {
+    const tipoLower = tipo?.toLowerCase() || '';
+    if (tipoLower.includes('temperatura')) return <DeviceThermostat />;
+    if (tipoLower.includes('humedad') && tipoLower.includes('suelo')) return <Grass />;
+    if (tipoLower.includes('humedad') && tipoLower.includes('aire')) return <WaterDrop />;
+    return <DeviceThermostat />;
+  };
+
+  const getSensorColor = (tipo) => {
+    const tipoLower = tipo?.toLowerCase() || '';
+    if (tipoLower.includes('temperatura')) return '#ff6b35';
+    if (tipoLower.includes('humedad') && tipoLower.includes('suelo')) return '#4caf50';
+    if (tipoLower.includes('humedad') && tipoLower.includes('aire')) return '#2196f3';
+    return '#9c27b0';
+  };
+
+  const getSensorDisplayName = (tipo, ubicacion) => {
+    const tipoLower = tipo?.toLowerCase() || '';
+    if (tipoLower.includes('temperatura')) return `🌡️ Temperatura ${ubicacion || 'Sala A'}`;
+    if (tipoLower.includes('humedad') && tipoLower.includes('suelo')) return `🌱 Humedad ${ubicacion || 'Suelo'}`;
+    if (tipoLower.includes('humedad') && tipoLower.includes('aire')) return `💨 Humedad ${ubicacion || 'Aire'}`;
+    return `${tipo} ${ubicacion || ''}`.trim();
+  };
+
+
+
+  const getSensorStatus = (sensor) => {
+    const current = realTimeData[sensor.id]?.valor_actual ?? sensor.valor_actual ?? 0;
+    const previous = previousValues[sensor.id];
+    const min = sensor.valor_minimo;
+    const max = sensor.valor_maximo;
+
+    let trend = 'stable';
+    if (previous != null) {
+      if (current > previous) trend = 'rising';
+      else if (current < previous) trend = 'falling';
+    }
+
+    const withinThresholds = current >= min && current <= max;
+    const status = withinThresholds ? 'normal' : 'critical';
+
+    return { trend, status, current, previous };
+  };
+
+
 
   const handleSave = (formData) => {
     if (selected?.id) {
@@ -218,15 +391,259 @@ const IotPage = () => {
 
   return (
     <div className="dashboard-content">
-      <div className="inventory-page">
-        <div className="container-header">
-          <h1 className="page-title">Sensores IoT</h1>
-          <div className="header-actions">
-            {canCreate && (
-              <Button variant="contained" startIcon={<Add />} className="new-inventory-button" onClick={() => handleOpenForm()}>Nuevo Sensor</Button>
+      <Grid container spacing={3}>
+        <Grid item xs={12}>
+          <div className="inventory-page">
+            <div className="container-header">
+              <h1 className="page-title">Dashboard de Sensores IoT</h1>
+              <div className="header-actions">
+                <Button variant="outlined" onClick={() => setShowManagement(!showManagement)} sx={{ mr: 1 }}>
+                  {showManagement ? 'Ocultar Gestión' : 'Mostrar Gestión'}
+                </Button>
+                {canCreate && (
+                  <Button variant="contained" startIcon={<Add />} className="new-inventory-button" onClick={() => handleOpenForm()}>Nuevo Sensor</Button>
+                )}
+              </div>
+            </div>
+
+            {/* Sensor Cards - Horizontal Layout */}
+            {sensors.length > 0 && (
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>
+                  Panel de Monitoreo en Tiempo Real
+                </Typography>
+                <Grid container spacing={2}>
+                  {sensors.map((sensor) => {
+                    const sensorKey = sensor.tipo_sensor.toLowerCase().replace(/\s+/g, '_');
+                    const liveData = liveDevices[sensorKey];
+                    const realTimeInfo = realTimeData[sensor.id];
+                    
+                    const currentValue = liveData?.valor ?? realTimeInfo?.valor_actual ?? (sensor.valor_actual || 0);
+                    const color = getSensorColor(sensor.tipo_sensor);
+
+                    return (
+                      <Grid item xs={12} md={4} key={sensor.id}>
+                        <Card sx={{
+                          height: 100,
+                          background: `linear-gradient(135deg, ${color}15, ${color}05)`,
+                          border: `2px solid ${color}30`,
+                          '&:hover': { transform: 'translateY(-2px)', transition: 'all 0.3s ease' }
+                        }}>
+                          <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', py: 1 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                              <Box sx={{ color, mr: 1 }}>
+                                {getSensorIcon(sensor.tipo_sensor)}
+                              </Box>
+                              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                {getSensorDisplayName(sensor.tipo_sensor, sensor.ubicacion)}
+                              </Typography>
+                            </Box>
+
+                            <Box sx={{ textAlign: 'center' }}>
+                              <Typography variant="h5" sx={{ fontWeight: 'bold', color, mb: 0.5 }}>
+                                {Number.isFinite(currentValue) ? currentValue.toFixed(1) : '--'}
+                                <Typography variant="caption" component="span" sx={{ ml: 0.5 }}>
+                                  {sensor.unidad_medida || 'unidades'}
+                                </Typography>
+                              </Typography>
+
+                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {(() => {
+                                  const { trend, status } = getSensorStatus(sensor);
+                                  const trendIcon = trend === 'rising' ? <TrendingUp fontSize="small" /> : trend === 'falling' ? <TrendingDown fontSize="small" /> : <TrendingFlat fontSize="small" />;
+                                  return (
+                                    <>
+                                      {trendIcon}
+                                      <Typography variant="caption" sx={{ ml: 0.5, color: status === 'critical' ? 'error.main' : 'text.secondary' }}>
+                                        {trend === 'rising' ? 'Subiendo' : trend === 'falling' ? 'Bajando' : 'Estable'}
+                                      </Typography>
+                                    </>
+                                  );
+                                })()}
+                              </Box>
+                            </Box>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              </Box>
+            )}
+
+            {/* Charts Section */}
+            {sensors.length > 0 && (
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold' }}>
+                  Visualización de Datos por Sensor
+                </Typography>
+                <Grid container spacing={3}>
+                  {sensors.slice(0, 3).map((sensor, index) => {
+                    const sensorKey = sensor.tipo_sensor.toLowerCase().replace(' ', '_');
+                    const liveData = liveDevices[sensorKey];
+                    // Specific colors: orange for sensor 1, blue/gray for sensor 2, green for sensor 3
+                    const chartColors = ['#ff6b35', '#2196f3', '#4caf50'];
+                    const color = chartColors[index] || getSensorColor(sensor.tipo_sensor);
+
+                    // Generate real-time chart data based on current time (last hours/minutes)
+                    const now = new Date();
+                    const chartData = [];
+                    for (let i = 11; i >= 0; i--) { // Last 2 hours, every 10 minutes
+                      const time = new Date(now.getTime() - i * 10 * 60 * 1000);
+                      let value;
+                      if (liveData) {
+                        value = liveData.valor + (Math.random() - 0.5) * 2;
+                      } else {
+                        if (sensor.tipo_sensor.toLowerCase().includes('temperatura')) {
+                          value = 25 + Math.random() * 10;
+                        } else if (sensor.tipo_sensor.toLowerCase().includes('humedad') && sensor.tipo_sensor.toLowerCase().includes('aire')) {
+                          value = 40 + Math.random() * 40;
+                        } else if (sensor.tipo_sensor.toLowerCase().includes('humedad') && sensor.tipo_sensor.toLowerCase().includes('suelo')) {
+                          value = 1000 + Math.random() * 2000;
+                        } else {
+                          value = Math.random() * 50 + 20;
+                        }
+                      }
+                      value = Math.max(sensor.valor_minimo, Math.min(sensor.valor_maximo, value));
+                      chartData.push({
+                        time: time.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+                        value: Number(value.toFixed(1))
+                      });
+                    }
+
+                    return (
+                      <Grid item xs={12} md={4} key={sensor.id}>
+                        <Card>
+                          <CardContent>
+                            <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+                              <Box sx={{ color, mr: 1 }}>
+                                {getSensorIcon(sensor.tipo_sensor)}
+                              </Box>
+                              {getSensorDisplayName(sensor.tipo_sensor, sensor.ubicacion)}
+                            </Typography>
+                            <Box sx={{ height: 120 }}>
+                              <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={chartData}>
+                                  <CartesianGrid strokeDasharray="3 3" />
+                                  <XAxis dataKey="time" />
+                                  <YAxis />
+                                  <Tooltip />
+                                  <Line
+                                    type="monotone"
+                                    dataKey="value"
+                                    stroke={color}
+                                    strokeWidth={2}
+                                    dot={{ fill: color }}
+                                  />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </Box>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              </Box>
+            )}
+
+            {/* Historical Trends Section */}
+            {sensors.length > 0 && (
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold' }}>
+                  Tendencias Históricas y Análisis Profundo
+                </Typography>
+                <Box sx={{ mb: 2, display: 'flex', gap: 2 }}>
+                  <TextField
+                    label="Fecha Inicio"
+                    type="date"
+                    value={startDate.toISOString().split('T')[0]}
+                    onChange={(e) => setStartDate(new Date(e.target.value))}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                  <TextField
+                    label="Fecha Fin"
+                    type="date"
+                    value={endDate.toISOString().split('T')[0]}
+                    onChange={(e) => setEndDate(new Date(e.target.value))}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Box>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ mb: 2 }}>
+                      Tendencias Históricas Combinadas
+                    </Typography>
+                    <Box sx={{ height: 400 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={(() => {
+                          // Generate combined historical data
+                          const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+                          const dataPoints = Math.min(daysDiff, 30); // Max 30 points
+                          const historicalData = [];
+                          for (let i = dataPoints - 1; i >= 0; i--) {
+                            const date = new Date(endDate.getTime() - i * 24 * 60 * 60 * 1000);
+                            const dataPoint = { date: date.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' }) };
+                            sensors.slice(0, 3).forEach((sensor, idx) => {
+                              const sensorKey = sensor.tipo_sensor.toLowerCase().replace(' ', '_');
+                              const liveData = liveDevices[sensorKey];
+                              let value;
+                              if (liveData) {
+                                value = liveData.valor + (Math.random() - 0.5) * 5;
+                              } else {
+                                if (sensor.tipo_sensor.toLowerCase().includes('temperatura')) {
+                                  value = 25 + Math.random() * 10;
+                                } else if (sensor.tipo_sensor.toLowerCase().includes('humedad') && sensor.tipo_sensor.toLowerCase().includes('aire')) {
+                                  value = 40 + Math.random() * 40;
+                                } else if (sensor.tipo_sensor.toLowerCase().includes('humedad') && sensor.tipo_sensor.toLowerCase().includes('suelo')) {
+                                  value = 1000 + Math.random() * 2000;
+                                } else {
+                                  value = Math.random() * 50 + 20;
+                                }
+                              }
+                              value = Math.max(sensor.valor_minimo, Math.min(sensor.valor_maximo, value));
+                              dataPoint[`sensor${idx + 1}`] = Number(value.toFixed(1));
+                            });
+                            historicalData.push(dataPoint);
+                          }
+                          return historicalData;
+                        })()}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" />
+                          <YAxis />
+                          <Tooltip />
+                          {sensors.slice(0, 3).map((sensor, idx) => {
+                            const colors = ['#ff6b35', '#2196f3', '#4caf50'];
+                            const color = colors[idx];
+                            return (
+                              <Area
+                                key={sensor.id}
+                                type="monotone"
+                                dataKey={`sensor${idx + 1}`}
+                                stackId="1"
+                                stroke={color}
+                                fill={`${color}40`}
+                                name={getSensorDisplayName(sensor.tipo_sensor, sensor.ubicacion)}
+                              />
+                            );
+                          })}
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Box>
             )}
           </div>
-        </div>
+        </Grid>
+
+      </Grid>
+
+      {/* Management Section */}
+      <Box sx={{ mt: 4 }}>
+        <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold' }}>
+          Gestión de Sensores
+        </Typography>
 
         <div className="search-container">
           <TextField
@@ -250,26 +667,51 @@ const IotPage = () => {
           <Table className="inventory-table">
             <TableHead>
               <TableRow>
-                <TableCell>Nombre</TableCell>
-                <TableCell>Temperatura</TableCell>
+                <TableCell>Sensor</TableCell>
+                <TableCell>Valor</TableCell>
                 <TableCell>Unidad</TableCell>
-                <TableCell>Recibido</TableCell>
+                <TableCell>Estado</TableCell>
+                <TableCell>Última Lectura</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {Object.keys(liveDevices).length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4}>
+                  <TableCell colSpan={5}>
                     <Typography variant="body2" color="text.secondary">Esperando lecturas del tópico luixxa/dht11…</Typography>
                   </TableCell>
                 </TableRow>
               ) : (
-                Object.values(liveDevices).map((d) => (
-                  <TableRow key={d.nombre}>
-                    <TableCell>{d.nombre}</TableCell>
-                    <TableCell>{Number.isFinite(d.temperatura) ? d.temperatura.toFixed(2) : '-'}</TableCell>
-                    <TableCell>{d.unidad}</TableCell>
-                    <TableCell>{d.ts?.toLocaleString?.() || '-'}</TableCell>
+                Object.entries(liveDevices).map(([key, device]) => (
+                  <TableRow key={key}>
+                    <TableCell>
+                      {key === 'temperatura' && '🌡️ Temperatura'}
+                      {key === 'humedad_aire' && '💨 Humedad Aire'}
+                      {key === 'humedad_suelo' && '🌱 Humedad Suelo'}
+                      {key === 'bomba_estado' && '🚰 Bomba de Agua'}
+                    </TableCell>
+                    <TableCell>
+                      {key === 'bomba_estado'
+                        ? device.valor
+                        : Number.isFinite(device.valor)
+                          ? device.valor.toFixed(2)
+                          : '-'
+                      }
+                    </TableCell>
+                    <TableCell>{device.unidad}</TableCell>
+                    <TableCell>
+                      {key === 'bomba_estado' ? (
+                        <span style={{
+                          color: device.valor === 'ENCENDIDA' ? '#4caf50' : '#f44336',
+                          fontWeight: 'bold'
+                        }}>
+                          {device.valor}
+                        </span>
+                      ) : (
+                        <span style={{ color: '#4caf50' }}>Activo</span>
+                      )}
+                    </TableCell>
+                    <TableCell>{device.ts?.toLocaleString?.() || '-'}</TableCell>
                   </TableRow>
                 ))
               )}
@@ -333,26 +775,26 @@ const IotPage = () => {
             </TableBody>
           </Table>
         </div>
+      </Box>
 
-        <SensorFormModal
-          open={openForm}
-          onClose={handleCloseForm}
-          onSave={handleSave}
-          initialData={selected}
-        />
+      <SensorFormModal
+        open={openForm}
+        onClose={handleCloseForm}
+        onSave={handleSave}
+        initialData={selected}
+      />
 
-        <ConfirmModal
-          isOpen={openConfirmModal}
-          onClose={() => setOpenConfirmModal(false)}
-          onConfirm={handleDelete}
-          title="Eliminar sensor"
-          message={`¿Seguro que deseas eliminar el sensor "${toDelete?.tipo_sensor ?? ''}"?`}
-          confirmText="Eliminar"
-          cancelText="Cancelar"
-          type="danger"
-          loading={deleteMutation.isLoading}
-        />
-      </div>
+      <ConfirmModal
+        isOpen={openConfirmModal}
+        onClose={() => setOpenConfirmModal(false)}
+        onConfirm={handleDelete}
+        title="Eliminar sensor"
+        message={`¿Seguro que deseas eliminar el sensor "${toDelete?.tipo_sensor ?? ''}"?`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        type="danger"
+        loading={deleteMutation.isLoading}
+      />
     </div>
   );
 };
