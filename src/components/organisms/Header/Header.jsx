@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../../../contexts/AuthContext'
-import { FiBell, FiUser, FiLogOut, FiChevronDown, FiEdit } from 'react-icons/fi'
+import { FiUser, FiLogOut, FiChevronDown, FiEdit } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
 import {
   Dialog,
@@ -66,12 +66,6 @@ const Header = () => {
     <header className="header">
       <div className="header__content">
         <div className="header__actions">
-          {/* Notificaciones */}
-          <button className="header__action-button" title="Notificaciones">
-            <FiBell size={20} />
-            <span className="header__notification-badge">3</span>
-          </button>
-
           {/* Perfil de usuario */}
           <div className="header__user" ref={profileRef}>
             <button
