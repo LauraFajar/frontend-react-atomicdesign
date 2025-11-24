@@ -87,13 +87,12 @@ const IotPage = () => {
     queryKey: ['sensores'],
     queryFn: () => sensoresService.getSensores(1, 50),
     keepPreviousData: true,
-    retry: 1, // Only retry once
+    retry: 1,
     onError: (err) => {
       console.warn('Sensors API failed, using mock data:', err.message);
     }
   });
 
-  // Provide mock sensors when API fails or no data
   const mockSensors = [
     {
       id: 1,
@@ -129,11 +128,10 @@ const IotPage = () => {
 
   const sensors = (data?.items && data.items.length > 0) ? data.items : mockSensors;
 
-  // Real-time data polling
   const { data: realTimeDataResponse } = useQuery({
     queryKey: ['sensores-tiempo-real'],
     queryFn: () => sensoresService.getTiempoReal(),
-    refetchInterval: 5000, // Poll every 5 seconds
+    refetchInterval: 5000, 
     enabled: (data?.items || []).length > 0,
   });
 
@@ -178,22 +176,18 @@ const IotPage = () => {
     onError: (e) => alert.error('Error', e.message || 'No se pudo eliminar el sensor'),
   });
 
-  // MQTT connection is disabled for now - using mock data
-  // When ESP32 backend is available, uncomment and configure properly
   useEffect(() => {
     setMqttStatus('mock');
     console.log('MQTT disabled - using mock data for ESP32 sensors');
   }, []);
 
-  // Update real-time data state
   useEffect(() => {
     if (realTimeDataResponse) {
       const dataMap = {};
       realTimeDataResponse.forEach(sensor => {
         dataMap[sensor.id] = sensor;
       });
-      setRealTimeData(prevData => {
-        // Update previous values before setting new data
+      setRealTimeData(prevData => {data 
         const newPrev = {};
         Object.keys(dataMap).forEach(id => {
           if (prevData[id]?.valor_actual != null) {
@@ -206,7 +200,6 @@ const IotPage = () => {
     }
   }, [realTimeDataResponse]);
 
-  // Generate mock live data with periodic updates
   useEffect(() => {
     const updateMockData = () => {
       const mockLiveData = {
@@ -238,16 +231,13 @@ const IotPage = () => {
       setLiveDevices(mockLiveData);
     };
 
-    // Initial data
     updateMockData();
 
-    // Update every 5 seconds to simulate real-time changes
     const interval = setInterval(updateMockData, 5000);
 
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-create sensors based on ESP32 data structure (one time setup)
   useEffect(() => {
     const flag = localStorage.getItem('esp32_sensors_created');
     if (flag || !canCreate) return;
@@ -471,7 +461,6 @@ const IotPage = () => {
               </Box>
             )}
 
-            {/* Charts Section */}
             {sensors.length > 0 && (
               <Box sx={{ mb: 4 }}>
                 <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold' }}>
@@ -481,14 +470,12 @@ const IotPage = () => {
                   {sensors.slice(0, 3).map((sensor, index) => {
                     const sensorKey = sensor.tipo_sensor.toLowerCase().replace(' ', '_');
                     const liveData = liveDevices[sensorKey];
-                    // Specific colors: orange for sensor 1, blue/gray for sensor 2, green for sensor 3
                     const chartColors = ['#ff6b35', '#2196f3', '#4caf50'];
                     const color = chartColors[index] || getSensorColor(sensor.tipo_sensor);
 
-                    // Generate real-time chart data based on current time (last hours/minutes)
                     const now = new Date();
                     const chartData = [];
-                    for (let i = 11; i >= 0; i--) { // Last 2 hours, every 10 minutes
+                    for (let i = 11; i >= 0; i--) {
                       const time = new Date(now.getTime() - i * 10 * 60 * 1000);
                       let value;
                       if (liveData) {
@@ -547,7 +534,6 @@ const IotPage = () => {
               </Box>
             )}
 
-            {/* Historical Trends Section */}
             {sensors.length > 0 && (
               <Box sx={{ mb: 4 }}>
                 <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold' }}>
@@ -577,9 +563,8 @@ const IotPage = () => {
                     <Box sx={{ height: 400 }}>
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={(() => {
-                          // Generate combined historical data
                           const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-                          const dataPoints = Math.min(daysDiff, 30); // Max 30 points
+                          const dataPoints = Math.min(daysDiff, 30);
                           const historicalData = [];
                           for (let i = dataPoints - 1; i >= 0; i--) {
                             const date = new Date(endDate.getTime() - i * 24 * 60 * 60 * 1000);
@@ -639,7 +624,6 @@ const IotPage = () => {
 
       </Grid>
 
-      {/* Management Section */}
       <Box sx={{ mt: 4 }}>
         <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold' }}>
           Gestión de Sensores
