@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import ExcelJS from 'exceljs';
 import { useQuery } from '@tanstack/react-query';
-import { Box, Paper, Typography, FormControl, InputLabel, Select, MenuItem, TextField, Button, Divider, Chip, Alert, Table, TableHead, TableRow, TableCell, TableBody, Tabs, Tab } from '@mui/material';
+import { Box, Paper, Typography, FormControl, InputLabel, Select, MenuItem, TextField, Button, Divider, Chip, Alert, Table, TableHead, TableRow, TableCell, TableBody, Tabs, Tab, FormControlLabel, Switch } from '@mui/material';
 import dayjs from 'dayjs';
 import financeService from '../../../services/financeService';
 import cropService from '../../../services/cropService';
@@ -46,6 +46,7 @@ const FinanceDashboard = () => {
   const [criterio, setCriterio] = useState('bc');
   const [umbral, setUmbral] = useState(1);
   const [tab, setTab] = useState(0);
+  const [rankOnlySelected, setRankOnlySelected] = useState(true);
   const [costoHora, setCostoHora] = useState(0);
   const [horasPorTipo, setHorasPorTipo] = useState({});
   const [depreciacionMensual, setDepreciacionMensual] = useState(0);
@@ -153,7 +154,9 @@ const FinanceDashboard = () => {
   }, [margenListaQuery.data]);
 
   const rankingData = useMemo(() => {
-    const rows = margenRows;
+    const rows = rankOnlySelected && cultivoId
+      ? margenRows.filter((r) => String(r.id_cultivo ?? r.id) === String(cultivoId))
+      : margenRows;
     return rows.map((r) => {
       const ingresos = parseFloat(r.ingresos || 0);
       const egresos = parseFloat(r.egresos || 0);
@@ -162,7 +165,7 @@ const FinanceDashboard = () => {
       const rentable = bc !== null ? bc > (parseFloat(umbral) || 1) : margen > 0;
       return { nombre: r.nombre_cultivo || r.cultivo || r.nombre, margen, bc, rentable };
     });
-  }, [margenRows, umbral]);
+  }, [margenRows, umbral, rankOnlySelected, cultivoId]);
 
   const ingresosQuery = useQuery({
     queryKey: ['finanzasIngresos', cultivoId, from, to],
@@ -692,7 +695,9 @@ const FinanceDashboard = () => {
                 {margenRows.length > 0 ? (
                   <ResponsiveContainer width="100%" height={240}>
                     <BarChart
-                      data={[...margenRows]
+                      data={[...(rankOnlySelected && cultivoId
+                        ? margenRows.filter((r) => String(r.id_cultivo ?? r.id) === String(cultivoId))
+                        : margenRows)]
                         .map((r) => ({ nombre: r.nombre_cultivo || r.cultivo || r.nombre, egresos: parseFloat(r.egresos || 0) }))
                         .sort((a, b) => b.egresos - a.egresos)
                         .slice(0, 10)}
@@ -758,6 +763,12 @@ const FinanceDashboard = () => {
                 <Typography variant="body2" color="text.secondary">Sin datos</Typography>
               )}
             </Paper>
+            <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+              <FormControlLabel
+                control={<Switch checked={rankOnlySelected} onChange={(e) => setRankOnlySelected(e.target.checked)} />}
+                label="Sólo cultivo seleccionado"
+              />
+            </Box>
           </div>
         </div>
       )}
