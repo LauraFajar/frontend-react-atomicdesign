@@ -684,6 +684,33 @@ const FinanceDashboard = () => {
                 )}
               </div>
             </Paper>
+
+            <Paper className="chart-card" elevation={1}>
+              <Typography variant="subtitle1">Gastos por cultivo</Typography>
+              <Divider sx={{ my: 1 }} />
+              <div className="chart-container">
+                {margenRows.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={240}>
+                    <BarChart
+                      data={[...margenRows]
+                        .map((r) => ({ nombre: r.nombre_cultivo || r.cultivo || r.nombre, egresos: parseFloat(r.egresos || 0) }))
+                        .sort((a, b) => b.egresos - a.egresos)
+                        .slice(0, 10)}
+                      layout="vertical"
+                      margin={{ top: 10, right: 20, left: 20, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis type="category" dataKey="nombre" width={120} />
+                      <Tooltip />
+                      <Bar dataKey="egresos" name="Egresos" fill="#d32f2f" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="chart-placeholder">Sin datos de gastos</div>
+                )}
+              </div>
+            </Paper>
           </div>
           <div className="right-panel">
             <Paper className="chart-card" elevation={1}>
