@@ -737,7 +737,7 @@ const FinanceDashboard = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {margenRows.slice(0, 10).map((r) => {
+                    {(rankOnlySelected && cultivoId ? margenRows.filter((r) => String(r.id_cultivo ?? r.id) === String(cultivoId)) : margenRows).slice(0, 10).map((r) => {
                       const ingresos = parseFloat(r.ingresos || 0);
                       const egresos = parseFloat(r.egresos || 0);
                       const margen = parseFloat(r.margen || (ingresos - egresos));
