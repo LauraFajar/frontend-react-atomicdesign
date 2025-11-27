@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import Alert from '../components/atoms/Alert';
+import { io } from 'socket.io-client';
+import config from '../config/environment';
 
 const AlertContext = createContext();
 
@@ -14,6 +16,7 @@ export const useAlert = () => {
 
 export const AlertProvider = ({ children }) => {
   const [alerts, setAlerts] = useState([]);
+  const [socketConnected, setSocketConnected] = useState(false);
 
   const addAlert = useCallback(({ severity = 'info', title, message, autoHideDuration = 6000 }) => {
     const id = uuidv4();
@@ -28,6 +31,42 @@ export const AlertProvider = ({ children }) => {
     setAlerts((prevAlerts) => prevAlerts.filter((alert) => alert.id !== id));
   }, []);
 
+  useEffect(() => {
+    // Conexión al gateway de alertas del backend (socket.io)
+    const socket = io(config.api.baseURL, {
+      transports: ['websocket'],
+      path: '/socket.io',
+      withCredentials: true,
+    });
+
+    const onConnect = () => setSocketConnected(true);
+    const onDisconnect = () => setSocketConnected(false);
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+
+    // Suscripción a evento newAlert del backend
+    socket.on('newAlert', (payload) => {
+      try {
+        const severity = payload?.severity || 'warning';
+        const sensorName = payload?.sensor?.tipo_sensor || payload?.sensor?.tipo || 'Sensor';
+        const valueStr = payload?.valor != null ? String(payload.valor) : '';
+        const title = payload?.title || `Alerta de ${sensorName}`;
+        const message = payload?.message || `${sensorName} fuera de rango ${valueStr}`;
+        addAlert({ severity, title, message, autoHideDuration: 8000 });
+      } catch (e) {
+        // fallback
+        addAlert({ severity: 'warning', title: 'Alerta', message: 'Nueva alerta recibida', autoHideDuration: 6000 });
+      }
+    });
+
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('newAlert');
+      socket.disconnect();
+    };
+  }, [addAlert]);
+
   const alertFunctions = {
     success: (title, message, options) =>
       addAlert({ severity: 'success', title, message, ...options }),
@@ -38,6 +77,8 @@ export const AlertProvider = ({ children }) => {
     info: (title, message, options) =>
       addAlert({ severity: 'info', title, message, ...options }),
     remove: removeAlert,
+    alerts, // Exponer lista para panel
+    socketConnected,
   };
 
   return (

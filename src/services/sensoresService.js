@@ -104,6 +104,14 @@ const sensoresService = {
     return response.data?.data ?? response.data ?? [];
   },
 
+  // Recomendaciones basadas en sensores (RF06)
+  getRecomendaciones: async (id) => {
+    const response = await axios.get(`${API_URL}/sensores/${id}/recomendaciones`, {
+      headers: getAuthHeader(),
+    });
+    return response.data?.data ?? response.data ?? [];
+  },
+
   configurarMQTT: async (id, config) => {
     const response = await axios.post(`${API_URL}/sensores/${id}/mqtt/configurar`, config, {
       headers: { 'Content-Type': 'application/json', ...getAuthHeader() },

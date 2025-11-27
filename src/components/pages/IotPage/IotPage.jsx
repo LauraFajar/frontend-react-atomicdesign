@@ -7,6 +7,7 @@ import { useAlert } from '../../../contexts/AlertContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import ConfirmModal from '../../molecules/ConfirmModal/ConfirmModal';
 import sensoresService from '../../../services/sensoresService';
+import AlertPanel from '../../widgets/AlertPanel';
 
 const SensorFormModal = ({ open, onClose, onSave, initialData }) => {
   const [tipo, setTipo] = useState(initialData?.tipo_sensor || '');
@@ -396,6 +397,24 @@ const IotPage = () => {
               </div>
             </div>
 
+            {/* Banner de estado crítico */}
+            {sensors.some((s) => getSensorStatus(s).status === 'critical') && (
+              <Box sx={{ mb: 2, p: 2, borderRadius: 2, bgcolor: 'error.light' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Warning />
+                  <Typography variant="body1" sx={{ fontWeight: 600 }}>Alerta: Sensores fuera de rango detectados</Typography>
+                </Box>
+                <Typography variant="body2" sx={{ mt: 0.5 }}>
+                  {sensors.filter((s) => getSensorStatus(s).status === 'critical').map((s) => s.tipo_sensor).join(', ')}
+                </Typography>
+              </Box>
+            )}
+
+            {/* Panel de alertas del sistema */}
+            <Box sx={{ mb: 3 }}>
+              <AlertPanel />
+            </Box>
+
             {/* Sensor Cards - Horizontal Layout */}
             {sensors.length > 0 && (
               <Box sx={{ mb: 4 }}>
@@ -411,10 +430,35 @@ const IotPage = () => {
                     const currentValue = liveData?.valor ?? realTimeInfo?.valor_actual ?? (sensor.valor_actual || 0);
                     const color = getSensorColor(sensor.tipo_sensor);
 
+                    // Componente de recomendaciones (inline)
+                    const RecommendationsBox = ({ id }) => {
+                      const { data: recs, isLoading: recLoading } = useQuery({
+                        queryKey: ['sensor-recomendaciones', id],
+                        queryFn: () => sensoresService.getRecomendaciones(id),
+                        refetchOnWindowFocus: false,
+                      });
+                      return (
+                        <Box sx={{ mt: 1 }}>
+                          <Typography variant="caption" sx={{ fontWeight: 700 }}>Recomendaciones</Typography>
+                          {recLoading ? (
+                            <Typography variant="caption" color="text.secondary">Cargando...</Typography>
+                          ) : (
+                            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                              {(recs || []).slice(0, 3).map((r, idx) => (
+                                <Box key={idx} sx={{ px: 1, py: 0.5, borderRadius: 1, bgcolor: 'grey.100' }}>
+                                  <Typography variant="caption">{r?.mensaje || r}</Typography>
+                                </Box>
+                              ))}
+                            </Box>
+                          )}
+                        </Box>
+                      );
+                    };
+
                     return (
                       <Grid item xs={12} md={4} key={sensor.id}>
                         <Card sx={{
-                          height: 100,
+                          height: 140,
                           background: `linear-gradient(135deg, ${color}15, ${color}05)`,
                           border: `2px solid ${color}30`,
                           '&:hover': { transform: 'translateY(-2px)', transition: 'all 0.3s ease' }
@@ -451,6 +495,9 @@ const IotPage = () => {
                                   );
                                 })()}
                               </Box>
+
+                              {/* Recomendaciones por sensor (RF06) */}
+                              <RecommendationsBox id={sensor.id} />
                             </Box>
                           </CardContent>
                         </Card>
