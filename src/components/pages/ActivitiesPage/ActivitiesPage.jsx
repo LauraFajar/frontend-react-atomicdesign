@@ -365,6 +365,7 @@ const ActivitiesPage = () => {
         <Table className="activities-table">
           <TableHead>
             <TableRow>
+              <TableCell>ID</TableCell>
               <TableCell>Tipo de Actividad</TableCell>
               <TableCell>Cultivo</TableCell>
               <TableCell>Fecha</TableCell>
@@ -376,6 +377,7 @@ const ActivitiesPage = () => {
           <TableBody>
             {filteredActivities.map((activity) => (
               <TableRow key={activity.id}>
+                <TableCell>{activity.id}</TableCell>
                 <TableCell>{activity.tipo_actividad}</TableCell>
                 <TableCell>{getCropName(activity.id_cultivo)}</TableCell>
                 <TableCell>{formatDate(activity.fecha)}</TableCell>
