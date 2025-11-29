@@ -12,7 +12,8 @@ const mapActivity = (a) => ({
   id: a.id_actividad || a.id,
   tipo_actividad: a.tipo_actividad ?? a.tipo_de_actividad ?? a.tipo ?? a.tipoActividad ?? a.tipoDeActividad,
   fecha: a.fecha_actividad ?? a.fecha,
-  responsable: a.responsable ?? a.usuario ?? a.user,
+  responsable: a.responsable ?? a.usuario?.nombres ?? a.user ?? a?.responsableUsuario?.nombres,
+  responsable_id: a.responsable_id ?? a?.responsableUsuario?.id_usuarios ?? a?.usuario?.id_usuarios ?? a?.user?.id,
   detalles: a.detalles ?? a.descripcion ?? a.description,
   estado: a.estado,
   id_cultivo: a.id_cultivo ?? a.cultivoId,
@@ -103,6 +104,7 @@ const activityService = {
         id_cultivo: activityData?.id_cultivo != null ? Number(activityData.id_cultivo) : undefined,
         detalles: activityData?.detalles != null ? String(activityData.detalles).trim() : undefined,
         responsable: activityData?.responsable != null ? String(activityData.responsable).trim() : undefined,
+        responsable_id: activityData?.responsable_id != null ? Number(activityData.responsable_id) : undefined,
         tipo_actividad: normalizeType(activityData?.tipo_actividad ?? activityData?.tipoDeActividad)
       };
       console.log('[activityService] POST /actividades payload:', body);
@@ -151,6 +153,7 @@ const activityService = {
         ...(activityData?.fecha || activityData?.fecha_actividad ? { fecha: activityData.fecha || activityData.fecha_actividad } : {}),
         ...(activityData?.id_cultivo != null ? { id_cultivo: Number(activityData.id_cultivo) } : {}),
         ...(activityData?.detalles != null ? { detalles: String(activityData.detalles).trim() } : {}),
+        ...(activityData?.responsable_id != null ? { responsable_id: Number(activityData.responsable_id) } : {}),
         ...(activityData?.responsable != null ? { responsable: String(activityData.responsable).trim() } : {}),
         ...(activityData?.tipo_actividad || activityData?.tipoDeActividad ? { tipo_actividad: normalizeType(activityData.tipo_actividad ?? activityData.tipoDeActividad) } : {})
       };

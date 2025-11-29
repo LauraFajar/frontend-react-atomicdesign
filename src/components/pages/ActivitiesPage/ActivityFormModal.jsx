@@ -8,6 +8,7 @@ import './ActivityFormModal.css';
 import { useQuery } from '@tanstack/react-query';
 import config from '../../../config/environment';
 import activityService from '../../../services/activityService';
+import userService from '../../../services/userService';
 
 const activityTypes = [
   { value: 'siembra', label: 'Siembra' },
@@ -30,6 +31,7 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
     tipo_actividad: '',
     fecha: null,
     responsable: '',
+    responsable_id: '',
     detalles: '',
     estado: 'pendiente',
     id_cultivo: ''
@@ -37,6 +39,21 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState('');
+  const { data: usersData } = useQuery({
+    queryKey: ['users-basic','activity-form'],
+    queryFn: async () => {
+      try {
+        const basic = await userService.getUsersBasic(1, 200);
+        if (Array.isArray(basic?.items) && basic.items.length > 0) return basic;
+      } catch (e) {
+        console.warn('getUsersBasic failed', e);
+      }
+      const full = await userService.getUsers(1, 200);
+      return full;
+    },
+    staleTime: 60 * 1000,
+  });
+  const users = Array.isArray(usersData?.items) ? usersData.items : [];
 
   const { data: photos, isLoading: isLoadingPhotos } = useQuery({
     queryKey: ['activityPhotos', activity?.id],
@@ -50,6 +67,7 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
         tipo_actividad: activity.tipo_actividad || '',
         fecha: activity.fecha ? new Date(activity.fecha) : null,
         responsable: activity.responsable || '',
+        responsable_id: activity.responsable_id || '',
         detalles: activity.detalles || '',
         estado: activity.estado || 'pendiente',
         id_cultivo: activity.id_cultivo || ''
@@ -59,6 +77,7 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
         tipo_actividad: '',
         fecha: new Date(), // Fecha actual por defecto
         responsable: '',
+        responsable_id: '',
         detalles: '',
         estado: 'pendiente',
         id_cultivo: ''
@@ -77,8 +96,8 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
       newErrors.fecha = 'La fecha es requerida';
     }
 
-    if (!formData.responsable.trim()) {
-      newErrors.responsable = 'El responsable es requerido';
+    if (!formData.responsable_id) {
+      newErrors.responsable = 'Selecciona un responsable';
     }
 
     if (!formData.id_cultivo) {
@@ -120,6 +139,7 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
         ...formData,
         tipo_actividad: formData.tipo_actividad?.toString().trim(),
         responsable: formData.responsable?.toString().trim(),
+        responsable_id: formData.responsable_id ? parseInt(formData.responsable_id, 10) : undefined,
         detalles: formData.detalles?.toString().trim(),
         estado: formData.estado?.toString().trim(),
         id_cultivo: formData.id_cultivo ? parseInt(formData.id_cultivo, 10) : null,
@@ -237,17 +257,35 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
             />
           </LocalizationProvider>
 
-          <TextField
-            label="Responsable"
-            name="responsable"
-            value={formData.responsable}
-            onChange={handleChange}
-            required
-            fullWidth
-            error={!!errors.responsable}
-            helperText={errors.responsable}
-            className="modal-form-field"
-          />
+          <FormControl fullWidth className="modal-form-field">
+            <InputLabel>Responsable</InputLabel>
+            <Select
+              name="responsable_id"
+              value={formData.responsable_id}
+              onChange={(e) => {
+                const { value } = e.target;
+                const sel = users.find(u => String(u.id) === String(value));
+                setFormData(prev => ({
+                  ...prev,
+                  responsable_id: value,
+                  responsable: sel?.nombres || prev.responsable,
+                }));
+              }}
+              label="Responsable"
+              required
+              error={!!errors.responsable}
+            >
+              <MenuItem value=""><em>Seleccionar usuario...</em></MenuItem>
+              {users.map(u => (
+                <MenuItem key={u.id} value={u.id}>{u.nombres}</MenuItem>
+              ))}
+            </Select>
+            {errors.responsable && (
+              <Typography variant="caption" color="error" sx={{ mt: 1, ml: 2 }}>
+                {errors.responsable}
+              </Typography>
+            )}
+          </FormControl>
 
           <FormControl fullWidth className="modal-form-field">
             <InputLabel>Estado</InputLabel>

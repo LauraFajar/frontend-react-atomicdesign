@@ -92,6 +92,32 @@ const userService = {
     }
   },
 
+  getUsersBasic: async (page = 1, limit = 100) => {
+    try {
+      const response = await axios.get(`${API_URL}/usuarios/basico`, {
+        headers: getAuthHeader(),
+        params: { page, limit },
+      });
+      if (response.data && Array.isArray(response.data.items)) {
+        return {
+          items: response.data.items.map(mapUser),
+          meta: response.data.meta,
+        };
+      }
+      const arr = Array.isArray(response.data) ? response.data : [];
+      return { items: arr.map(mapUser), meta: { totalItems: arr.length, totalPages: 1, currentPage: 1 } };
+    } catch (error) {
+      console.error('Error al obtener usuarios básicos:', error);
+      if (error.response?.status === 401) {
+        throw new Error('Sesión expirada. Por favor inicia sesión nuevamente.');
+      }
+      if (error.response?.status === 403) {
+        throw new Error('No tienes permisos para ver los usuarios');
+      }
+      throw error;
+    }
+  },
+
   getUserById: async (id) => {
     try {
       const response = await axios.get(`${API_URL}/usuarios/${id}`, {

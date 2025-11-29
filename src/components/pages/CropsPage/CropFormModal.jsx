@@ -19,6 +19,9 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import es from 'date-fns/locale/es';
 import './CropFormModal.css';
+import { useQuery } from '@tanstack/react-query';
+import lotService from '../../../services/lotService';
+import insumosService from '../../../services/insumosService';
 
 const statusOptions = [
   { value: 'sembrado', label: 'Sembrado' },
@@ -48,6 +51,17 @@ const CropFormModal = ({ open, onClose, onSave, crop }) => {
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState('');
   const alert = useAlert();
+
+  const { data: lots = [] } = useQuery({
+    queryKey: ['lots','crop-form'],
+    queryFn: () => lotService.getLots(),
+    staleTime: 60 * 1000,
+  });
+  const { data: insumos = [] } = useQuery({
+    queryKey: ['insumos','crop-form'],
+    queryFn: () => insumosService.getInsumos(1, 200),
+    staleTime: 60 * 1000,
+  });
 
   useEffect(() => {
     if (crop) {
@@ -82,12 +96,12 @@ const CropFormModal = ({ open, onClose, onSave, crop }) => {
       newErrors.nombre_cultivo = 'El nombre del cultivo es requerido';
     }
     
-    if (!formData.id_lote || formData.id_lote < 1) {
-      newErrors.id_lote = 'El ID del lote es requerido y debe ser mayor a 0';
+    if (!formData.id_lote) {
+      newErrors.id_lote = 'Debes seleccionar un lote';
     }
     
-    if (formData.id_insumo && formData.id_insumo < 1) {
-      newErrors.id_insumo = 'El ID del insumo debe ser mayor a 0';
+    if (formData.id_insumo && String(formData.id_insumo).length === 0) {
+      newErrors.id_insumo = 'Selecciona un insumo válido';
     }
     
     setErrors(newErrors);
@@ -214,30 +228,50 @@ const CropFormModal = ({ open, onClose, onSave, crop }) => {
             </Select>
           </FormControl>
 
-          <TextField
-            label="ID del Lote"
-            name="id_lote"
-            value={formData.id_lote}
-            onChange={handleChange}
-            required
-            fullWidth
-            type="number"
-            error={!!errors.id_lote}
-            helperText={errors.id_lote}
-            className="modal-form-field"
-          />
+          <FormControl fullWidth className="modal-form-field">
+            <InputLabel id="lote-label">Lote</InputLabel>
+            <Select
+              labelId="lote-label"
+              name="id_lote"
+              label="Lote"
+              value={formData.id_lote}
+              onChange={handleChange}
+              required
+              error={!!errors.id_lote}
+            >
+              <MenuItem value=""><em>Seleccione lote...</em></MenuItem>
+              {(Array.isArray(lots) ? lots : []).map((l) => (
+                <MenuItem key={l.id} value={l.id}>{l.nombre || `Lote ${l.id}`}</MenuItem>
+              ))}
+            </Select>
+            {errors.id_lote && (
+              <Typography variant="caption" color="error" sx={{ mt: 1, ml: 2 }}>
+                {errors.id_lote}
+              </Typography>
+            )}
+          </FormControl>
 
-          <TextField
-            label="ID del Insumo"
-            name="id_insumo"
-            value={formData.id_insumo}
-            onChange={handleChange}
-            fullWidth
-            type="number"
-            error={!!errors.id_insumo}
-            helperText={errors.id_insumo}
-            className="modal-form-field"
-          />
+          <FormControl fullWidth className="modal-form-field">
+            <InputLabel id="insumo-label">Insumo</InputLabel>
+            <Select
+              labelId="insumo-label"
+              name="id_insumo"
+              label="Insumo"
+              value={formData.id_insumo}
+              onChange={handleChange}
+              error={!!errors.id_insumo}
+            >
+              <MenuItem value=""><em>Opcional</em></MenuItem>
+              {(Array.isArray(insumos) ? insumos : []).map((i) => (
+                <MenuItem key={i.id} value={i.id}>{i.nombre} {i.codigo ? `(${i.codigo})` : ''}</MenuItem>
+              ))}
+            </Select>
+            {errors.id_insumo && (
+              <Typography variant="caption" color="error" sx={{ mt: 1, ml: 2 }}>
+                {errors.id_insumo}
+              </Typography>
+            )}
+          </FormControl>
 
           <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
             <DatePicker
