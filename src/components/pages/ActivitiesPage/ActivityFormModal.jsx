@@ -9,6 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import config from '../../../config/environment';
 import activityService from '../../../services/activityService';
 import userService from '../../../services/userService';
+import insumosService from '../../../services/insumosService';
 
 const activityTypes = [
   { value: 'siembra', label: 'Siembra' },
@@ -36,6 +37,7 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
     estado: 'pendiente',
     id_cultivo: ''
   });
+  const [recursos, setRecursos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState('');
@@ -43,17 +45,21 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
     queryKey: ['users-basic','activity-form'],
     queryFn: async () => {
       try {
-        const basic = await userService.getUsersBasic(1, 200);
+        const basic = await userService.getUsersBasic(1, 100);
         if (Array.isArray(basic?.items) && basic.items.length > 0) return basic;
       } catch (e) {
         console.warn('getUsersBasic failed', e);
       }
-      const full = await userService.getUsers(1, 200);
+      const full = await userService.getUsers(1, 100);
       return full;
     },
     staleTime: 60 * 1000,
   });
   const users = Array.isArray(usersData?.items) ? usersData.items : [];
+
+  const [insumos, setInsumos] = useState([]);
+  const [loadingInsumos, setLoadingInsumos] = useState(false);
+  const [errorInsumos, setErrorInsumos] = useState(null);
 
   const { data: photos, isLoading: isLoadingPhotos } = useQuery({
     queryKey: ['activityPhotos', activity?.id],
@@ -72,6 +78,12 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
         estado: activity.estado || 'pendiente',
         id_cultivo: activity.id_cultivo || ''
       });
+      setRecursos(Array.isArray(activity?.recursos) ? activity.recursos.map(r => ({
+        id_insumo: r.id_insumo,
+        cantidad: r.cantidad,
+        horas_uso: r.horas_uso,
+        costo_unitario: r.costo_unitario,
+      })) : []);
     } else {
       setFormData({
         tipo_actividad: '',
@@ -82,8 +94,20 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
         estado: 'pendiente',
         id_cultivo: ''
       });
+      setRecursos([]);
     }
   }, [activity, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    setLoadingInsumos(true);
+    setErrorInsumos(null);
+    insumosService
+      .getInsumos(1, 200)
+      .then((list) => setInsumos(list))
+      .catch((e) => setErrorInsumos(e?.message || 'Error al cargar insumos'))
+      .finally(() => setLoadingInsumos(false));
+  }, [open]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -144,6 +168,14 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
         estado: formData.estado?.toString().trim(),
         id_cultivo: formData.id_cultivo ? parseInt(formData.id_cultivo, 10) : null,
         fecha: formData.fecha ? formData.fecha.toISOString() : null,
+        recursos: recursos
+          .filter(r => r && r.id_insumo)
+          .map(r => ({
+            id_insumo: Number(r.id_insumo),
+            cantidad: r.cantidad != null && r.cantidad !== '' ? Number(r.cantidad) : undefined,
+            horas_uso: r.horas_uso != null && r.horas_uso !== '' ? Number(r.horas_uso) : undefined,
+            costo_unitario: r.costo_unitario != null && r.costo_unitario !== '' ? Number(r.costo_unitario) : undefined,
+          })),
       };
 
       await onSave(formattedData);
@@ -171,6 +203,28 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const addRecurso = () => {
+    setRecursos(prev => [...prev, { id_insumo: '', cantidad: '', horas_uso: '', costo_unitario: '' }]);
+  };
+
+  const removeRecurso = (index) => {
+    setRecursos(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleRecursoChange = (index, field, value) => {
+    const next = [...recursos];
+    next[index] = { ...next[index], [field]: value };
+    if (field === 'id_insumo') {
+      const sel = insumos.find(i => String(i.id) === String(value));
+      if (sel?.es_herramienta) {
+        next[index].cantidad = '';
+      } else {
+        next[index].horas_uso = '';
+      }
+    }
+    setRecursos(next);
   };
 
   return (
@@ -312,8 +366,69 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
             multiline
             rows={3}
             className="modal-form-field"
-            placeholder="Describe los detalles de la actividad..."
-          />
+          placeholder="Describe los detalles de la actividad..."
+        />
+
+          <Box sx={{ mt: 3 }}>
+            <Typography variant="h6" gutterBottom>Recursos utilizados</Typography>
+            {loadingInsumos ? (
+              <CircularProgress />
+            ) : errorInsumos ? (
+              <Typography color="error">{errorInsumos}</Typography>
+            ) : (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {recursos.map((r, idx) => {
+                  const sel = insumos.find(i => String(i.id) === String(r.id_insumo));
+                  const isTool = !!sel?.es_herramienta;
+                  return (
+                    <Box key={idx} sx={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: 2 }}>
+                      <FormControl fullWidth>
+                        <InputLabel>Insumo</InputLabel>
+                        <Select
+                          value={r.id_insumo}
+                          label="Insumo"
+                          onChange={(e) => handleRecursoChange(idx, 'id_insumo', e.target.value)}
+                        >
+                          {insumos.map(i => (
+                            <MenuItem key={i.id} value={i.id}>{i.nombre}</MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      {isTool ? (
+                        <TextField
+                          type="number"
+                          label="Horas uso"
+                          value={r.horas_uso}
+                          onChange={(e) => handleRecursoChange(idx, 'horas_uso', e.target.value)}
+                          inputProps={{ min: 0, step: '0.1' }}
+                          fullWidth
+                        />
+                      ) : (
+                        <TextField
+                          type="number"
+                          label="Cantidad"
+                          value={r.cantidad}
+                          onChange={(e) => handleRecursoChange(idx, 'cantidad', e.target.value)}
+                          inputProps={{ min: 0, step: '0.01' }}
+                          fullWidth
+                        />
+                      )}
+                      <TextField
+                        type="number"
+                        label="Costo unitario"
+                        value={r.costo_unitario}
+                        onChange={(e) => handleRecursoChange(idx, 'costo_unitario', e.target.value)}
+                        inputProps={{ min: 0, step: '0.01' }}
+                        fullWidth
+                      />
+                      <Button variant="outlined" color="error" onClick={() => removeRecurso(idx)}>Eliminar</Button>
+                    </Box>
+                  );
+                })}
+                <Button variant="text" onClick={addRecurso}>Agregar recurso</Button>
+              </Box>
+            )}
+          </Box>
 
           {activity && (
             <Box sx={{ mt: 4 }}>

@@ -30,6 +30,12 @@ const mapInsumo = (i) => ({
   codigo: i?.codigo ?? '',
   categoria: i?.id_categoria?.nombre ?? i?.categoria ?? '',
   almacen: i?.id_almacen?.nombre_almacen ?? i?.almacen ?? '',
+  es_herramienta: !!(i?.es_herramienta),
+  costo_compra: i?.costo_compra != null ? Number(i.costo_compra) : undefined,
+  vida_util_horas: i?.vida_util_horas != null ? Number(i.vida_util_horas) : undefined,
+  depreciacion_por_hora: i?.depreciacion_por_hora != null ? Number(i.depreciacion_por_hora) : undefined,
+  depreciacion_acumulada: i?.depreciacion_acumulada != null ? Number(i.depreciacion_acumulada) : undefined,
+  fecha_compra: i?.fecha_compra,
   raw: i,
 });
 

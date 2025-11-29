@@ -105,6 +105,12 @@ const activityService = {
         detalles: activityData?.detalles != null ? String(activityData.detalles).trim() : undefined,
         responsable: activityData?.responsable != null ? String(activityData.responsable).trim() : undefined,
         responsable_id: activityData?.responsable_id != null ? Number(activityData.responsable_id) : undefined,
+        recursos: Array.isArray(activityData?.recursos) ? activityData.recursos.map(r => ({
+          id_insumo: Number(r.id_insumo),
+          cantidad: r.cantidad != null ? Number(r.cantidad) : undefined,
+          horas_uso: r.horas_uso != null ? Number(r.horas_uso) : undefined,
+          costo_unitario: r.costo_unitario != null ? Number(r.costo_unitario) : undefined,
+        })) : undefined,
         tipo_actividad: normalizeType(activityData?.tipo_actividad ?? activityData?.tipoDeActividad)
       };
       console.log('[activityService] POST /actividades payload:', body);
@@ -155,6 +161,12 @@ const activityService = {
         ...(activityData?.detalles != null ? { detalles: String(activityData.detalles).trim() } : {}),
         ...(activityData?.responsable_id != null ? { responsable_id: Number(activityData.responsable_id) } : {}),
         ...(activityData?.responsable != null ? { responsable: String(activityData.responsable).trim() } : {}),
+        ...(Array.isArray(activityData?.recursos) ? { recursos: activityData.recursos.map(r => ({
+          id_insumo: Number(r.id_insumo),
+          cantidad: r.cantidad != null ? Number(r.cantidad) : undefined,
+          horas_uso: r.horas_uso != null ? Number(r.horas_uso) : undefined,
+          costo_unitario: r.costo_unitario != null ? Number(r.costo_unitario) : undefined,
+        })) } : {}),
         ...(activityData?.tipo_actividad || activityData?.tipoDeActividad ? { tipo_actividad: normalizeType(activityData.tipo_actividad ?? activityData.tipoDeActividad) } : {})
       };
       console.log('[activityService] PATCH /actividades/' + id + ' payload:', body);
