@@ -21,7 +21,7 @@ import es from 'date-fns/locale/es';
 import './CropFormModal.css';
 import { useQuery } from '@tanstack/react-query';
 import lotService from '../../../services/lotService';
-import insumosService from '../../../services/insumosService';
+ 
 
 const statusOptions = [
   { value: 'sembrado', label: 'Sembrado' },
@@ -41,7 +41,6 @@ const CropFormModal = ({ open, onClose, onSave, crop }) => {
     nombre_cultivo: '',
     tipo_cultivo: 'transitorios',
     id_lote: '',
-    id_insumo: '',
     fecha_siembra: null,
     fecha_cosecha_estimada: null,
     estado_cultivo: 'sembrado',
@@ -57,11 +56,7 @@ const CropFormModal = ({ open, onClose, onSave, crop }) => {
     queryFn: () => lotService.getLots(),
     staleTime: 60 * 1000,
   });
-  const { data: insumos = [] } = useQuery({
-    queryKey: ['insumos','crop-form'],
-    queryFn: () => insumosService.getInsumos(1, 200),
-    staleTime: 60 * 1000,
-  });
+  
 
   useEffect(() => {
     if (crop) {
@@ -69,7 +64,7 @@ const CropFormModal = ({ open, onClose, onSave, crop }) => {
         nombre_cultivo: crop.nombre_cultivo || '',
         tipo_cultivo: crop.tipo_cultivo || 'transitorios',
         id_lote: crop.id_lote || '',
-        id_insumo: crop.id_insumo || '',
+        
         fecha_siembra: crop.fecha_siembra ? new Date(crop.fecha_siembra) : null,
         fecha_cosecha_estimada: crop.fecha_cosecha_estimada ? new Date(crop.fecha_cosecha_estimada) : null,
         estado_cultivo: crop.estado_cultivo || 'sembrado',
@@ -80,7 +75,7 @@ const CropFormModal = ({ open, onClose, onSave, crop }) => {
         nombre_cultivo: '',
         tipo_cultivo: 'transitorios',
         id_lote: '',
-        id_insumo: '',
+        
         fecha_siembra: null,
         fecha_cosecha_estimada: null,
         estado_cultivo: 'sembrado',
@@ -100,9 +95,7 @@ const CropFormModal = ({ open, onClose, onSave, crop }) => {
       newErrors.id_lote = 'Debes seleccionar un lote';
     }
     
-    if (formData.id_insumo && String(formData.id_insumo).length === 0) {
-      newErrors.id_insumo = 'Selecciona un insumo válido';
-    }
+    
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -140,7 +133,6 @@ const CropFormModal = ({ open, onClose, onSave, crop }) => {
         nombre_cultivo: formData.nombre_cultivo?.toString().trim(),
         tipo_cultivo: formData.tipo_cultivo,
         id_lote: formData.id_lote ? parseInt(formData.id_lote, 10) : null,
-        id_insumo: formData.id_insumo ? parseInt(formData.id_insumo, 10) : null,
         fecha_siembra: formData.fecha_siembra ? formData.fecha_siembra.toISOString() : null,
         fecha_cosecha_estimada: formData.fecha_cosecha_estimada ? formData.fecha_cosecha_estimada.toISOString() : null,
       };
@@ -251,27 +243,7 @@ const CropFormModal = ({ open, onClose, onSave, crop }) => {
             )}
           </FormControl>
 
-          <FormControl fullWidth className="modal-form-field">
-            <InputLabel id="insumo-label">Insumo</InputLabel>
-            <Select
-              labelId="insumo-label"
-              name="id_insumo"
-              label="Insumo"
-              value={formData.id_insumo}
-              onChange={handleChange}
-              error={!!errors.id_insumo}
-            >
-              <MenuItem value=""><em>Opcional</em></MenuItem>
-              {(Array.isArray(insumos) ? insumos : []).map((i) => (
-                <MenuItem key={i.id} value={i.id}>{i.nombre} {i.codigo ? `(${i.codigo})` : ''}</MenuItem>
-              ))}
-            </Select>
-            {errors.id_insumo && (
-              <Typography variant="caption" color="error" sx={{ mt: 1, ml: 2 }}>
-                {errors.id_insumo}
-              </Typography>
-            )}
-          </FormControl>
+          
 
           <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
             <DatePicker

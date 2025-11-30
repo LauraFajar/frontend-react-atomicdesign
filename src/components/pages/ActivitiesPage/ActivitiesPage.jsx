@@ -163,8 +163,17 @@ const ActivitiesPage = () => {
   const handleEndDateChange = (date) => setEndDate(date);
   const handlePageChange = (event, value) => setPage(value);
 
-  const handleOpenModal = (activity = null) => {
-    setSelectedActivity(activity);
+  const handleOpenModal = async (activity = null) => {
+    if (activity?.id) {
+      try {
+        const full = await activityService.getActivityById(activity.id);
+        setSelectedActivity(full);
+      } catch {
+        setSelectedActivity(activity);
+      }
+    } else {
+      setSelectedActivity(null);
+    }
     setOpenModal(true);
   };
 

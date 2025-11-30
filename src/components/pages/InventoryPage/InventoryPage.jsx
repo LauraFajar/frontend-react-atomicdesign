@@ -526,6 +526,8 @@ const InventoryPage = () => {
                     fecha_movimiento: mov.fecha_movimiento,
                     responsable: mov.responsable,
                     observacion: mov.observacion,
+                    id_cultivo: mov.id_cultivo,
+                    valor_unidad: mov.valor_unidad,
                   });
                 } catch (e) {
                   const msg = e?.response?.data?.message || e.message || '';

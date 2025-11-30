@@ -17,6 +17,8 @@ const mapActivity = (a) => ({
   detalles: a.detalles ?? a.descripcion ?? a.description,
   estado: a.estado,
   id_cultivo: a.id_cultivo ?? a.cultivoId,
+  costo_mano_obra: a.costo_mano_obra ?? a.costoManoObra ?? a.costo_mano ?? null,
+  costo_maquinaria: a.costo_maquinaria ?? a.costoMaquinaria ?? null,
   createdAt: a.createdAt,
   updatedAt: a.updatedAt,
   raw: a
@@ -68,11 +70,46 @@ const activityService = {
       const response = await axios.get(`${API_URL}/actividades/${id}`, {
         headers: getAuthHeader()
       });
-      return mapActivity(response.data);
+      const base = mapActivity(response.data);
+      try {
+        const recursosResp = await axios.get(`${API_URL}/actividades/${id}/recursos`, { headers: getAuthHeader() });
+        const recursos = Array.isArray(recursosResp.data) ? recursosResp.data.map(r => ({
+          id_insumo: Number(r.id_insumo),
+          cantidad: r.cantidad != null ? Number(r.cantidad) : undefined,
+          horas_uso: r.horas_uso != null ? Number(r.horas_uso) : undefined,
+          costo_unitario: r.costo_unitario != null ? Number(r.costo_unitario) : undefined,
+        })) : [];
+        return { ...base, recursos };
+      } catch {
+        return base;
+      }
     } catch (error) {
       console.error('Error al obtener la actividad:', error);
       if (error.response?.status === 403) {
         throw new Error('No tienes permisos para ver esta actividad');
+      }
+      throw error;
+    }
+  },
+
+  getRecursosByActividad: async (actividadId) => {
+    try {
+      const response = await axios.get(`${API_URL}/actividades/${actividadId}/recursos`, {
+        headers: getAuthHeader()
+      });
+      const arr = Array.isArray(response.data) ? response.data : (response.data?.items || response.data?.data || []);
+      return arr.map(r => ({
+        id_insumo: Number(r.id_insumo ?? r.id ?? 0),
+        nombre_insumo: r.nombre_insumo ?? r.nombre ?? '',
+        es_herramienta: Boolean(r.es_herramienta),
+        cantidad: r.cantidad != null ? Number(r.cantidad) : undefined,
+        horas_uso: r.horas_uso != null ? Number(r.horas_uso) : undefined,
+        costo_unitario: r.costo_unitario != null ? Number(r.costo_unitario) : undefined,
+      }));
+    } catch (error) {
+      console.error('Error al obtener recursos de la actividad:', error);
+      if (error.response?.status === 403) {
+        throw new Error('No tienes permisos para ver los recursos');
       }
       throw error;
     }
@@ -105,6 +142,8 @@ const activityService = {
         detalles: activityData?.detalles != null ? String(activityData.detalles).trim() : undefined,
         responsable: activityData?.responsable != null ? String(activityData.responsable).trim() : undefined,
         responsable_id: activityData?.responsable_id != null ? Number(activityData.responsable_id) : undefined,
+        costo_mano_obra: activityData?.costo_mano_obra != null ? Number(activityData.costo_mano_obra) : undefined,
+        costo_maquinaria: activityData?.costo_maquinaria != null ? Number(activityData.costo_maquinaria) : undefined,
         recursos: Array.isArray(activityData?.recursos) ? activityData.recursos.map(r => ({
           id_insumo: Number(r.id_insumo),
           cantidad: r.cantidad != null ? Number(r.cantidad) : undefined,
@@ -161,6 +200,8 @@ const activityService = {
         ...(activityData?.detalles != null ? { detalles: String(activityData.detalles).trim() } : {}),
         ...(activityData?.responsable_id != null ? { responsable_id: Number(activityData.responsable_id) } : {}),
         ...(activityData?.responsable != null ? { responsable: String(activityData.responsable).trim() } : {}),
+        ...(activityData?.costo_mano_obra != null ? { costo_mano_obra: Number(activityData.costo_mano_obra) } : {}),
+        ...(activityData?.costo_maquinaria != null ? { costo_maquinaria: Number(activityData.costo_maquinaria) } : {}),
         ...(Array.isArray(activityData?.recursos) ? { recursos: activityData.recursos.map(r => ({
           id_insumo: Number(r.id_insumo),
           cantidad: r.cantidad != null ? Number(r.cantidad) : undefined,

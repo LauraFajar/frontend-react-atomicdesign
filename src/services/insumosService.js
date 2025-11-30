@@ -23,21 +23,26 @@ const normalizeDate = (value) => {
   return value;
 };
 
-const mapInsumo = (i) => ({
-  id: i?.id_insumo ?? i?.id,
-  nombre: i?.nombre_insumo ?? i?.nombre ?? '',
-  unidad: i?.unidad_medida ?? i?.unidad ?? '',
-  codigo: i?.codigo ?? '',
-  categoria: i?.id_categoria?.nombre ?? i?.categoria ?? '',
-  almacen: i?.id_almacen?.nombre_almacen ?? i?.almacen ?? '',
-  es_herramienta: !!(i?.es_herramienta),
-  costo_compra: i?.costo_compra != null ? Number(i.costo_compra) : undefined,
-  vida_util_horas: i?.vida_util_horas != null ? Number(i.vida_util_horas) : undefined,
-  depreciacion_por_hora: i?.depreciacion_por_hora != null ? Number(i.depreciacion_por_hora) : undefined,
-  depreciacion_acumulada: i?.depreciacion_acumulada != null ? Number(i.depreciacion_acumulada) : undefined,
-  fecha_compra: i?.fecha_compra,
-  raw: i,
-});
+const mapInsumo = (i) => {
+  const flag = i?.es_herramienta;
+  const esHerramienta = flag === true || flag === 1 || flag === '1' ||
+    (typeof flag === 'string' && (flag.toLowerCase() === 'true' || flag.toLowerCase() === 't'));
+  return {
+    id: i?.id_insumo ?? i?.id,
+    nombre: i?.nombre_insumo ?? i?.nombre ?? '',
+    unidad: i?.unidad_medida ?? i?.unidad ?? '',
+    codigo: i?.codigo ?? '',
+    categoria: i?.id_categoria?.nombre ?? i?.categoria ?? '',
+    almacen: i?.id_almacen?.nombre_almacen ?? i?.almacen ?? '',
+    es_herramienta: esHerramienta,
+    costo_compra: i?.costo_compra != null ? Number(i.costo_compra) : undefined,
+    vida_util_horas: i?.vida_util_horas != null ? Number(i.vida_util_horas) : undefined,
+    depreciacion_por_hora: i?.depreciacion_por_hora != null ? Number(i.depreciacion_por_hora) : undefined,
+    depreciacion_acumulada: i?.depreciacion_acumulada != null ? Number(i.depreciacion_acumulada) : undefined,
+    fecha_compra: i?.fecha_compra,
+    raw: i,
+  };
+};
 
 const insumosService = {
   getInsumos: async (page = 1, limit = 10) => {
@@ -69,6 +74,7 @@ const insumosService = {
       codigo: data.codigo,
       fecha_entrada: normalizeDate(data.fecha_entrada ?? data.fecha),
       observacion: obsSanitized,
+      ...(data.es_herramienta !== undefined ? { es_herramienta: Boolean(data.es_herramienta) } : {}),
       ...(data.id_categoria != null ? { id_categoria: Number(data.id_categoria) } : {}),
       ...(data.id_almacen != null ? { id_almacen: Number(data.id_almacen) } : {}),
     };
@@ -110,6 +116,7 @@ const insumosService = {
       ...(data.codigo !== undefined ? { codigo: data.codigo } : {}),
       ...(data.fecha_entrada ?? data.fecha ? { fecha_entrada: normalizeDate(data.fecha_entrada ?? data.fecha) } : {}),
       ...(data.observacion !== undefined ? { observacion: data.observacion } : {}),
+      ...(data.es_herramienta !== undefined ? { es_herramienta: Boolean(data.es_herramienta) } : {}),
       ...(data.id_categoria !== undefined ? { id_categoria: Number(data.id_categoria) } : {}),
       ...(data.id_almacen !== undefined ? { id_almacen: Number(data.id_almacen) } : {}),
     };

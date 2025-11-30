@@ -74,6 +74,8 @@ const movimientosService = {
       fecha_movimiento: normalizeDate(payload.fecha_movimiento || payload.fecha),
       responsable: payload.responsable,
       observacion: payload.observacion,
+      id_cultivo: payload.id_cultivo != null ? Number(payload.id_cultivo) : undefined,
+      valor_unidad: payload.valor_unidad != null ? Number(payload.valor_unidad) : undefined,
     };
     const urlDefault = `${API_URL}/movimientos`;
     const urlByInsumo = `${API_URL}/insumos/${Number(payload.id_insumo)}/movimientos`;

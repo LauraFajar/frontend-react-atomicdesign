@@ -11,6 +11,7 @@ import {
   CircularProgress
 } from '@mui/material';
 import insumosService from '../../../../services/insumosService';
+import cropService from '../../../../services/cropService';
 import { useAlert } from '../../../../contexts/AlertContext';
 
 const tipoOptions = [
@@ -19,8 +20,9 @@ const tipoOptions = [
 ];
 
 const InventoryMovementModal = ({ open, onCancel, onSave, movement }) => {
-  const [form, setForm] = useState({ id_insumo: '', tipo_movimiento: '', cantidad: 0, unidad: '', fecha: '' });
+  const [form, setForm] = useState({ id_insumo: '', tipo_movimiento: '', cantidad: 0, unidad: '', fecha: '', id_cultivo: '', valor_unidad: '' });
   const [insumos, setInsumos] = useState([]);
+  const [cultivos, setCultivos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const alert = useAlert();
@@ -29,10 +31,16 @@ const InventoryMovementModal = ({ open, onCancel, onSave, movement }) => {
     if (!open) return;
     setLoading(true);
     setError(null);
-    insumosService
-      .getInsumos(1, 100)
-      .then((list) => setInsumos(list))
-      .catch((e) => setError(e?.message || 'Error al cargar insumos'))
+    Promise.all([
+      insumosService.getInsumos(1, 100),
+      cropService.getCrops(1, 100)
+    ])
+      .then(([ins, crops]) => {
+        setInsumos(ins);
+        const items = Array.isArray(crops?.items) ? crops.items : (Array.isArray(crops) ? crops : []);
+        setCultivos(items);
+      })
+      .catch((e) => setError(e?.message || 'Error al cargar datos'))
       .finally(() => setLoading(false));
   }, [open]);
 
@@ -63,6 +71,8 @@ const InventoryMovementModal = ({ open, onCancel, onSave, movement }) => {
         cantidad: Number(movement.cantidad || 0),
         unidad: movement.unidad_medida || movement.unidad || '',
         fecha: toDateInput(movement.fecha_movimiento || movement.fecha),
+        id_cultivo: movement.id_cultivo != null ? String(movement.id_cultivo) : '',
+        valor_unidad: movement.valor_unidad != null ? String(movement.valor_unidad) : '',
       });
     } else {
       const today = new Date();
@@ -70,20 +80,22 @@ const InventoryMovementModal = ({ open, onCancel, onSave, movement }) => {
       const mm = String(today.getMonth() + 1).padStart(2, '0');
       const dd = String(today.getDate()).padStart(2, '0');
       const todayStr = `${yyyy}-${mm}-${dd}`;
-      const base = { id_insumo: '', tipo_movimiento: 'entrada', cantidad: 0, unidad: '', fecha: todayStr };
+      const base = { id_insumo: '', tipo_movimiento: 'entrada', cantidad: 0, unidad: '', fecha: todayStr, id_cultivo: '', valor_unidad: '' };
       const prefill = movement ? {
         id_insumo: movement.id_insumo != null ? String(movement.id_insumo) : base.id_insumo,
         tipo_movimiento: movement.tipo_movimiento ? String(movement.tipo_movimiento).toLowerCase() : base.tipo_movimiento,
         cantidad: movement.cantidad != null ? Number(movement.cantidad) : base.cantidad,
         unidad: movement.unidad_medida || movement.unidad || base.unidad,
         fecha: toDateInput(movement.fecha_movimiento || movement.fecha) || base.fecha,
+        id_cultivo: movement.id_cultivo != null ? String(movement.id_cultivo) : base.id_cultivo,
+        valor_unidad: movement.valor_unidad != null ? String(movement.valor_unidad) : base.valor_unidad,
       } : base;
       setForm(prefill);
     }
   }, [open, movement]);
 
   const handleChange = (field) => (e) => {
-    const value = field === 'cantidad' ? Number(e.target.value) : e.target.value;
+    const value = (field === 'cantidad' || field === 'valor_unidad') ? Number(e.target.value) : e.target.value;
     const next = { ...form, [field]: value };
     if (field === 'id_insumo') {
       const sel = insumos.find((i) => String(i.id) === String(value));
@@ -93,12 +105,15 @@ const InventoryMovementModal = ({ open, onCancel, onSave, movement }) => {
   };
 
   const canSave = () => {
-    return form.id_insumo && form.tipo_movimiento && Number(form.cantidad) > 0 && form.unidad && form.fecha;
+    const baseOk = form.id_insumo && form.tipo_movimiento && Number(form.cantidad) > 0 && form.unidad && form.fecha;
+    const isSalida = String(form.tipo_movimiento).toLowerCase() === 'salida';
+    const salidaOk = !isSalida || (form.id_cultivo && Number(form.valor_unidad) >= 0);
+    return baseOk && salidaOk;
   };
 
   const handleSave = () => {
     if (!canSave()) {
-      alert.error('Validación', 'Completa Insumo, Tipo, Cantidad (>0), Unidad y Fecha');
+      alert.error('Validación', 'Completa Insumo, Tipo, Cantidad (>0), Unidad y Fecha. Para Salida, selecciona Cultivo y Valor unitario.');
       return;
     }
     onSave?.({
@@ -107,6 +122,8 @@ const InventoryMovementModal = ({ open, onCancel, onSave, movement }) => {
       cantidad: Number(form.cantidad),
       unidad_medida: form.unidad,
       fecha_movimiento: form.fecha,
+      id_cultivo: form.id_cultivo ? Number(form.id_cultivo) : undefined,
+      valor_unidad: form.valor_unidad != null && form.valor_unidad !== '' ? Number(form.valor_unidad) : undefined,
     });
   };
 
@@ -170,16 +187,45 @@ const InventoryMovementModal = ({ open, onCancel, onSave, movement }) => {
               className="modal-form-field"
             />
 
-            <TextField
-              type="date"
-              label="Fecha"
-              value={form.fecha}
-              onChange={handleChange('fecha')}
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-              required
-              className="modal-form-field"
-            />
+          <TextField
+            type="date"
+            label="Fecha"
+            value={form.fecha}
+            onChange={handleChange('fecha')}
+            fullWidth
+            InputLabelProps={{ shrink: true }}
+            required
+            className="modal-form-field"
+          />
+
+          {String(form.tipo_movimiento).toLowerCase() === 'salida' && (
+            <>
+              <TextField
+                select
+                label="Cultivo"
+                value={form.id_cultivo}
+                onChange={handleChange('id_cultivo')}
+                fullWidth
+                required
+                className="modal-form-field"
+              >
+                {cultivos.map((c) => (
+                  <MenuItem key={c.id} value={c.id}>{c.displayName || c.nombre_cultivo || `Cultivo ${c.id}`}</MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                type="number"
+                label="Valor unitario"
+                value={form.valor_unidad}
+                onChange={handleChange('valor_unidad')}
+                fullWidth
+                inputProps={{ min: 0 }}
+                required
+                className="modal-form-field"
+              />
+            </>
+          )}
 
 
           </>

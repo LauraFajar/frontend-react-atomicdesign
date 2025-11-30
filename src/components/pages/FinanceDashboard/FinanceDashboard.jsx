@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import ExcelJS from 'exceljs';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Box, Paper, Typography, FormControl, InputLabel, Select, MenuItem, TextField, Button, Divider, Chip, Alert, Table, TableHead, TableRow, TableCell, TableBody, Tabs, Tab, FormControlLabel, Switch } from '@mui/material';
 import dayjs from 'dayjs';
 import financeService from '../../../services/financeService';
@@ -54,6 +54,8 @@ const FinanceDashboard = () => {
 
   const { hasAnyPermission } = useAuth();
   const canExport = hasAnyPermission(['finanzas:*','finanzas:exportar']);
+  const canCreateIngreso = hasAnyPermission(['ingresos:*','ingresos:crear']);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     try {
@@ -191,6 +193,23 @@ const FinanceDashboard = () => {
     enabled: Boolean(cultivoId),
   });
 
+  const [ingresoFecha, setIngresoFecha] = useState(dayjs().format('YYYY-MM-DD'));
+  const [ingresoMonto, setIngresoMonto] = useState('');
+  const [ingresoDescripcion, setIngresoDescripcion] = useState('');
+
+  const createIngresoMutation = useMutation({
+    mutationFn: (payload) => financeService.createIngreso(payload),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['finanzasResumen'] }),
+        queryClient.invalidateQueries({ queryKey: ['finanzasIngresos'] }),
+        queryClient.invalidateQueries({ queryKey: ['finanzasMargenLista'] }),
+      ]);
+      setIngresoMonto('');
+      setIngresoDescripcion('');
+    },
+  });
+
   const movimientosQuery = useQuery({
     queryKey: ['movimientosHerramientas'],
     queryFn: () => movimientosService.getMovimientos({}, 1, 200),
@@ -207,6 +226,25 @@ const FinanceDashboard = () => {
     if (Array.isArray(f?.data)) return f.data;
     return [];
   }, [actividadesQuery.data, actividadesFallbackQuery.data]);
+
+  const [recursosPorActividad, setRecursosPorActividad] = useState({});
+  useEffect(() => {
+    const ids = actividadesItems.slice(0, 50).map(a => a.id).filter(Boolean);
+    let cancelled = false;
+    (async () => {
+      const promises = ids.map(async (id) => {
+        if (recursosPorActividad[id]) return;
+        try {
+          const recursos = await activityService.getRecursosByActividad(id);
+          if (!cancelled) {
+            setRecursosPorActividad(prev => ({ ...prev, [id]: recursos }));
+          }
+        } catch (e) { console.error('Error cargando recursos de actividad', e); }
+      });
+      await Promise.all(promises);
+    })();
+    return () => { cancelled = true; };
+  }, [actividadesItems]);
 
   const tiposActividad = useMemo(() => {
     const set = new Set();
@@ -236,14 +274,8 @@ const FinanceDashboard = () => {
   }, [actividadesItems, tiposActividad]);
 
   const manoObraTotal = useMemo(() => {
-    let total = 0;
-    Object.keys(actividadesPorTipo).forEach(t => {
-      const count = Number(actividadesPorTipo[t] || 0);
-      const horas = Number(horasPorTipo[t] || 0);
-      total += count * horas * Number(costoHora || 0);
-    });
-    return total;
-  }, [actividadesPorTipo, horasPorTipo, costoHora]);
+    return actividadesItems.reduce((sum, a) => sum + (parseFloat(a.costo_mano_obra || '0') || 0), 0);
+  }, [actividadesItems]);
 
   const egresosTotal = useMemo(() => {
     const d = resumenQuery.data || {};
@@ -260,13 +292,12 @@ const FinanceDashboard = () => {
   }, [from, to]);
 
   const depreciacionTotal = useMemo(() => {
-    const m = Number(depreciacionMensual || 0);
-    return m * monthsInPeriod;
-  }, [depreciacionMensual, monthsInPeriod]);
+    return actividadesItems.reduce((sum, a) => sum + (parseFloat(a.costo_maquinaria || '0') || 0), 0);
+  }, [actividadesItems]);
 
   const costoProduccionTotal = useMemo(() => {
-    return Number(egresosTotal || 0) + Number(manoObraTotal || 0) + Number(depreciacionTotal || 0);
-  }, [egresosTotal, manoObraTotal, depreciacionTotal]);
+    return Number(egresosTotal || 0);
+  }, [egresosTotal]);
 
   const herramientasMovs = useMemo(() => {
     const list = Array.isArray(movimientosQuery.data?.items) ? movimientosQuery.data.items : [];
@@ -536,6 +567,17 @@ const FinanceDashboard = () => {
           </Button>
         </Box>
       </Paper>
+
+      {canCreateIngreso && cultivoId && (
+        <Paper className="filters-card" elevation={1}>
+          <Box className="filters-row">
+            <TextField size="small" type="date" label="Fecha ingreso" value={ingresoFecha} onChange={(e)=>setIngresoFecha(e.target.value)} InputLabelProps={{ shrink:true }} className="filter-item" />
+            <TextField size="small" type="number" label="Monto" value={ingresoMonto} onChange={(e)=>setIngresoMonto(e.target.value)} inputProps={{ min:0 }} className="filter-item" />
+            <TextField size="small" label="Descripción" value={ingresoDescripcion} onChange={(e)=>setIngresoDescripcion(e.target.value)} className="filter-item" />
+            <Button variant="contained" sx={{ backgroundColor: 'var(--primary-green)', color: '#fff', '&:hover': { backgroundColor: 'var(--primary-green)' } }} disabled={!ingresoFecha || !ingresoMonto} onClick={() => createIngresoMutation.mutate({ cultivoId, fecha: ingresoFecha, monto: ingresoMonto, descripcion: ingresoDescripcion })}>Registrar ingreso</Button>
+          </Box>
+        </Paper>
+      )}
 
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
         <Tabs
@@ -836,11 +878,11 @@ const FinanceDashboard = () => {
                   <div className="kpi-value">{numberFmt(egresosTotal)}</div>
                 </div>
                 <div className="kpi-item">
-                  <div className="kpi-title">Mano de obra</div>
+                  <div className="kpi-title">Mano de obra (registrada)</div>
                   <div className="kpi-value">{numberFmt(manoObraTotal)}</div>
                 </div>
                 <div className="kpi-item">
-                  <div className="kpi-title">Depreciación</div>
+                  <div className="kpi-title">Maquinaria (registrada)</div>
                   <div className="kpi-value">{numberFmt(depreciacionTotal)}</div>
                 </div>
               </div>
@@ -964,6 +1006,49 @@ const FinanceDashboard = () => {
                 <Typography variant="body2" color="text.secondary">Sin actividades</Typography>
               )}
             </Paper>
+
+            <Paper className="chart-card" elevation={1} sx={{ mt: 2 }}>
+              <Typography variant="subtitle1">Costos por actividad</Typography>
+              <Divider sx={{ my: 1 }} />
+              {actividadesItems.length > 0 ? (
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Tipo de Actividad</TableCell>
+                      <TableCell>Fecha</TableCell>
+                      <TableCell>Costo Mano de Obra</TableCell>
+                      <TableCell>Cantidad</TableCell>
+                      <TableCell>Recursos Consumibles</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {actividadesItems.slice(0, 20).map((act) => (
+                      <TableRow key={act.id}>
+                        <TableCell>{act.tipo_actividad}</TableCell>
+                        <TableCell>{act.fecha}</TableCell>
+                        <TableCell>{act.costo_mano_obra ?? '-'}</TableCell>
+                        <TableCell>
+                          {((recursosPorActividad[act.id] || [])
+                            .filter(r => r.horas_uso == null)
+                            .reduce((sum, r) => sum + (Number(r.cantidad || 0)), 0))}
+                        </TableCell>
+                        <TableCell>
+                          {(recursosPorActividad[act.id] || [])
+                            .filter(r => r.horas_uso == null)
+                            .map((r, idx) => (
+                              <div key={idx}>
+                                {r.nombre_insumo}: Cantidad {r.cantidad ?? '-'} | Costo U {r.costo_unitario ?? '-'}
+                              </div>
+                            ))}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <Typography variant="body2" color="text.secondary">Sin costos</Typography>
+              )}
+            </Paper>
           </div>
           <div className="right-panel">
             <Paper className="kpi-card" elevation={1}>
@@ -981,6 +1066,42 @@ const FinanceDashboard = () => {
                   <div className="kpi-value">{numberFmt(resumen.margenTotal)}</div>
                 </div>
               </div>
+            </Paper>
+            <Paper className="chart-card" elevation={1} sx={{ mt: 2 }}>
+              <Typography variant="subtitle1">Herramientas usadas</Typography>
+              <Divider sx={{ my: 1 }} />
+              {actividadesItems.length > 0 ? (
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Tipo de Actividad</TableCell>
+                      <TableCell>Fecha</TableCell>
+                      <TableCell>Costo Mano de Obra</TableCell>
+                      <TableCell>Costo Maquinaria</TableCell>
+                      <TableCell>Herramientas</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {actividadesItems.slice(0, 20).map((act) => (
+                      <TableRow key={act.id}>
+                        <TableCell>{act.tipo_actividad}</TableCell>
+                        <TableCell>{act.fecha}</TableCell>
+                        <TableCell>{act.costo_mano_obra ?? '-'}</TableCell>
+                        <TableCell>{act.costo_maquinaria ?? '-'}</TableCell>
+                        <TableCell>
+                          {(recursosPorActividad[act.id] || [])
+                            .filter(r => r.horas_uso != null)
+                            .map((r, idx) => (
+                              <div key={idx}>{r.nombre_insumo}: {`${r.horas_uso} h`}</div>
+                            ))}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <Typography variant="body2" color="text.secondary">Sin herramientas</Typography>
+              )}
             </Paper>
           </div>
         </div>

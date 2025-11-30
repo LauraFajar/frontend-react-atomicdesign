@@ -19,6 +19,12 @@ const ActivityDetailModal = ({ open, onClose, activity }) => {
     enabled: !!activityId,
   })
 
+  const { data: recursos = [] } = useQuery({
+    queryKey: ['activityResources', activityId],
+    queryFn: () => activityService.getRecursosByActividad(activityId),
+    enabled: !!activityId,
+  })
+
   const latestPhoto = useMemo(() => (Array.isArray(photos) && photos.length > 0 ? photos[0] : null), [photos])
   const raw = latestPhoto?.ruta_foto || ''
   const rel = raw ? (raw.startsWith('/') ? raw : `/${raw}`) : ''
@@ -54,6 +60,24 @@ const ActivityDetailModal = ({ open, onClose, activity }) => {
             label={statusConfig[activity.estado]?.label || activity.estado}
             sx={{ backgroundColor: statusConfig[activity.estado]?.bgColor, color: statusConfig[activity.estado]?.color }}
           />
+        </Box>
+
+        <Box sx={{ mt: 3 }}>
+          <Typography variant="h6">Recursos utilizados</Typography>
+          {Array.isArray(recursos) && recursos.length > 0 ? (
+            <Box sx={{ mt: 1 }}>
+              {recursos.map((r, idx) => (
+                <Box key={idx} sx={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr', gap:1, mb:1 }}>
+                  <Typography variant="body2">{String(r.nombre_insumo || r.id_insumo)}</Typography>
+                  <Typography variant="body2">{r.horas_uso != null ? `Horas: ${r.horas_uso}` : `Cantidad: ${r.cantidad ?? 0}`}</Typography>
+                  <Typography variant="body2">Costo unitario: {r.costo_unitario != null ? r.costo_unitario : 'N/A'}</Typography>
+                  <Typography variant="body2">{r.horas_uso != null ? 'Herramienta' : 'Consumible'}</Typography>
+                </Box>
+              ))}
+            </Box>
+          ) : (
+            <Typography variant="body2">Sin recursos registrados.</Typography>
+          )}
         </Box>
 
         <Box sx={{ mt: 3 }}>

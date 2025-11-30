@@ -49,6 +49,19 @@ const financeService = {
     return response.data;
   },
 
+  createIngreso: async ({ cultivoId, fecha, monto, descripcion, id_insumo } = {}) => {
+    const payload = {
+      fecha_ingreso: fecha,
+      monto: Number(monto),
+      descripcion: descripcion ?? 'Ingreso',
+      ...(cultivoId != null ? { id_cultivo: Number(cultivoId) } : {}),
+      ...(id_insumo != null ? { id_insumo: Number(id_insumo) } : {}),
+    };
+    const url = `${API_URL}/ingresos`;
+    const response = await axios.post(url, payload, { headers: getAuthHeader() });
+    return response.data;
+  },
+
   getSalidas: async ({ cultivoId, from, to }) => {
     const params = new URLSearchParams({ cultivoId, from, to });
     const url = `${API_URL}/salidas?${params.toString()}`;

@@ -35,7 +35,9 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
     responsable_id: '',
     detalles: '',
     estado: 'pendiente',
-    id_cultivo: ''
+    id_cultivo: '',
+    costo_mano_obra: '',
+    costo_maquinaria: ''
   });
   const [recursos, setRecursos] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -68,6 +70,16 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
   });
 
   useEffect(() => {
+    const paramsFromStorage = () => {
+      try {
+        const key = formData.id_cultivo ? `financeParams:${formData.id_cultivo}` : null;
+        if (!key) return null;
+        const raw = localStorage.getItem(key);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === 'object' ? parsed : null;
+      } catch { return null; }
+    };
     if (activity) {
       setFormData({
         tipo_actividad: activity.tipo_actividad || '',
@@ -76,14 +88,25 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
         responsable_id: activity.responsable_id || '',
         detalles: activity.detalles || '',
         estado: activity.estado || 'pendiente',
-        id_cultivo: activity.id_cultivo || ''
+        id_cultivo: activity.id_cultivo || '',
+        costo_mano_obra: activity.costo_mano_obra ?? '',
+        costo_maquinaria: activity.costo_maquinaria ?? ''
       });
       setRecursos(Array.isArray(activity?.recursos) ? activity.recursos.map(r => ({
         id_insumo: r.id_insumo,
         cantidad: r.cantidad,
         horas_uso: r.horas_uso,
         costo_unitario: r.costo_unitario,
+        es_herramienta: r.horas_uso != null ? true : undefined,
       })) : []);
+      const p = paramsFromStorage();
+      if (p && (activity.costo_mano_obra == null || activity.costo_mano_obra === '')) {
+        const tipo = String(activity.tipo_actividad || '').toLowerCase();
+        const horasTipo = Number((p.horasPorTipo || {})[tipo] || 0);
+        const costoHora = Number(p.costoHora || 0);
+        const sugerido = horasTipo * costoHora;
+        if (sugerido > 0) setFormData(prev => ({ ...prev, costo_mano_obra: sugerido }));
+      }
     } else {
       setFormData({
         tipo_actividad: '',
@@ -92,7 +115,9 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
         responsable_id: '',
         detalles: '',
         estado: 'pendiente',
-        id_cultivo: ''
+        id_cultivo: '',
+        costo_mano_obra: '',
+        costo_maquinaria: ''
       });
       setRecursos([]);
     }
@@ -168,6 +193,8 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
         estado: formData.estado?.toString().trim(),
         id_cultivo: formData.id_cultivo ? parseInt(formData.id_cultivo, 10) : null,
         fecha: formData.fecha ? formData.fecha.toISOString() : null,
+        costo_mano_obra: formData.costo_mano_obra !== '' && formData.costo_mano_obra != null ? Number(formData.costo_mano_obra) : undefined,
+        costo_maquinaria: formData.costo_maquinaria !== '' && formData.costo_maquinaria != null ? Number(formData.costo_maquinaria) : undefined,
         recursos: recursos
           .filter(r => r && r.id_insumo)
           .map(r => ({
@@ -218,9 +245,18 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
     next[index] = { ...next[index], [field]: value };
     if (field === 'id_insumo') {
       const sel = insumos.find(i => String(i.id) === String(value));
-      if (sel?.es_herramienta) {
+      if (sel?.es_herramienta || next[index].es_herramienta === true) {
         next[index].cantidad = '';
       } else {
+        next[index].horas_uso = '';
+      }
+    }
+    if (field === 'es_herramienta') {
+      if (String(value) === 'true') {
+        next[index].es_herramienta = true;
+        next[index].cantidad = '';
+      } else {
+        next[index].es_herramienta = false;
         next[index].horas_uso = '';
       }
     }
@@ -357,6 +393,27 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
             </Select>
           </FormControl>
 
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+            <TextField
+              type="number"
+              label="Costo mano de obra"
+              name="costo_mano_obra"
+              value={formData.costo_mano_obra}
+              onChange={handleChange}
+              inputProps={{ min: 0, step: '0.01' }}
+              className="modal-form-field"
+            />
+            <TextField
+              type="number"
+              label="Costo maquinaria"
+              name="costo_maquinaria"
+              value={formData.costo_maquinaria}
+              onChange={handleChange}
+              inputProps={{ min: 0, step: '0.01' }}
+              className="modal-form-field"
+            />
+          </Box>
+
           <TextField
             label="Detalles"
             name="detalles"
@@ -376,13 +433,24 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
             ) : errorInsumos ? (
               <Typography color="error">{errorInsumos}</Typography>
             ) : (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
                 {recursos.map((r, idx) => {
                   const sel = insumos.find(i => String(i.id) === String(r.id_insumo));
-                  const isTool = !!sel?.es_herramienta;
+                  const isTool = r.es_herramienta !== undefined ? Boolean(r.es_herramienta) : !!sel?.es_herramienta;
                   return (
-                    <Box key={idx} sx={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: 2 }}>
-                      <FormControl fullWidth>
+                    <Box key={idx} sx={{ display: 'grid', gridTemplateColumns: '0.9fr 1.8fr 1.2fr 1.1fr 0.8fr max-content', gap: 1 }}>
+                      <FormControl fullWidth size="small">
+                        <InputLabel>Tipo</InputLabel>
+                        <Select
+                          value={isTool ? 'herramienta' : 'consumible'}
+                          label="Tipo"
+                          onChange={(e) => handleRecursoChange(idx, 'es_herramienta', e.target.value === 'herramienta' ? 'true' : 'false')}
+                        >
+                          <MenuItem value="consumible">Consumible</MenuItem>
+                          <MenuItem value="herramienta">Herramienta</MenuItem>
+                        </Select>
+                      </FormControl>
+                      <FormControl fullWidth size="small" sx={{ '& .MuiSelect-select': { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }}>
                         <InputLabel>Insumo</InputLabel>
                         <Select
                           value={r.id_insumo}
@@ -402,6 +470,8 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
                           onChange={(e) => handleRecursoChange(idx, 'horas_uso', e.target.value)}
                           inputProps={{ min: 0, step: '0.1' }}
                           fullWidth
+                          size="small"
+                          margin="dense"
                         />
                       ) : (
                         <TextField
@@ -411,6 +481,8 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
                           onChange={(e) => handleRecursoChange(idx, 'cantidad', e.target.value)}
                           inputProps={{ min: 0, step: '0.01' }}
                           fullWidth
+                          size="small"
+                          margin="dense"
                         />
                       )}
                       <TextField
@@ -420,12 +492,22 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
                         onChange={(e) => handleRecursoChange(idx, 'costo_unitario', e.target.value)}
                         inputProps={{ min: 0, step: '0.01' }}
                         fullWidth
+                        size="small"
+                        margin="dense"
                       />
-                      <Button variant="outlined" color="error" onClick={() => removeRecurso(idx)}>Eliminar</Button>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        size="small"
+                        sx={{ px: 1, py: 0.25, minWidth: 48, minHeight: 22, height: 28, fontSize: '0.7rem', lineHeight: 1 }}
+                        onClick={() => removeRecurso(idx)}
+                      >
+                        Eliminar
+                      </Button>
                     </Box>
                   );
                 })}
-                <Button variant="text" onClick={addRecurso}>Agregar recurso</Button>
+                <Button variant="text" size="small" onClick={addRecurso}>Agregar recurso</Button>
               </Box>
             )}
           </Box>
