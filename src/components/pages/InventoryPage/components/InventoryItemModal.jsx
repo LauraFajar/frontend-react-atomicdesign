@@ -83,17 +83,19 @@ const InventoryItemModal = ({ open, selectedItem, onCancel, onSave, categorias =
             inputRef={firstInputRef}
           />
 
-          <TextField
-            type="number"
-            fullWidth
-            name="cantidad"
-            label="Cantidad"
-            value={form.cantidad}
-            onChange={handleChange}
-            required
-            className="modal-form-field"
-            inputProps={{ min: 0 }}
-          />
+          {!selectedItem && (
+            <TextField
+              type="number"
+              fullWidth
+              name="cantidad"
+              label="Cantidad"
+              value={form.cantidad}
+              onChange={handleChange}
+              required
+              className="modal-form-field"
+              inputProps={{ min: 0 }}
+            />
+          )}
 
         <TextField
           fullWidth
