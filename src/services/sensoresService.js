@@ -1,129 +1,136 @@
 import axios from 'axios';
-import Cookies from 'js-cookie';
 import config from '../config/environment';
+import Cookies from 'js-cookie';
 
-const API_URL = config.api.baseURL;
-
-const getAuthHeader = () => {
-  const token = Cookies.get('token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
-
-const mapSensor = (s) => ({
-  id: s?.id_sensor ?? s?.id,
-  tipo_sensor: s?.tipo_sensor ?? s?.tipo ?? '',
-  estado: s?.estado ?? 'activo',
-  valor_minimo: Number(s?.valor_minimo ?? 0),
-  valor_maximo: Number(s?.valor_maximo ?? 0),
-  valor_actual: s?.valor_actual != null ? Number(s?.valor_actual) : null,
-  ultima_lectura: s?.ultima_lectura ?? null,
-  configuracion: s?.configuracion ?? null,
-  raw: s,
+const api = axios.create({
+  baseURL: config.api.baseURL,
+  withCredentials: true,
 });
 
-const sensoresService = {
-  getSensores: async (page = 1, limit = 50) => {
-    const response = await axios.get(`${API_URL}/sensores`, {
-      params: { page, limit },
-      headers: getAuthHeader(),
-    });
-    const data = response.data?.items ?? response.data?.data ?? response.data;
-    const list = Array.isArray(data) ? data : [];
-    return { items: list.map(mapSensor) };
-  },
+// Adjuntar token automáticamente si está disponible
+api.interceptors.request.use((config) => {
+  const token = Cookies.get('token') || localStorage.getItem('access_token') || localStorage.getItem('token');
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
-  createSensor: async (payload) => {
-    const body = {
-      tipo_sensor: String(payload?.tipo_sensor || '').trim(),
-      estado: String(payload?.estado || 'activo').trim(),
-      valor_minimo: Number(payload?.valor_minimo ?? 0),
-      valor_maximo: Number(payload?.valor_maximo ?? 0),
-      unidad_medida: payload?.unidad_medida ? String(payload.unidad_medida).trim() : undefined,
-      ubicacion: payload?.ubicacion ? String(payload.ubicacion).trim() : undefined,
-    };
-    const response = await axios.post(`${API_URL}/sensores`, body, {
-      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
-    });
-    const created = response.data?.data ?? response.data;
-    return mapSensor(created);
-  },
+function toDateOnly(d) {
+  if (!d) return undefined;
+  const dt = typeof d === 'string' ? new Date(d) : d;
+  if (isNaN(dt.getTime())) return undefined;
+  return dt.toISOString().split('T')[0];
+}
 
-  updateSensor: async (id, data) => {
-    const body = {
-      ...(data?.tipo_sensor ? { tipo_sensor: String(data.tipo_sensor).trim() } : {}),
-      ...(data?.estado ? { estado: String(data.estado).trim() } : {}),
-      ...(data?.valor_minimo != null ? { valor_minimo: Number(data.valor_minimo) } : {}),
-      ...(data?.valor_maximo != null ? { valor_maximo: Number(data.valor_maximo) } : {}),
-      ...(data?.unidad_medida ? { unidad_medida: String(data.unidad_medida).trim() } : {}),
-      ...(data?.ubicacion ? { ubicacion: String(data.ubicacion).trim() } : {}),
-    };
-    const response = await axios.patch(`${API_URL}/sensores/${id}`, body, {
-      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
-    });
-    const updated = response.data?.data ?? response.data;
-    return mapSensor(updated);
-  },
+function getHistorialByTopic(topic, params = {}, { signal } = {}) {
+  const qp = {
+    topic,
+    metric: params.metric,
+    periodo: params.periodo || 'dia',
+    order: params.order || 'desc',
+    limit: params.limit || 200,
+    fecha_desde: toDateOnly(params.fecha_desde),
+    fecha_hasta: toDateOnly(params.fecha_hasta),
+  };
+  return api
+    .get('/sensores/historial', { params: qp, signal })
+    .then((res) => (res?.data?.items ? res.data.items : Array.isArray(res?.data) ? res.data : []));
+}
 
-  deleteSensor: async (id) => {
-    await axios.delete(`${API_URL}/sensores/${id}`, {
-      headers: getAuthHeader(),
-    });
-    return true;
-  },
-
-  registrarLectura: async (id, valor, unidad_medida, observaciones) => {
-    const response = await axios.post(
-      `${API_URL}/sensores/${id}/lectura`,
-      { valor: Number(valor), unidad_medida, observaciones },
-      { headers: { 'Content-Type': 'application/json', ...getAuthHeader() } }
-    );
-    const updated = response.data?.data ?? response.data;
-    return updated;
-  },
-
-  getTiempoReal: async () => {
-    const response = await axios.get(`${API_URL}/sensores/tiempo-real`, {
-      headers: getAuthHeader(),
-    });
-    return response.data?.data ?? response.data ?? [];
-  },
-
-  getHistorial: async (id, params = {}) => {
-    const response = await axios.get(`${API_URL}/sensores/${id}/historial`, {
-      params,
-      headers: getAuthHeader(),
-    });
-    return response.data?.data ?? response.data ?? [];
-  },
-
-  getGraficos: async (id, params = {}) => {
-    const response = await axios.get(`${API_URL}/sensores/${id}/graficos`, {
-      params,
-      headers: getAuthHeader(),
-    });
-    return response.data?.data ?? response.data ?? [];
-  },
-
-  configurarMQTT: async (id, config) => {
-    const response = await axios.post(`${API_URL}/sensores/${id}/mqtt/configurar`, config, {
-      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
-    });
-    return response.data?.data ?? response.data;
-  },
-
-  getEstadoMQTT: async (id) => {
-    const response = await axios.get(`${API_URL}/sensores/${id}/mqtt/estado`, {
-      headers: getAuthHeader(),
-    });
-    return response.data?.data ?? response.data;
-  },
-
-  inicializarConexionesMQTT: async () => {
-    const response = await axios.post(`${API_URL}/sensores/mqtt/inicializar-conexiones`, {}, {
-      headers: getAuthHeader(),
-    });
-    return response.data?.data ?? response.data;
-  },
+const buildReportParams = (params = {}) => {
+  const dateOnly = (d) => {
+    if (!d) return undefined;
+    const dt = new Date(d);
+    if (!isNaN(dt.getTime())) return dt.toISOString().split('T')[0];
+    return String(d);
+  };
+  const desde = params.fecha_desde || params.desde || params.fecha_inicio || params.start_date || params.date_from;
+  const hasta = params.fecha_hasta || params.hasta || params.fecha_fin || params.end_date || params.date_to;
+  const normalized = {};
+  if (desde) {
+    const v = dateOnly(desde);
+    normalized.fecha_desde = v;
+    normalized.desde = v;
+    normalized.fecha_inicio = v;
+  }
+  if (hasta) {
+    const v = dateOnly(hasta);
+    normalized.fecha_hasta = v;
+    normalized.hasta = v;
+    normalized.fecha_fin = v;
+  }
+  // Incluir topic si fue provisto, para evitar ambigüedad con múltiples topics
+  if (params.topic) {
+    normalized.topic = params.topic;
+  }
+  return normalized;
 };
 
-export default sensoresService;
+export const getSensores = () => api.get('/sensores');
+export const getSensor = (id) => api.get(`/sensores/${id}`);
+export const getHistorial = (id, params) =>
+  api.get(`/sensores/${id}/historial`, { params }).then((res) => res?.data?.items || res?.data || []);
+export const getRecomendaciones = (id) => api.get(`/sensores/${id}/recomendaciones`);
+
+export const exportIotPdf = (params = {}) => {
+  console.log('Exportando PDF IoT con parámetros:', buildReportParams(params));
+  return api.get('/sensores/reporte-iot/pdf', { 
+    params: buildReportParams(params), 
+    responseType: 'blob',
+    timeout: 30000 // 30 segundos timeout
+  })
+  .then(response => {
+    console.log('PDF exportado exitosamente');
+    return response;
+  })
+  .catch(error => {
+    console.error('Error exportando PDF:', error);
+    throw error;
+  });
+};
+
+export const exportIotExcel = (params = {}) => {
+  console.log('Exportando Excel IoT con parámetros:', buildReportParams(params));
+  return api.get('/sensores/reporte-iot/excel', { 
+    params: buildReportParams(params), 
+    responseType: 'blob',
+    timeout: 30000 // 30 segundos timeout
+  })
+  .then(response => {
+    console.log('Excel exportado exitosamente');
+    return response;
+  })
+  .catch(error => {
+    console.error('Error exportando Excel:', error);
+    throw error;
+  });
+};
+
+// Rutas corregidas según API existente
+export const subscribeTopic = (topic) => api.post('/sensores/subscribe', { topic });
+export const unsubscribeTopic = (topic) => api.post('/sensores/unsubscribe', { topic });
+
+export const getTiempoReal = () => api.get('/sensores/tiempo-real').then((r) => r?.data || []);
+export const getTopics = () => api.get('/sensores/topics').then((r) => r?.data || []);
+
+const service = {
+  getSensores,
+  getSensor,
+  getHistorial,
+  getRecomendaciones,
+  exportIotPdf,
+  exportIotExcel,
+  subscribeTopic,
+  unsubscribeTopic,
+  getHistorialByTopic,
+  getTiempoReal,
+  getTopics,
+  createSensor: (payload) => api.post('/sensores', payload),
+  updateSensor: (id, payload) => api.put(`/sensores/${id}`, payload),
+  deleteSensor: (id) => api.delete(`/sensores/${id}`),
+};
+
+export default service;
+
