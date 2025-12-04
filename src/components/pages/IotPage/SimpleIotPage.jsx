@@ -25,6 +25,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import iotService from '../../../services/iotService';
 import useIotSocket from '../../../hooks/useIotSocket';
 import ChangeBrokerModal from '../../../components/molecules/ChangeBrokerModal/ChangeBrokerModal';
+import { downloadBlob } from '../../../utils/downloadFile';
 
 const SimpleIotPage = () => {
   const [selectedSensor, setSelectedSensor] = useState(null);
@@ -253,12 +254,38 @@ const SimpleIotPage = () => {
   };
 
   // Toggle sensor state
-  const handleToggleSensor = (sensorKey) => {
+  const handleToggleSensor = async (sensorKey) => {
+    const nextState = !(sensorStates[sensorKey]);
     setSensorStates(prev => ({
       ...prev,
-      [sensorKey]: !prev[sensorKey]
+      [sensorKey]: nextState
     }));
-    console.log(`Sensor ${sensorKey} toggled to: ${!sensorStates[sensorKey]}`);
+    console.log(`Sensor ${sensorKey} toggled to: ${nextState}`);
+
+    // Control de bomba vía backend/MQTT
+    if (sensorKey === 'bomba_estado') {
+      const command = nextState ? 'BOMBA_ON' : 'BOMBA_OFF';
+      const baseUrl = process.env.REACT_APP_API_URL || process.env.REACT_APP_API_BASE_URL || 'http://localhost:3000';
+      try {
+        const resp = await fetch(`${baseUrl}/api/iot/control`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command, topic: 'luixxa/control' })
+        });
+        const result = await resp.json().catch(() => ({}));
+        if (resp.ok && (result.success !== false)) {
+          setPumpState(nextState);
+          console.log(`✅ Bomba ${nextState ? 'ENCENDIDA' : 'APAGADA'} (comando ${command})`);
+        } else {
+          setSensorStates(prev => ({ ...prev, [sensorKey]: !nextState }));
+          setError('No se pudo enviar comando a la bomba (backend/MQTT)');
+        }
+      } catch (e) {
+        setSensorStates(prev => ({ ...prev, [sensorKey]: !nextState }));
+        console.error('Error enviando comando MQTT:', e);
+        setError('Error al enviar comando MQTT');
+      }
+    }
   };
 
   // Get current sensor value from sensors array
@@ -290,64 +317,88 @@ const SimpleIotPage = () => {
 
 
 
-  const downloadBlob = (blob, filename) => {
+  // Usando downloadBlob compartido desde utils/downloadFile
+
+  const isPdfBlob = async (blob) => {
     try {
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      console.log(`✅ Archivo descargado: ${filename}`);
-    } catch (error) {
-      console.error('Error downloading file:', error);
-      throw new Error('No se pudo descargar el archivo');
+      const arr = new Uint8Array(await blob.arrayBuffer());
+      const header = String.fromCharCode(arr[0], arr[1], arr[2], arr[3]);
+      return header === '%PDF';
+    } catch {
+      return false;
     }
+  };
+  
+  const isXlsxBlob = async (blob) => {
+    try {
+      const arr = new Uint8Array(await blob.arrayBuffer());
+      const header = String.fromCharCode(arr[0], arr[1]);
+      return header === 'PK';
+    } catch {
+      return false;
+    }
+  };
+  
+  const buildQuery = (params) => {
+    const searchParams = new URLSearchParams();
+    Object.entries(params || {}).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') {
+        searchParams.append(k, v);
+      }
+    });
+    const qs = searchParams.toString();
+    return qs ? `?${qs}` : '';
   };
 
   const handleExportPdf = async () => {
     try {
       setExporting(true);
       setError(null);
-      
-      // Build parameters object
+
       const params = {
         sensor: reportSensor !== 'all' ? reportSensor : undefined,
         fecha_desde: fechaInicio || undefined,
         fecha_hasta: fechaFin || undefined,
       };
-      
       console.log('📤 Exportando PDF con parámetros:', params);
-      
-      // Use service method
-      const response = await iotService.exportToPdf(params);
-      
-      if (!response.data) {
-        throw new Error('No se recibieron datos del servidor');
+
+      const baseUrl = process.env.REACT_APP_API_URL || process.env.REACT_APP_API_BASE_URL || 'http://localhost:3000';
+      const qs = buildQuery(params);
+      const response = await fetch(`${baseUrl}/api/iot/export/pdf${qs}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/pdf' }
+      });
+
+      if (!response.ok) {
+        const msg = response.status === 404
+          ? 'No se encontraron datos para el rango seleccionado'
+          : response.status === 500
+          ? 'Error interno del servidor al generar el PDF'
+          : `HTTP error ${response.status}`;
+        throw new Error(msg);
       }
-      
-      const blob = new Blob([response.data], { type: 'application/pdf' });
+
+      const ct = (response.headers.get('content-type') || '').toLowerCase();
+      if (!ct.includes('application/pdf')) {
+        throw new Error('El servidor no devolvió un PDF (Content-Type inválido)');
+      }
+
+      const blob = await response.blob();
+      if (!(await isPdfBlob(blob))) {
+        throw new Error('Firma PDF inválida; posible HTML/JSON devuelto por el servidor');
+      }
+
       const timestamp = new Date().toISOString().split('T')[0];
       const sensorName = reportSensor !== 'all' ? reportSensor : 'todos-sensores';
       const filename = `agrotic-reporte-iot-${sensorName}-${timestamp}.pdf`;
-      
-      downloadBlob(blob, filename);
-      
-      // Show success message
+
+      const ok = downloadBlob(blob, filename);
+      if (!ok) throw new Error('Fallo al descargar el PDF');
+
       console.log('✅ PDF exportado exitosamente');
-      
     } catch (err) {
       console.error('❌ Error exporting PDF:', err);
-      const errorMessage = err.response?.status === 404 
-        ? 'No se encontraron datos para el rango seleccionado'
-        : err.response?.status === 500
-        ? 'Error interno del servidor al generar el PDF'
-        : err.message || 'Error inesperado al exportar PDF';
-      
-      setError(errorMessage);
+      setError(err.message || 'Error inesperado al exportar PDF');
     } finally {
       setExporting(false);
     }
@@ -357,44 +408,52 @@ const SimpleIotPage = () => {
     try {
       setExporting(true);
       setError(null);
-      
-      // Build parameters object
+
       const params = {
         sensor: reportSensor !== 'all' ? reportSensor : undefined,
         fecha_desde: fechaInicio || undefined,
         fecha_hasta: fechaFin || undefined,
       };
-      
       console.log('📤 Exportando Excel con parámetros:', params);
-      
-      // Use service method
-      const response = await iotService.exportToExcel(params);
-      
-      if (!response.data) {
-        throw new Error('No se recibieron datos del servidor');
-      }
-      
-      const blob = new Blob([response.data], { 
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+
+      const baseUrl = process.env.REACT_APP_API_URL || process.env.REACT_APP_API_BASE_URL || 'http://localhost:3000';
+      const qs = buildQuery(params);
+      const response = await fetch(`${baseUrl}/api/iot/export/excel${qs}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
       });
+
+      if (!response.ok) {
+        const msg = response.status === 404
+          ? 'No se encontraron datos para el rango seleccionado'
+          : response.status === 500
+          ? 'Error interno del servidor al generar el Excel'
+          : `HTTP error ${response.status}`;
+        throw new Error(msg);
+      }
+
+      const ct = (response.headers.get('content-type') || '').toLowerCase();
+      const isExcelType = ct.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') || ct.includes('application/zip');
+      if (!isExcelType) {
+        throw new Error('El servidor no devolvió un XLSX (Content-Type inválido)');
+      }
+
+      const blob = await response.blob();
+      if (!(await isXlsxBlob(blob))) {
+        throw new Error('Firma ZIP inválida; posible HTML/JSON devuelto por el servidor');
+      }
+
       const timestamp = new Date().toISOString().split('T')[0];
       const sensorName = reportSensor !== 'all' ? reportSensor : 'todos-sensores';
       const filename = `agrotic-reporte-iot-${sensorName}-${timestamp}.xlsx`;
-      
-      downloadBlob(blob, filename);
-      
-      // Show success message
+
+      const ok = downloadBlob(blob, filename);
+      if (!ok) throw new Error('Fallo al descargar el Excel');
+
       console.log('✅ Excel exportado exitosamente');
-      
     } catch (err) {
       console.error('❌ Error exporting Excel:', err);
-      const errorMessage = err.response?.status === 404 
-        ? 'No se encontraron datos para el rango seleccionado'
-        : err.response?.status === 500
-        ? 'Error interno del servidor al generar el Excel'
-        : err.message || 'Error inesperado al exportar Excel';
-      
-      setError(errorMessage);
+      setError(err.message || 'Error inesperado al exportar Excel');
     } finally {
       setExporting(false);
     }

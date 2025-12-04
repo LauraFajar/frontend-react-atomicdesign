@@ -3,6 +3,8 @@ import { Button, Box, Alert } from '@mui/material';
 import { useAlert } from '../../contexts/AlertContext';
 import sensoresService from '../../services/sensoresService';
 import * as XLSX from 'xlsx';
+import { exportPdfWithFallback, readBlobAsText } from '../../utils/exportHelpers';
+import { downloadBlob } from '../../utils/downloadFile';
 
 const ReportExportButtons = ({
   topic,
@@ -520,53 +522,59 @@ const ReportExportButtons = ({
   };
 
   const onExportPdf = async () => {
-    try {
-      console.log('Iniciando exportación PDF con parámetros:', buildParams());
-      const response = await sensoresService.exportIotPdf(buildParams());
-      downloadBlobResponse(response, `reporte_iot_${selectedSensor ? selectedSensor.tipo_sensor.replace(/\s+/g, '_') + '_' : ''}${fecha_desde || 'desde'}_${fecha_hasta || 'hasta'}.pdf`);
-      alert.success('Éxito', `Reporte PDF${selectedSensor ? ` de ${selectedSensor.tipo_sensor}` : ''} descargado correctamente`);
-    } catch (error) {
-      console.error('Error en exportación PDF:', error);
-      const status = error?.response?.status;
-
-      if (status === 404) {
-        alert.warning('Sin datos', 'No se encontraron datos en el rango seleccionado');
-      } else if (status === 401) {
-        alert.error('Autenticación', 'Sesión expirada. Por favor, inicie sesión nuevamente');
-      } else {
-        // Fallback a generación local
-        if (historialData.length > 0 || sensors.length > 0) {
-          generateLocalPDF();
-          alert.info('Reporte local', 'Generando reporte PDF localmente debido a error del servidor');
-        } else {
-          alert.error('Error', 'No se pudo descargar el PDF y no hay datos suficientes para generar un reporte local');
-        }
-      }
-    }
+    await exportPdfWithFallback(buildParams, generateLocalPDF, alert);
   };
 
   const onExportExcel = async () => {
     try {
       console.log('Iniciando exportación Excel con parámetros:', buildParams());
       const response = await sensoresService.exportIotExcel(buildParams());
-      downloadBlobResponse(response, `reporte_iot_${selectedSensor ? selectedSensor.tipo_sensor.replace(/\s+/g, '_') + '_' : ''}${fecha_desde || 'desde'}_${fecha_hasta || 'hasta'}.xlsx`);
-      alert.success('Éxito', `Reporte Excel${selectedSensor ? ` de ${selectedSensor.tipo_sensor}` : ''} descargado correctamente`);
+      if (response.status === 200) {
+        const ct = (response.headers && (response.headers['content-type'] || response.headers['Content-Type'])) || '';
+        const isXlsx = ct.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        if (!isXlsx) {
+          alert.error('Archivo inválido', `Tipo inesperado de respuesta (${ct}). Generando Excel local...`);
+          generateLocalExcel();
+          return;
+        }
+        const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const filename = `reporte_iot_${selectedSensor ? selectedSensor.tipo_sensor.replace(/\s+/g, '_') + '_' : ''}${fecha_desde || 'desde'}_${fecha_hasta || 'hasta'}.xlsx`;
+-        // Validar firma ZIP (XLSX es un zip, debe empezar con 'PK')
+-        const header = await new Response(blob.slice(0, 2)).text();
+-        if (!header.startsWith('PK')) {
+-        const hint = await readBlobAsText(response.data);
+-        alert.error('Archivo inválido', `El contenido no parece un XLSX. ${hint || ''} Generando Excel local...`);
+-        generateLocalExcel();
+-        return;
+-        }
++         // Validar firma ZIP (XLSX es un zip, debe empezar con 'PK')
++         const header = await new Response(blob.slice(0, 2)).text();
++         if (!header.startsWith('PK')) {
++           const hint = await readBlobAsText(response.data);
++           alert.error('Archivo inválido', `El contenido no parece un XLSX. ${hint || ''} Generando Excel local...`);
++           generateLocalExcel();
++           return;
++         }
+         const ok = downloadBlob(blob, filename);
+         if (ok) alert.success('Éxito', `Reporte Excel${selectedSensor ? ` de ${selectedSensor.tipo_sensor}` : ''} descargado correctamente`);
+         return;
+      }
+
+      if (response.status === 404) {
+        alert.warning('Sin datos', 'No se encontraron datos en el rango seleccionado. Generando Excel local...');
+        generateLocalExcel();
+        return;
+      }
+
+      const text = await readBlobAsText(response.data);
+      alert.error('Error', `No se pudo generar el Excel en servidor. ${text || 'Estado ' + response.status}`);
+      if (historialData.length > 0 || sensors.length > 0) {
+        generateLocalExcel();
+      }
     } catch (error) {
       console.error('Error en exportación Excel:', error);
-      const status = error?.response?.status;
-
-      if (status === 404) {
-        alert.warning('Sin datos', 'No se encontraron datos en el rango seleccionado');
-      } else if (status === 401) {
-        alert.error('Autenticación', 'Sesión expirada. Por favor, inicie sesión nuevamente');
-      } else {
-        // Fallback a generación local
-        if (historialData.length > 0 || sensors.length > 0) {
-          generateLocalExcel();
-        } else {
-          alert.error('Error', 'No se pudo descargar el Excel y no hay datos suficientes para generar un reporte local');
-        }
-      }
+      alert.error('Error', 'Falló la descarga de Excel. Generando Excel local...');
+      generateLocalExcel();
     }
   };
 

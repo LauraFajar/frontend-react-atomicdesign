@@ -41,3 +41,27 @@ export function extractFilename(contentDisposition) {
   const match = /filename="?([^";]+)"?/i.exec(contentDisposition);
   return match ? match[1] : null;
 }
+
+export const downloadBlob = (blob, filename) => {
+  try {
+    if (!blob || typeof blob.size !== 'number' || blob.size === 0) {
+      console.error('Blob vacío o inválido para descarga');
+      return false;
+    }
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename || `download-${Date.now()}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Dar un pequeño margen antes de revocar el URL para evitar fallos intermitentes
+    setTimeout(() => {
+      window.URL.revokeObjectURL(url);
+    }, 500);
+    return true;
+  } catch (e) {
+    console.error('Error al descargar blob:', e);
+    return false;
+  }
+};

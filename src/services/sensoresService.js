@@ -75,36 +75,26 @@ export const getHistorial = (id, params) =>
 export const getRecomendaciones = (id) => api.get(`/sensores/${id}/recomendaciones`);
 
 export const exportIotPdf = (params = {}) => {
-  console.log('Exportando PDF IoT con parámetros:', buildReportParams(params));
+  const p = buildReportParams(params);
+  console.log('Exportando PDF IoT con parámetros:', p);
   return api.get('/api/iot/reporte-iot/pdf', {
-    params: buildReportParams(params),
+    params: p,
     responseType: 'blob',
-    timeout: 30000 // 30 segundos timeout
-  })
-  .then(response => {
-    console.log('PDF exportado exitosamente');
-    return response;
-  })
-  .catch(error => {
-    console.error('Error exportando PDF:', error);
-    throw error;
+    timeout: 30000,
+    headers: { Accept: 'application/pdf' },
+    validateStatus: (status) => status === 200 || status === 404 || status === 500,
   });
 };
 
 export const exportIotExcel = (params = {}) => {
-  console.log('Exportando Excel IoT con parámetros:', buildReportParams(params));
+  const p = buildReportParams(params);
+  console.log('Exportando Excel IoT con parámetros:', p);
   return api.get('/api/iot/reporte-iot/excel', {
-    params: buildReportParams(params),
+    params: p,
     responseType: 'blob',
-    timeout: 30000 // 30 segundos timeout
-  })
-  .then(response => {
-    console.log('Excel exportado exitosamente');
-    return response;
-  })
-  .catch(error => {
-    console.error('Error exportando Excel:', error);
-    throw error;
+    timeout: 30000,
+    headers: { Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+    validateStatus: (status) => status === 200 || status === 404 || status === 500,
   });
 };
 
