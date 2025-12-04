@@ -4,6 +4,12 @@ import config from '../config/environment';
 
 const API_URL = config.api.baseURL;
 
+// Asegurar envío de cookies (sesión) para endpoints protegidos
+const api = axios.create({
+  baseURL: API_URL,
+  withCredentials: true,
+});
+
 const getAuthHeader = () => {
   const token = Cookies.get('token');
   if (token) return { Authorization: `Bearer ${token}` };
@@ -15,7 +21,7 @@ let _cachedAllPerms = null;
 
 const permissionService = {
   list: async () => {
-    const response = await axios.get(`${API_URL}/permisos`, { headers: getAuthHeader() });
+    const response = await api.get(`/permisos`, { headers: getAuthHeader() });
     const data = response.data;
     const arr = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : Array.isArray(data?.data) ? data.data : [];
     _cachedAllPerms = arr;
@@ -37,12 +43,12 @@ const permissionService = {
     const normAccion = normalizeAction(accion);
     const clave = `${(recurso || '').toString().trim()}:${normAccion}`;
     const payload = { clave, recurso, accion: normAccion, nombre_permiso, descripcion, activo };
-    const response = await axios.post(`${API_URL}/permisos`, payload, { headers: getAuthHeader() });
+    const response = await api.post(`/permisos`, payload, { headers: getAuthHeader() });
     return response.data;
   },
 
   getUserKeys: async (idUsuario) => {
-    const response = await axios.get(`${API_URL}/permisos/usuario/${idUsuario}`, { headers: getAuthHeader() });
+    const response = await api.get(`/permisos/usuario/${idUsuario}`, { headers: getAuthHeader() });
     const data = response.data;
     const normalizeKey = (k) => {
       const s = (k || '').toString().trim().toLowerCase();
@@ -96,7 +102,7 @@ const permissionService = {
   },
 
   getMyKeys: async () => {
-    const response = await axios.get(`${API_URL}/permisos/usuario/me`, { headers: getAuthHeader() });
+    const response = await api.get(`/permisos/usuario/me`, { headers: getAuthHeader() });
     const data = response.data;
     const normalizeKey = (k) => {
       const s = (k || '').toString().trim().toLowerCase();
@@ -150,12 +156,12 @@ const permissionService = {
   },
 
   assign: async ({ id_usuario, id_permiso }) => {
-    const response = await axios.post(`${API_URL}/permisos/asignar`, { id_usuario, id_permiso }, { headers: getAuthHeader() });
+    const response = await api.post(`/permisos/asignar`, { id_usuario, id_permiso }, { headers: getAuthHeader() });
     return response.data;
   },
 
   revoke: async ({ id_usuario, id_permiso }) => {
-    const response = await axios.delete(`${API_URL}/permisos/asignar`, {
+    const response = await api.delete(`/permisos/asignar`, {
       headers: getAuthHeader(),
       data: { id_usuario, id_permiso },
     });

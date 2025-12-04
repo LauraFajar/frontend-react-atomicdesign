@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, Typography, Paper, Box, CircularProgress, Fab, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Switch, List, ListItem, ListItemText, Divider, TextField, Autocomplete } from '@mui/material';
 import { AddLocationAlt, AddRoad, MyLocation, Edit } from '@mui/icons-material';
@@ -298,17 +298,17 @@ const LotsMapPage = () => {
   const [showSublots, setShowSublots] = useState(true);
   const [selectedCropType, setSelectedCropType] = useState(null);
 
-  const normalizeCropType = (t) => {
+  const normalizeCropType = useCallback((t) => {
     if (!t) return null;
     const s = String(t).toLowerCase().trim();
     if (s.includes('peren')) return 'perennes';
     if (s.includes('transito')) return 'transitorios';
     if (s.includes('semi') && s.includes('peren')) return 'semiperennes';
     return s;
-  };
+  }, []);
   const CANONICAL_ORDER = ['perennes', 'transitorios', 'semiperennes'];
 
-  const getCropLotId = (c) => {
+  const getCropLotId = useCallback((c) => {
     try {
       const rel = c?.id_lote;
       if (rel == null) return null;
@@ -321,7 +321,7 @@ const LotsMapPage = () => {
     } catch {
       return null;
     }
-  };
+  }, []);
 
   const { data: mapData = [], isLoading: mapLoading, isError: mapError, error: mapErr } = useQuery({
     queryKey: ['lotesMapData'],
@@ -395,32 +395,32 @@ const LotsMapPage = () => {
     const inOrder = CANONICAL_ORDER.filter((t) => set.has(t));
     const others = normalized.filter((t) => !CANONICAL_ORDER.includes(t)).sort();
     return [...inOrder, ...others];
-  }, [cropsData]);
-
-  const toRadians = (deg) => (deg * Math.PI) / 180;
-  const polygonAreaMeters = (positions) => {
-    try {
-      const pts = Array.isArray(positions[0]) ? positions[0] : positions; 
-      if (!Array.isArray(pts) || pts.length < 3) return 0;
-      const R = 6371000;
-      const lat0 = pts.reduce((sum, [lat]) => sum + toRadians(lat), 0) / pts.length;
-      const cosLat0 = Math.cos(lat0);
-      const xy = pts.map(([lat, lng]) => {
-        const x = R * toRadians(lng) * cosLat0;
-        const y = R * toRadians(lat);
-        return [x, y];
-      });
-      let area = 0;
-      for (let i = 0, j = xy.length - 1; i < xy.length; j = i++) {
-        area += xy[j][0] * xy[i][1] - xy[i][0] * xy[j][1];
-      }
-      return Math.abs(area) / 2;
-    } catch {
-      return 0;
-    }
-  };
+  }, [cropsData, normalizeCropType, CANONICAL_ORDER]);
 
   const topByArea = useMemo(() => {
+    const toRadians = (deg) => (deg * Math.PI) / 180;
+    const polygonAreaMeters = (positions) => {
+      try {
+        const pts = Array.isArray(positions[0]) ? positions[0] : positions;
+        if (!Array.isArray(pts) || pts.length < 3) return 0;
+        const R = 6371000;
+        const lat0 = pts.reduce((sum, [lat]) => sum + toRadians(lat), 0) / pts.length;
+        const cosLat0 = Math.cos(lat0);
+        const xy = pts.map(([lat, lng]) => {
+          const x = R * toRadians(lng) * cosLat0;
+          const y = R * toRadians(lat);
+          return [x, y];
+        });
+        let area = 0;
+        for (let i = 0, j = xy.length - 1; i < xy.length; j = i++) {
+          area += xy[j][0] * xy[i][1] - xy[i][0] * xy[j][1];
+        }
+        return Math.abs(area) / 2;
+      } catch {
+        return 0;
+      }
+    };
+
     const items = Array.isArray(mapData) ? mapData : [];
     const crops = Array.isArray(cropsData?.items) ? cropsData.items : (Array.isArray(cropsData) ? cropsData : []);
     const byLotIdCropTypes = new Map();
@@ -439,7 +439,7 @@ const LotsMapPage = () => {
     });
     const filtered = selectedCropType ? rows.filter((r) => r.tipos.includes(selectedCropType)) : rows;
     return filtered.sort((a, b) => b.area - a.area).slice(0, 5);
-  }, [mapData, cropsData, selectedCropType]);
+  }, [mapData, cropsData, selectedCropType, getCropLotId, normalizeCropType]);
 
   const filteredMapData = useMemo(() => {
     const items = Array.isArray(mapData) ? mapData : [];
@@ -455,7 +455,7 @@ const LotsMapPage = () => {
       }
     });
     return items.filter((l) => lotIds.has(Number(l.id_lote)));
-  }, [mapData, cropsData, selectedCropType]);
+  }, [mapData, cropsData, selectedCropType, getCropLotId, normalizeCropType]);
 
   const createLotMutation = useMutation({
     mutationFn: (payload) => lotService.createLot({ ...payload, nombre_lote: payload.nombre }),

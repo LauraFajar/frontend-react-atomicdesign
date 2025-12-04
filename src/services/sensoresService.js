@@ -76,8 +76,8 @@ export const getRecomendaciones = (id) => api.get(`/sensores/${id}/recomendacion
 
 export const exportIotPdf = (params = {}) => {
   console.log('Exportando PDF IoT con parámetros:', buildReportParams(params));
-  return api.get('/sensores/reporte-iot/pdf', { 
-    params: buildReportParams(params), 
+  return api.get('/api/iot/reporte-iot/pdf', {
+    params: buildReportParams(params),
     responseType: 'blob',
     timeout: 30000 // 30 segundos timeout
   })
@@ -93,8 +93,8 @@ export const exportIotPdf = (params = {}) => {
 
 export const exportIotExcel = (params = {}) => {
   console.log('Exportando Excel IoT con parámetros:', buildReportParams(params));
-  return api.get('/sensores/reporte-iot/excel', { 
-    params: buildReportParams(params), 
+  return api.get('/api/iot/reporte-iot/excel', {
+    params: buildReportParams(params),
     responseType: 'blob',
     timeout: 30000 
   })
@@ -114,6 +114,33 @@ export const unsubscribeTopic = (topic) => api.post('/sensores/unsubscribe', { t
 export const getTiempoReal = () => api.get('/sensores/tiempo-real').then((r) => r?.data || []);
 export const getTopics = () => api.get('/sensores/topics').then((r) => r?.data || []);
 
+// Add makeRequest method for comprehensive reports
+export const makeRequest = (endpoint, method = 'GET', params = {}, data = null) => {
+  console.log(`Making ${method} request to ${endpoint} with params:`, params);
+
+  const config = {
+    method: method,
+    url: endpoint,
+    params: params,
+    responseType: endpoint.includes('pdf') || endpoint.includes('excel') ? 'blob' : 'json',
+    timeout: 30000
+  };
+
+  if (data) {
+    config.data = data;
+  }
+
+  return api(config)
+    .then(response => {
+      console.log(`Request to ${endpoint} successful`);
+      return response;
+    })
+    .catch(error => {
+      console.error(`Error in ${method} request to ${endpoint}:`, error);
+      throw error;
+    });
+};
+
 const service = {
   getSensores,
   getSensor,
@@ -126,6 +153,7 @@ const service = {
   getHistorialByTopic,
   getTiempoReal,
   getTopics,
+  makeRequest,
   createSensor: (payload) => api.post('/sensores', payload),
   updateSensor: (id, payload) => api.put(`/sensores/${id}`, payload),
   deleteSensor: (id) => api.delete(`/sensores/${id}`),

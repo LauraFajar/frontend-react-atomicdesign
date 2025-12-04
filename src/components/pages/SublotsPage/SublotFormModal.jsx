@@ -102,18 +102,6 @@ const SublotFormModal = ({ open, onClose, onSave, sublot }) => {
     }
   };
 
-  const handleClose = () => {
-    if (!loading) {
-      onClose();
-      setFormData({
-        descripcion: '',
-        ubicacion: '',
-        id_lote: ''
-      });
-      setErrors({});
-      setServerError('');
-    }
-  };
 
   return (
     <Dialog 

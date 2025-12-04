@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, TextField, Typography, CircularProgress, Table, TableHead, TableRow, TableCell, TableBody, IconButton } from '@mui/material';
-import { Add, Search as SearchIcon, ArrowDownward, ArrowUpward, Delete, Edit } from '@mui/icons-material';
+import { Add, Search as SearchIcon, Delete, Edit } from '@mui/icons-material';
 import { useAlert } from '../../../contexts/AlertContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import InventoryTable from './components/InventoryTable';
@@ -47,7 +47,7 @@ const InventoryPage = () => {
     if (user?.id) {
       refreshPermissions(user.id);
     }
-  }, []);
+  }, [user?.id, refreshPermissions]);
 
   useEffect(() => {
     console.log('[InventoryPage] user:', user);

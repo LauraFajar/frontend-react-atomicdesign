@@ -3,22 +3,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useAlert } from '../../../contexts/AlertContext';
 import sublotService from '../../../services/sublotService';
-import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, IconButton, CircularProgress } from '@mui/material';
+import { Button, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography, IconButton, CircularProgress } from '@mui/material';
 import { Add, Edit, Delete, Search } from '@mui/icons-material';
 import SublotFormModal from './SublotFormModal';
 import ConfirmModal from '../../molecules/ConfirmModal/ConfirmModal';
 import './SublotsPage.css';
-
-const statusConfig = {
-  activo: {
-    color: '#2e7d32',
-    bgColor: '#e8f5e9'
-  },
-  inactivo: {
-    color: '#d32f2f',
-    bgColor: '#ffebee'
-  }
-};
 
 const SublotsPage = () => {
   const { user } = useAuth();

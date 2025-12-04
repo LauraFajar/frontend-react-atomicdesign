@@ -1,7 +1,7 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
 
 const getAuthHeader = () => {
   const token = Cookies.get('token');
@@ -323,3 +323,29 @@ const activityService = {
 };
 
 export default activityService;
+
+
+export const getActivities = async () => {
+  const response = await axios.get(`${API_URL}/actividades`, { headers: getAuthHeader() });
+  return response.data;
+};
+
+export const getActivityById = async (id) => {
+  const response = await axios.get(`${API_URL}/actividades/${id}`, { headers: getAuthHeader() });
+  return response.data;
+};
+
+export const createActivity = async (payload) => {
+  const response = await axios.post(`${API_URL}/actividades`, payload, { headers: { 'Content-Type': 'application/json', ...getAuthHeader() } });
+  return response.data;
+};
+
+export const updateActivity = async (id, payload) => {
+  const response = await axios.put(`${API_URL}/actividades/${id}`, payload, { headers: { 'Content-Type': 'application/json', ...getAuthHeader() } });
+  return response.data;
+};
+
+export const deleteActivity = async (id) => {
+  const response = await axios.delete(`${API_URL}/actividades/${id}`, { headers: getAuthHeader() });
+  return response.data;
+};

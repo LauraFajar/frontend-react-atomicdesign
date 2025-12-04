@@ -99,7 +99,6 @@ const movimientosService = {
         lastErr = e3;
       }
     }
-    const status = lastErr?.response?.status;
     const errorData = lastErr?.response?.data;
     const serverMsg = errorData?.message || errorData?.error || lastErr?.message;
     throw new Error(serverMsg || 'No se pudo crear el movimiento');

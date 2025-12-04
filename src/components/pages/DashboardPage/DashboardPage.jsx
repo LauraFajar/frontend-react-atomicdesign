@@ -13,7 +13,7 @@ import InventoryPage from '../InventoryPage/InventoryPage';
 import FinanceDashboard from '../FinanceDashboard/FinanceDashboard';
 import AlmacenesPage from '../AlmacenesPage/AlmacenesPage';
 import CategoriasPage from '../CategoriasPage/CategoriasPage';
-import IotPage from '../IotPage/IotPage';
+import IotPage from '../IotPage/ModernIotPage';
 import ReportesPage from '../ReportesPage/ReportesPage';
 import { useAuth } from '../../../contexts/AuthContext';
 import LotsMapPage from '../LotsMapPage/LotsMapPage';
