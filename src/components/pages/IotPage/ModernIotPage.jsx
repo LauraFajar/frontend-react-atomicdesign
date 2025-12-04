@@ -1,7 +1,5 @@
 import SimpleIotPage from './SimpleIotPage';
 
-export default SimpleIotPage;
-
 import React, { useState, useEffect } from 'react';
 import { 
   Box, 
@@ -492,3 +490,6 @@ class ErrorBoundary extends React.Component {
     return this.props.children;
   }
 }
+
+// Use the simpler IoT page by default while ModernIotPage is optional
+export default SimpleIotPage;
