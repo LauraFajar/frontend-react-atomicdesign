@@ -1,13 +1,45 @@
 const { createProxyMiddleware } = require('http-proxy-middleware')
 
 module.exports = function (app) {
-  // Proxy de archivos estáticos (imágenes)
+  const target = 'http://localhost:3000'
+
   app.use(
     '/uploads',
-    createProxyMiddleware({
-      target: 'http://localhost:3001',
-      changeOrigin: true,
-    })
+    createProxyMiddleware({ target, changeOrigin: true })
   )
 
+  app.use(
+    '/auth',
+    createProxyMiddleware({ target, changeOrigin: true })
+  )
+
+  app.use(
+    '/usuarios',
+    createProxyMiddleware({ target, changeOrigin: true })
+  )
+
+  app.use(
+    '/sensores',
+    createProxyMiddleware({ target, changeOrigin: true })
+  )
+
+  app.use(
+    '/cultivos',
+    createProxyMiddleware({ target, changeOrigin: true })
+  )
+
+  app.use(
+    '/lotes',
+    createProxyMiddleware({ target, changeOrigin: true })
+  )
+
+  app.use(
+    '/lecturas',
+    createProxyMiddleware({ target, changeOrigin: true })
+  )
+
+  app.use(
+    '/recomendaciones',
+    createProxyMiddleware({ target, changeOrigin: true })
+  )
 }
