@@ -1,7 +1,8 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
+import config from '../config/environment';
 
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = config.api.baseURL;
 
 const getAuthHeader = () => {
   const token = Cookies.get('token');
@@ -177,3 +178,5 @@ class CalendarService {
 
 const calendarService = new CalendarService();
 export default calendarService;
+
+// Eliminado bloque duplicado de axios CRUD; mantener CalendarService como export default

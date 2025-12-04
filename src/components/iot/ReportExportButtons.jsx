@@ -14,7 +14,7 @@ const ReportExportButtons = ({
   selectedSensor = null,
 }) => {
   const alert = useAlert();
-  
+
   const fecha_desde = startDate?.toISOString?.() ? startDate.toISOString().split('T')[0] : undefined;
   const fecha_hasta = endDate?.toISOString?.() ? endDate.toISOString().split('T')[0] : undefined;
 
@@ -31,13 +31,13 @@ const ReportExportButtons = ({
   // Calcular información del período para mostrar al usuario
   const getPeriodInfo = () => {
     if (!fecha_desde || !fecha_hasta) return null;
-    
+
     const start = new Date(fecha_desde);
     const end = new Date(fecha_hasta);
     const diffTime = Math.abs(end.getTime() - start.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
     const diffWeeks = Math.ceil(diffDays / 7);
-    
+
     return {
       days: diffDays,
       weeks: diffWeeks,
@@ -47,8 +47,8 @@ const ReportExportButtons = ({
 
   // Función para descargar archivo desde response blob
   const downloadBlobResponse = (response, filename) => {
-    const blob = new Blob([response.data], { 
-      type: response.headers['content-type'] || 'application/octet-stream' 
+    const blob = new Blob([response.data], {
+      type: response.headers['content-type'] || 'application/octet-stream'
     });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -63,16 +63,16 @@ const ReportExportButtons = ({
   // Función para generar PDF localmente como fallback
   const generateLocalPDF = () => {
     const w = window.open('', '_blank');
-    const title = selectedSensor ? 
-      `Reporte IoT - ${selectedSensor.tipo_sensor} (${selectedSensor.ubicacion || 'Ubicación N/A'})` : 
+    const title = selectedSensor ?
+      `Reporte IoT - ${selectedSensor.tipo_sensor} (${selectedSensor.ubicacion || 'Ubicación N/A'})` :
       'Reporte IoT - Todos los Sensores';
-    
+
     // Preparar datos históricos con mejor manejo de campos
     const chartData = historialData.map(item => {
       const fecha = item.fecha || item.timestamp || item.ts || item.date || item.created_at;
       const valor = item.valor || item.value || item.temperaturaAmbiente || item.humedadAmbiente || item.humedadSuelo || item.temp || item.humidity || 0;
       const tipo = item.tipo_sensor || item.tipo || item.metric || 'sensor';
-      
+
       return {
         fecha: fecha ? new Date(fecha) : new Date(),
         valor: Number(valor) || 0,
@@ -91,11 +91,11 @@ const ReportExportButtons = ({
     });
 
     // Si hay un sensor seleccionado, filtrar los datos
-    const datosParaGrafica = selectedSensor ? 
+    const datosParaGrafica = selectedSensor ?
       chartData.filter(item => {
         const selectedTipo = selectedSensor.tipo_sensor.toLowerCase();
         const itemTipo = item.tipo.toLowerCase();
-        
+
         if (selectedTipo.includes('temperatura')) {
           return itemTipo.includes('temperatura');
         } else if (selectedTipo.includes('humedad') && selectedTipo.includes('aire')) {
@@ -113,7 +113,7 @@ const ReportExportButtons = ({
     }).join('');
 
     // Información de sensores y cultivos
-    const sensorInfo = sensors.map(sensor => 
+    const sensorInfo = sensors.map(sensor =>
       `<tr>
         <td>${sensor.id}</td>
         <td>${sensor.tipo_sensor}</td>
@@ -125,7 +125,7 @@ const ReportExportButtons = ({
     ).join('');
 
     // Información de activaciones de bomba
-    const bombaInfo = bombaData.slice(0, 20).map(bomba => 
+    const bombaInfo = bombaData.slice(0, 20).map(bomba =>
       `<tr><td>${new Date(bomba.fecha).toLocaleString('es-ES')}</td><td>${bomba.estado}</td></tr>`
     ).join('');
 
@@ -148,7 +148,7 @@ const ReportExportButtons = ({
       chartConfigs = Object.entries(sensoresPorTipo).map(([tipo, datos], index) => {
         const colors = ['#ff6b35', '#2196f3', '#4caf50', '#ff9800', '#9c27b0', '#f44336'];
         const color = colors[index % colors.length];
-        
+
         const chartData = datos.slice(-50).map(item => ({
           x: item.fecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
           y: item.valor
@@ -191,7 +191,7 @@ const ReportExportButtons = ({
         </head>
         <body>
           <h1>🌱 ${title}</h1>
-          
+
           <div class="summary">
             <h2>📊 Resumen Ejecutivo</h2>
             ${selectedSensor ? `
@@ -280,7 +280,7 @@ const ReportExportButtons = ({
               </thead>
               <tbody>${bombaInfo}</tbody>
             </table>
-            
+
             <h3>📊 Estadísticas de Bomba</h3>
             <div class="stats-grid">
               <div class="stat-card">
@@ -356,7 +356,7 @@ const ReportExportButtons = ({
                 }
               });
             `).join('')}
-            
+
             // Auto-imprimir después de cargar
             window.onload = function() {
               setTimeout(() => {
@@ -375,14 +375,14 @@ const ReportExportButtons = ({
   const generateLocalExcel = () => {
     try {
       const wb = XLSX.utils.book_new();
-      
+
       // Preparar datos históricos con mejor manejo
       const chartData = historialData.map(item => {
         const fecha = item.fecha || item.timestamp || item.ts || item.date || item.created_at;
         const valor = item.valor || item.value || item.temperaturaAmbiente || item.humedadAmbiente || item.humedadSuelo || item.temp || item.humidity || 0;
         const tipo = item.tipo_sensor || item.tipo || item.metric || 'sensor';
         const unidad = item.unidad || item.unit || '';
-        
+
         return {
           'Fecha y Hora': fecha ? new Date(fecha).toLocaleString('es-ES') : 'N/A',
           'Valor': Number(valor) || 0,
@@ -394,11 +394,11 @@ const ReportExportButtons = ({
       }).filter(item => item['Fecha y Hora'] !== 'N/A');
 
       // Filtrar datos si hay un sensor seleccionado
-      const datosParaReporte = selectedSensor ? 
+      const datosParaReporte = selectedSensor ?
         chartData.filter(item => {
           const selectedTipo = selectedSensor.tipo_sensor.toLowerCase();
           const itemTipo = item['Tipo de Sensor'].toLowerCase();
-          
+
           if (selectedTipo.includes('temperatura')) {
             return itemTipo.includes('temperatura');
           } else if (selectedTipo.includes('humedad') && selectedTipo.includes('aire')) {
@@ -408,7 +408,7 @@ const ReportExportButtons = ({
           }
           return true;
         }) : chartData;
-      
+
       const ws1 = XLSX.utils.json_to_sheet(datosParaReporte);
       XLSX.utils.book_append_sheet(wb, ws1, selectedSensor ? `Datos ${selectedSensor.tipo_sensor}` : 'Datos Históricos');
 
@@ -423,7 +423,7 @@ const ReportExportButtons = ({
         'Ubicación/Cultivo': sensor.ubicacion || 'No asignado',
         'Última Lectura': sensor.ultima_lectura || 'N/A'
       }));
-      
+
       const ws2 = XLSX.utils.json_to_sheet(sensorInfo);
       XLSX.utils.book_append_sheet(wb, ws2, 'Información Sensores');
 
@@ -441,7 +441,7 @@ const ReportExportButtons = ({
             return diferencia <= 7 * 24 * 60 * 60 * 1000 ? 'Sí' : 'No';
           })()
         }));
-        
+
         // Agregar fila de resumen
         bombaInfo.push({
           'Fecha y Hora': 'RESUMEN',
@@ -450,7 +450,7 @@ const ReportExportButtons = ({
           'Es Hoy': '',
           'Esta Semana': ''
         });
-        
+
         bombaInfo.push({
           'Fecha y Hora': 'Total Activaciones',
           'Estado': bombaData.filter(b => b.estado === 'ENCENDIDA').length,
@@ -458,7 +458,7 @@ const ReportExportButtons = ({
           'Es Hoy': '',
           'Esta Semana': ''
         });
-        
+
         bombaInfo.push({
           'Fecha y Hora': 'Activaciones esta semana',
           'Estado': bombaData.filter(b => {
@@ -471,7 +471,7 @@ const ReportExportButtons = ({
           'Es Hoy': '',
           'Esta Semana': ''
         });
-        
+
         bombaInfo.push({
           'Fecha y Hora': 'Activaciones hoy',
           'Estado': bombaData.filter(b => {
@@ -482,7 +482,7 @@ const ReportExportButtons = ({
           'Es Hoy': '',
           'Esta Semana': ''
         });
-        
+
         const ws3 = XLSX.utils.json_to_sheet(bombaInfo);
         XLSX.utils.book_append_sheet(wb, ws3, 'Historial Bomba');
       }
@@ -498,7 +498,7 @@ const ReportExportButtons = ({
         { 'Métrica': 'Tópico MQTT', 'Valor': topic || 'Todos los sensores' },
         { 'Métrica': 'Fecha de Generación', 'Valor': new Date().toLocaleString('es-ES') }
       ];
-      
+
       const ws4 = XLSX.utils.json_to_sheet(resumen);
       XLSX.utils.book_append_sheet(wb, ws4, 'Resumen General');
 
@@ -528,7 +528,7 @@ const ReportExportButtons = ({
     } catch (error) {
       console.error('Error en exportación PDF:', error);
       const status = error?.response?.status;
-      
+
       if (status === 404) {
         alert.warning('Sin datos', 'No se encontraron datos en el rango seleccionado');
       } else if (status === 401) {
@@ -554,7 +554,7 @@ const ReportExportButtons = ({
     } catch (error) {
       console.error('Error en exportación Excel:', error);
       const status = error?.response?.status;
-      
+
       if (status === 404) {
         alert.warning('Sin datos', 'No se encontraron datos en el rango seleccionado');
       } else if (status === 401) {
@@ -572,23 +572,23 @@ const ReportExportButtons = ({
 
   return (
     <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-      <Button 
-        variant="contained" 
-        color="success" 
+      <Button
+        variant="contained"
+        color="success"
         onClick={onExportExcel}
         size="small"
       >
         📊 Descargar Excel
       </Button>
-      <Button 
-        variant="contained" 
-        color="primary" 
+      <Button
+        variant="contained"
+        color="primary"
         onClick={onExportPdf}
         size="small"
       >
         📄 Descargar PDF
       </Button>
-      
+
       {/* Mostrar información sobre los datos disponibles */}
       {(historialData.length === 0 && sensors.length === 0) && (
         <Alert severity="info" sx={{ mt: 1, width: '100%' }}>
@@ -600,10 +600,10 @@ const ReportExportButtons = ({
       {(() => {
         const periodInfo = getPeriodInfo();
         if (periodInfo) {
-          const reportType = periodInfo.type === 'weekly' ? 
-            `📊 Reporte Semanal (${periodInfo.weeks} semanas)` : 
+          const reportType = periodInfo.type === 'weekly' ?
+            `📊 Reporte Semanal (${periodInfo.weeks} semanas)` :
             `📋 Reporte Detallado (${periodInfo.days} días)`;
-          
+
           return (
             <Alert severity="info" sx={{ mt: 1, width: '100%' }}>
               {reportType} - Incluye análisis de alertas y recomendaciones inteligentes

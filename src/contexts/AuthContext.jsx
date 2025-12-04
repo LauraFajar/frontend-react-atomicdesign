@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import Cookies from 'js-cookie';
 import config from '../config/environment';
@@ -214,7 +214,7 @@ export const AuthProvider = ({ children }) => {
     return result
   }
 
-  const loadPermissions = async (userId) => {
+  const loadPermissions = useCallback(async (userId) => {
     try {
       const currentId = userId || user?.id
       if (!currentId) return
@@ -247,7 +247,7 @@ export const AuthProvider = ({ children }) => {
       console.warn('[AuthContext] Unable to load permissions', e)
       setPermissions([])
     }
-  }
+  }, [user?.id])
 
   const refreshPermissions = async (userId) => {
     await loadPermissions(userId || user?.id)
@@ -290,7 +290,7 @@ export const AuthProvider = ({ children }) => {
 
       setLoading(false);
     })()
-  }, [])
+  }, [loadPermissions])
 
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(

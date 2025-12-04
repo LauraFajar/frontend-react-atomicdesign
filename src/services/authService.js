@@ -1,34 +1,26 @@
 import axios from 'axios';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3001',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  withCredentials: false // false temporalmente para pruebas
+  baseURL: API_URL,
+  withCredentials: true,
 });
 
-api.interceptors.request.use(
-  config => {
-    console.log('Enviando solicitud a:', config.url);
-    return config;
-  },
-  error => {
-    console.error('Error en la solicitud:', error);
-    return Promise.reject(error);
-  }
-);
+export const login = async (credentials) => {
+  const response = await api.post('/auth/login', credentials);
+  return response.data;
+};
 
-api.interceptors.response.use(
-  response => {
-    console.log('Respuesta recibida:', response.config.url, response.status);
-    return response;
-  },
-  error => {
-    console.error('Error en la respuesta:', error.response?.status, error.message);
-    return Promise.reject(error);
-  }
-);
+export const logout = async () => {
+  const response = await api.post('/auth/logout');
+  return response.data;
+};
+
+export const getCurrentUser = async () => {
+  const response = await api.get('/auth/user');
+  return response.data;
+};
 
 const authService = {
   requestPasswordReset: async (email) => {

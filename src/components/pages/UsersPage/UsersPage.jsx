@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useAlert } from '../../../contexts/AlertContext';
 import userService from '../../../services/userService';
-import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, IconButton, Chip, CircularProgress, Pagination } from '@mui/material';
+import { Button, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography, IconButton, Chip, CircularProgress, Pagination } from '@mui/material';
 import { Add, Edit, Delete, Search, VpnKey } from '@mui/icons-material';
 import UserFormModal from './UserFormModal';
 import ConfirmModal from '../../molecules/ConfirmModal/ConfirmModal';
@@ -19,7 +19,7 @@ const roleConfig = {
 };
 
 const UsersPage = () => {
-  const { user, hasPermission, hasAnyPermission } = useAuth();
+  const { user, hasAnyPermission } = useAuth();
   const queryClient = useQueryClient();
   const alert = useAlert();
 
@@ -47,7 +47,6 @@ const UsersPage = () => {
     },
   });
 
-  const users = data?.items || [];
   const totalPages = data?.meta?.totalPages || 1;
 
   const { data: roles = [] } = useQuery({
@@ -58,6 +57,7 @@ const UsersPage = () => {
   });
 
   const filteredUsers = useMemo(() => {
+    const users = data?.items || [];
     if (!searchTerm) return users;
     return users.filter(user => {
       const nombre = String(user.nombres || '').toLowerCase();
@@ -67,7 +67,7 @@ const UsersPage = () => {
 
       return nombre.includes(term) || email.includes(term) || documento.includes(term);
     });
-  }, [searchTerm, users]);
+  }, [searchTerm, data?.items]);
 
   const createMutation = useMutation({
     mutationFn: userService.createUser,

@@ -1,7 +1,37 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+
+export const api = axios.create({
+  baseURL: API_URL,
+  withCredentials: true,
+});
+
+export const getSublotes = async () => {
+  const response = await api.get('/sublotes');
+  return response.data;
+};
+
+export const getSubloteById = async (id) => {
+  const response = await api.get(`/sublotes/${id}`);
+  return response.data;
+};
+
+export const createSublote = async (payload) => {
+  const response = await api.post('/sublotes', payload);
+  return response.data;
+};
+
+export const updateSublote = async (id, payload) => {
+  const response = await api.put(`/sublotes/${id}`, payload);
+  return response.data;
+};
+
+export const deleteSublote = async (id) => {
+  const response = await api.delete(`/sublotes/${id}`);
+  return response.data;
+};
 
 const getAuthHeader = () => {
   const token = Cookies.get('token');

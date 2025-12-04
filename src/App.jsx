@@ -18,7 +18,7 @@ import CultivosMapPage from './components/pages/CultivosMapPage/CultivosMapPage'
 import LotsMapPage from './components/pages/LotsMapPage/LotsMapPage';
 import InventoryPage from './components/pages/InventoryPage/InventoryPage';
 import FinanceDashboard from './components/pages/FinanceDashboard/FinanceDashboard';
-import IotPage from './components/pages/IotPage/IotPage';
+import IotPage from './components/pages/IotPage/SimpleIotPage';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 

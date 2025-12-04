@@ -3,8 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useAlert } from '../../../contexts/AlertContext';
 import { 
-  Box, Button, Card, CardContent, CardActions, Chip, Dialog, DialogActions, 
-  DialogContent, DialogTitle, Divider, FormControl, Grid, IconButton, InputLabel,
+  Box, Button, Card, CardContent, CardActions, Chip, Divider, FormControl, Grid, IconButton, InputLabel,
   MenuItem, Select, Stack, Tooltip, Typography 
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -29,11 +28,10 @@ const permisosEditar = ['tratamientos:editar','tratamiento:editar','tratamientos
 const permisosCrear = ['tratamientos:crear','tratamiento:crear'];
 const permisosEliminar = ['tratamientos:eliminar','tratamiento:eliminar'];
 
-const TratamientosPage = ({ currentUser }) => {
+const TratamientosPage = () => {
   const queryClient = useQueryClient();
   const alert = useAlert();
   const { user, permissions, hasAnyPermission, refreshPermissions } = useAuth();
-  const role = (currentUser?.role || currentUser?.Role || currentUser?.roleLabel || user?.roleLabel || 'Learner');
 
   const [filterEpaId, setFilterEpaId] = useState('');
   const [filterTipo, setFilterTipo] = useState('');
@@ -54,7 +52,7 @@ const TratamientosPage = ({ currentUser }) => {
     if (user?.id) {
       refreshPermissions(user.id);
     }
-  }, []);
+  }, [user?.id, refreshPermissions]);
 
   useEffect(() => {
     console.log('[TratamientosPage] user:', user);

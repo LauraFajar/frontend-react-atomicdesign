@@ -9,6 +9,7 @@ import sensoresService from '../../../services/sensoresService';
 import useMQTT from '../../../hooks/useMQTT';
 import AlertPanel from '../../../components/widgets/AlertPanel';
 import ReportExportButtons from '../../../components/iot/ReportExportButtons';
+import ComprehensiveReportExport from '../../../components/iot/ComprehensiveReportExport';
 import ConfirmModal from '../../../components/molecules/ConfirmModal/ConfirmModal';
 
 const SensorFormModal = ({ open, onClose, onSave, initialData }) => {
@@ -858,6 +859,11 @@ const IotPage = () => {
                       sensors.find(s => s.id === parseInt(selectedSensorForReport)) : 
                       null}
                   />
+                </Box>
+
+                {/* Comprehensive Project Report */}
+                <Box sx={{ mt: 4 }}>
+                  <ComprehensiveReportExport />
                 </Box>
                 {/* Mostrar mensaje si no hay lecturas */}
                 {historialData && Array.isArray(historialData) && historialData.length === 0 && (

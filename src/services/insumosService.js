@@ -92,7 +92,6 @@ const insumosService = {
         if (status !== 404) break;
       }
     }
-    const status = lastError?.response?.status;
     const errorData = lastError?.response?.data;
     const serverMsg = errorData?.message || errorData?.error || lastError?.message;
     throw new Error(serverMsg || 'No se pudo crear el insumo (ruta no encontrada)');

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { FormControl, InputLabel, Select, MenuItem, TextField, Button } from '@mui/material';
+import { FormControl, InputLabel, Select, MenuItem, TextField } from '@mui/material';
 import inventoryService from '../../../services/inventoryService';
 import movimientosService from '../../../services/movimientosService';
 import insumosService from '../../../services/insumosService';
@@ -19,7 +19,6 @@ const ReportesPage = () => {
   });
 
   const [items, setItems] = useState([]);
-  const [bajos, setBajos] = useState([]);
   const [movs, setMovs] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [almacenes, setAlmacenes] = useState([]);
@@ -60,7 +59,6 @@ const ReportesPage = () => {
         if (!mounted) return;
         setResumen({ totalItems, stockTotal, bajoStock });
         setItems(itemsList);
-        setBajos(lowItems);
         setMovs(movItems);
         setCategorias(catResp?.items || []);
         setAlmacenes(almResp?.items || []);
@@ -197,10 +195,6 @@ const ReportesPage = () => {
     });
   }, [items, catNameById, almNameById, insumoCatIdById, insumoAlmIdById]);
 
-  const filteredItems = searchInsumosByNombre(
-    itemsEnriched.filter((it) => matchesFilters(it.categoria, it.almacen)),
-    searchTerm
-  );
 
   const lowByThreshold = itemsEnriched.filter((it) => Number(it.cantidad || 0) <= Number(lowThreshold || 0));
   const filteredBajos = searchInsumosByNombre(
@@ -216,39 +210,6 @@ const ReportesPage = () => {
       return includesSearch(nombre);
     });
 
-  const resumenFiltrado = {
-    totalItems: filteredItems.length,
-    stockTotal: filteredItems.reduce((sum, it) => sum + Number(it.cantidad || 0), 0),
-    bajoStock: filteredBajos.length,
-  };
-
-  const exportCSV = () => {
-    const rows = [
-      ['Insumo', 'Cantidad', 'Unidad', 'Categoría', 'Almacén'],
-      ...filteredBajos.map(it => [
-        it.nombre,
-        Math.max(0, Number(it.cantidad || 0)),
-        it.unidad || '',
-        it.categoria || '',
-        it.almacen || '',
-      ]),
-    ];
-    const csv = rows.map(r => r.map(v => {
-      const s = String(v ?? '');
-      if (s.includes(',') || s.includes('"') || s.includes('\n')) {
-        return '"' + s.replace(/"/g, '""') + '"';
-      }
-      return s;
-    }).join(',')).join('\n');
-    const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const dateLabel = new Date().toISOString().slice(0, 10);
-    a.download = `reportes_inventario_stock_bajo_${dateLabel}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
   const exportXLSX = () => {
     const data = [
