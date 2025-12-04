@@ -20,6 +20,7 @@ import {
   Legend,
   BarChart,
   Bar,
+  Cell,
 } from 'recharts';
 
 const numberFmt = (v) => {
@@ -115,8 +116,8 @@ const FinanceDashboard = () => {
   });
 
   const rentabilidadQuery = useQuery({
-    queryKey: ['finanzasRentabilidad', cultivoId, from, to, criterio, umbral],
-    queryFn: () => financeService.getRentabilidad({ cultivoId, from, to, criterio, umbral }),
+    queryKey: ['finanzasRentabilidad', cultivoId, from, to, 'porcentaje', umbral],
+    queryFn: () => financeService.getRentabilidad({ cultivoId, from, to, criterio: 'porcentaje', umbral }),
     enabled: Boolean(cultivoId),
   });
 
@@ -159,14 +160,16 @@ const FinanceDashboard = () => {
     const rows = rankOnlySelected && cultivoId
       ? margenRows.filter((r) => String(r.id_cultivo ?? r.id) === String(cultivoId))
       : margenRows;
-    return rows.map((r) => {
+    const mapped = rows.map((r) => {
       const ingresos = parseFloat(r.ingresos || 0);
       const egresos = parseFloat(r.egresos || 0);
       const margen = parseFloat(r.margen || (ingresos - egresos));
       const bc = egresos > 0 ? ingresos / egresos : null;
-      const rentable = bc !== null ? bc > (parseFloat(umbral) || 1) : margen > 0;
-      return { nombre: r.nombre_cultivo || r.cultivo || r.nombre, margen, bc, rentable };
+      const pm = ingresos > 0 ? (margen / ingresos) * 100 : 0;
+      const rentable = bc !== null ? bc > 1 : margen > 0;
+      return { nombre: r.nombre_cultivo || r.cultivo || r.nombre, margen, bc, pm, rentable };
     });
+    return mapped.sort((a, b) => (b.pm || 0) - (a.pm || 0));
   }, [margenRows, umbral, rankOnlySelected, cultivoId]);
 
   const ingresosQuery = useQuery({
@@ -544,15 +547,7 @@ const FinanceDashboard = () => {
               <MenuItem value="egreso">Egresos</MenuItem>
             </Select>
           </FormControl>
-          <FormControl size="small" className="filter-item">
-            <InputLabel id="criterio-label">Criterio</InputLabel>
-            <Select labelId="criterio-label" value={criterio} label="Criterio" onChange={(e) => setCriterio(e.target.value)}>
-              <MenuItem value="margen">Margen</MenuItem>
-              <MenuItem value="bc">B/C</MenuItem>
-              <MenuItem value="porcentaje">% Margen</MenuItem>
-            </Select>
-          </FormControl>
-          <TextField size="small" label="Umbral" type="number" value={umbral} onChange={(e) => setUmbral(e.target.value)} className="filter-item" InputLabelProps={{ shrink: true }} />
+          <TextField size="small" label="Umbral margen %" type="number" value={umbral} onChange={(e) => setUmbral(e.target.value)} className="filter-item" InputLabelProps={{ shrink: true }} />
           <Button
             variant="contained"
             sx={{
@@ -679,26 +674,16 @@ const FinanceDashboard = () => {
                 </div>
                 <div className="kpi-item">
                   <div className="kpi-title">Rentable</div>
-                  <div className="kpi-value">{rentabilidadQuery.data?.rentable === true ? 'Sí' : rentabilidadQuery.data?.rentable === false ? 'No' : 'N/A'}</div>
+                  <div className="kpi-value">{(() => {
+                    const bc = rentabilidadQuery.data?.beneficioCosto;
+                    if (bc === null || bc === undefined) return 'N/A';
+                    return Number(bc) > 1 ? 'Sí' : 'No';
+                  })()}</div>
                 </div>
               </div>
             </Paper>
 
-            <Paper className="chart-card" elevation={1}>
-              <Typography variant="subtitle1">Gasto por categoría (pie)</Typography>
-              <Divider sx={{ my: 1 }} />
-              <div className="pie-list">
-                {topCategorias.map((c) => (
-                  <div key={c.nombre} className="pie-item">
-                    <Chip size="small" label={c.nombre} />
-                    <span className="pie-value">{numberFmt(c.total)}</span>
-                  </div>
-                ))}
-                {topCategorias.length === 0 && (
-                  <Typography variant="body2" color="text.secondary">Sin categorías</Typography>
-                )}
-              </div>
-            </Paper>
+            
           </div>
         </div>
       )}
@@ -721,7 +706,14 @@ const FinanceDashboard = () => {
                       <XAxis type="number" />
                       <YAxis type="category" dataKey="nombre" width={120} />
                       <Tooltip />
-                      <Bar dataKey="margen" name="Margen" fill="#4CAF50" />
+                      <Bar dataKey="pm" name="% Margen">
+                        {rankingData.map((entry, index) => {
+                          const c = entry.bc != null && entry.bc > 1
+                            ? (entry.pm >= Number(umbral) ? '#2e7d32' : '#ed6c02')
+                            : '#d32f2f';
+                          return <Cell key={`cell-${index}`} fill={c} />;
+                        })}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -944,6 +936,21 @@ const FinanceDashboard = () => {
           </div>
           <div className="right-panel">
             <Paper className="chart-card" elevation={1}>
+              <Typography variant="subtitle1">Distribución por categoría</Typography>
+              <Divider sx={{ my: 1 }} />
+              <div className="pie-list">
+                {topCategorias.map((c) => (
+                  <div key={c.nombre} className="pie-item">
+                    <Chip size="small" label={c.nombre} />
+                    <span className="pie-value">{numberFmt(c.total)}</span>
+                  </div>
+                ))}
+                {topCategorias.length === 0 && (
+                  <Typography variant="body2" color="text.secondary">Sin categorías</Typography>
+                )}
+              </div>
+            </Paper>
+            <Paper className="chart-card" elevation={1} sx={{ mt: 2 }}>
               <Typography variant="subtitle1">Vida útil herramientas</Typography>
               <Divider sx={{ my: 1 }} />
               {herramientasVida.length > 0 ? (
