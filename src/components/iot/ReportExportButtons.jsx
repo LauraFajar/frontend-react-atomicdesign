@@ -60,14 +60,12 @@ const ReportExportButtons = ({
     window.URL.revokeObjectURL(url);
   };
 
-  // Función para generar PDF localmente como fallback
   const generateLocalPDF = () => {
     const w = window.open('', '_blank');
     const title = selectedSensor ? 
       `Reporte IoT - ${selectedSensor.tipo_sensor} (${selectedSensor.ubicacion || 'Ubicación N/A'})` : 
       'Reporte IoT - Todos los Sensores';
     
-    // Preparar datos históricos con mejor manejo de campos
     const chartData = historialData.map(item => {
       const fecha = item.fecha || item.timestamp || item.ts || item.date || item.created_at;
       const valor = item.valor || item.value || item.temperaturaAmbiente || item.humedadAmbiente || item.humedadSuelo || item.temp || item.humidity || 0;
@@ -81,7 +79,6 @@ const ReportExportButtons = ({
       };
     }).filter(item => !isNaN(item.fecha.getTime()));
 
-    // Crear datos agrupados por tipo de sensor
     const sensoresPorTipo = {};
     chartData.forEach(item => {
       if (!sensoresPorTipo[item.tipo]) {
@@ -90,7 +87,6 @@ const ReportExportButtons = ({
       sensoresPorTipo[item.tipo].push(item);
     });
 
-    // Si hay un sensor seleccionado, filtrar los datos
     const datosParaGrafica = selectedSensor ? 
       chartData.filter(item => {
         const selectedTipo = selectedSensor.tipo_sensor.toLowerCase();
@@ -106,13 +102,11 @@ const ReportExportButtons = ({
         return true;
       }) : chartData;
 
-    // Generar tabla HTML con los datos
     const rows = chartData.map(i => {
       const fecha = i.fecha.toLocaleString('es-ES');
       return `<tr><td>${fecha}</td><td>${i.valor.toFixed(2)}</td><td>${i.tipo}</td><td>${i.unidad}</td></tr>`;
     }).join('');
 
-    // Información de sensores y cultivos
     const sensorInfo = sensors.map(sensor => 
       `<tr>
         <td>${sensor.id}</td>
@@ -124,15 +118,12 @@ const ReportExportButtons = ({
       </tr>`
     ).join('');
 
-    // Información de activaciones de bomba
     const bombaInfo = bombaData.slice(0, 20).map(bomba => 
       `<tr><td>${new Date(bomba.fecha).toLocaleString('es-ES')}</td><td>${bomba.estado}</td></tr>`
     ).join('');
 
-    // Generar configuraciones para gráficas Chart.js
     let chartConfigs;
     if (selectedSensor) {
-      // Para un sensor específico, crear una gráfica con todos sus datos
       const datosSensor = datosParaGrafica.slice(-50);
       chartConfigs = [{
         tipo: selectedSensor.tipo_sensor,
@@ -144,7 +135,6 @@ const ReportExportButtons = ({
         canvasId: `chart_${selectedSensor.tipo_sensor.replace(/\s+/g, '_')}`
       }];
     } else {
-      // Para todos los sensores, crear gráficas por tipo
       chartConfigs = Object.entries(sensoresPorTipo).map(([tipo, datos], index) => {
         const colors = ['#ff6b35', '#2196f3', '#4caf50', '#ff9800', '#9c27b0', '#f44336'];
         const color = colors[index % colors.length];
@@ -371,7 +361,6 @@ const ReportExportButtons = ({
     w.focus();
   };
 
-  // Función para generar Excel localmente como fallback
   const generateLocalExcel = () => {
     try {
       const wb = XLSX.utils.book_new();
@@ -412,7 +401,6 @@ const ReportExportButtons = ({
       const ws1 = XLSX.utils.json_to_sheet(datosParaReporte);
       XLSX.utils.book_append_sheet(wb, ws1, selectedSensor ? `Datos ${selectedSensor.tipo_sensor}` : 'Datos Históricos');
 
-      // Hoja de información de sensores
       const sensorInfo = sensors.map(sensor => ({
         'ID': sensor.id,
         'Tipo de Sensor': sensor.tipo_sensor,
@@ -442,7 +430,6 @@ const ReportExportButtons = ({
           })()
         }));
         
-        // Agregar fila de resumen
         bombaInfo.push({
           'Fecha y Hora': 'RESUMEN',
           'Estado': '',
@@ -487,7 +474,6 @@ const ReportExportButtons = ({
         XLSX.utils.book_append_sheet(wb, ws3, 'Historial Bomba');
       }
 
-      // Hoja de resumen con estadísticas generales
       const resumen = [
         { 'Métrica': selectedSensor ? `Lecturas de ${selectedSensor.tipo_sensor}` : 'Total de Lecturas Históricas', 'Valor': datosParaReporte.length },
         { 'Métrica': 'Total de Sensores', 'Valor': sensors.length },
@@ -502,7 +488,6 @@ const ReportExportButtons = ({
       const ws4 = XLSX.utils.json_to_sheet(resumen);
       XLSX.utils.book_append_sheet(wb, ws4, 'Resumen General');
 
-      // Generar archivo
       const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const urlBlob = URL.createObjectURL(blob);
@@ -534,7 +519,6 @@ const ReportExportButtons = ({
       } else if (status === 401) {
         alert.error('Autenticación', 'Sesión expirada. Por favor, inicie sesión nuevamente');
       } else {
-        // Fallback a generación local
         if (historialData.length > 0 || sensors.length > 0) {
           generateLocalPDF();
           alert.info('Reporte local', 'Generando reporte PDF localmente debido a error del servidor');
@@ -560,7 +544,6 @@ const ReportExportButtons = ({
       } else if (status === 401) {
         alert.error('Autenticación', 'Sesión expirada. Por favor, inicie sesión nuevamente');
       } else {
-        // Fallback a generación local
         if (historialData.length > 0 || sensors.length > 0) {
           generateLocalExcel();
         } else {

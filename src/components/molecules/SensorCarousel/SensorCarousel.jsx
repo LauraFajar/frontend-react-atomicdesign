@@ -5,7 +5,6 @@ import { ChevronLeft, ChevronRight, DeviceThermostat, WaterDrop, Grass } from '@
 const SensorCarousel = ({ sensors, onSelect }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Auto-rotate carousel every 5 seconds
   useEffect(() => {
     if (sensors.length > 1) {
       const interval = setInterval(() => {

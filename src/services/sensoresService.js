@@ -96,7 +96,7 @@ export const exportIotExcel = (params = {}) => {
   return api.get('/sensores/reporte-iot/excel', { 
     params: buildReportParams(params), 
     responseType: 'blob',
-    timeout: 30000 // 30 segundos timeout
+    timeout: 30000 
   })
   .then(response => {
     console.log('Excel exportado exitosamente');
@@ -108,7 +108,6 @@ export const exportIotExcel = (params = {}) => {
   });
 };
 
-// Rutas corregidas según API existente
 export const subscribeTopic = (topic) => api.post('/sensores/subscribe', { topic });
 export const unsubscribeTopic = (topic) => api.post('/sensores/unsubscribe', { topic });
 

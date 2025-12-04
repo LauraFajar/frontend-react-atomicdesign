@@ -1,10 +1,7 @@
-// Temporary import of the simple version to test
 import SimpleIotPage from './SimpleIotPage';
 
-// This file is temporarily replaced with the simple version to isolate the error
 export default SimpleIotPage;
 
-// Original imports (commented out for testing)
 import React, { useState, useEffect } from 'react';
 import { 
   Box, 
@@ -21,40 +18,31 @@ import { Add, Wifi, WifiOff } from '@mui/icons-material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAlert } from '../../../contexts/AlertContext';
 import { useAuth } from '../../../contexts/AuthContext';
-
-// Importar componentes
 import SensorCarousel from '../../molecules/SensorCarousel/SensorCarousel';
 import AreaChartComponent from '../../molecules/AreaChart/AreaChart';
 import SidePanel from '../../molecules/SidePanel/SidePanel';
 import AddBrokerModal from '../../molecules/AddBrokerModal/AddBrokerModal';
-
-// Importar servicios y hooks
 import iotService from '../../../services/iotService';
 import useIotSocket from '../../../hooks/useIotSocket';
 
-// Error Boundary Component
-// eslint-disable-next-line no-unused-vars
 class IoTErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
     this.state = { hasError: false, error: null, errorInfo: null };
   }
 
-  // eslint-disable-next-line no-unused-vars
   static getDerivedStateFromError(error) {
     return { hasError: true, error };
   }
 
   componentDidCatch(error, errorInfo) {
     console.error('IoT Error Boundary caught an error:', error, errorInfo);
-    // eslint-disable-next-line no-unused-vars
     this.setState({
       error,
       errorInfo
     });
   }
 
-  // Safe render method that filters out React component objects
   render() {
     if (this.state.hasError) {
       return (
@@ -80,7 +68,6 @@ class IoTErrorBoundary extends React.Component {
     }
 
     try {
-      // Render children with error protection
       return this.safeRenderChildren(this.props.children);
     } catch (error) {
       console.error('Error rendering children:', error);
@@ -95,7 +82,6 @@ class IoTErrorBoundary extends React.Component {
     }
   }
 
-  // Safely render children by filtering out problematic objects
   safeRenderChildren(children) {
     if (Array.isArray(children)) {
       return children.map((child) => this.safeRenderChild(child, 0));
@@ -103,14 +89,11 @@ class IoTErrorBoundary extends React.Component {
     return this.safeRenderChild(children, 0);
   }
 
-  // Safe render individual child
   safeRenderChild(child) {
-    // If it's a React element, render it normally
     if (React.isValidElement(child)) {
       return child;
     }
     
-    // If it's an object that looks like a React component, don't render it
     if (typeof child === 'object' && child !== null) {
       if (child.$typeof !== undefined || child.type !== undefined) {
         console.warn('Skipping React component object:', child);
@@ -118,17 +101,14 @@ class IoTErrorBoundary extends React.Component {
       }
     }
     
-    // If it's a primitive value, render it
     if (typeof child === 'string' || typeof child === 'number' || typeof child === 'boolean') {
       return child;
     }
     
-    // For other types, don't render
     return null;
   }
 }
 
-// eslint-disable-next-line no-unused-vars
 const ModernIotPage = () => {
   const [selectedSensor, setSelectedSensor] = useState(null);
   const [showTemp, setShowTemp] = useState(true);
@@ -137,7 +117,6 @@ const ModernIotPage = () => {
   const [openAddBroker, setOpenAddBroker] = useState(false);
   const [chartData, setChartData] = useState([]);
 
-  // Ensure chart data is always a safe array of plain objects
   const safeChartData = React.useMemo(() => {
     if (!Array.isArray(chartData)) return [];
     
@@ -153,22 +132,18 @@ const ModernIotPage = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Socket.IO connection
   const socket = useIotSocket();
 
-  // Ensure selectedSensor is a valid object with safe properties
   const safeSelectedSensor = React.useMemo(() => {
     if (!selectedSensor || typeof selectedSensor !== 'object' || selectedSensor === null) {
       return null;
     }
     
-    // Check if it's a React component object (has $typeof)
     if (selectedSensor.$typeof !== undefined) {
       console.warn('selectedSensor appears to be a React component object, not a plain object');
       return null;
     }
     
-    // Ensure it's a plain object
     if (selectedSensor.constructor !== Object) {
       console.warn('selectedSensor is not a plain object');
       return null;
@@ -185,50 +160,42 @@ const ModernIotPage = () => {
     };
   }, [selectedSensor]);
 
-  // Fetch sensors data
   const { data: sensors = [], isLoading: sensorsLoading, error: sensorsError } = useQuery({
     queryKey: ['sensors'],
     queryFn: async () => {
       try {
         const result = await iotService.getAllSensors();
-        // Ensure the result is an array or convert to empty array
         return Array.isArray(result) ? result : [];
       } catch (error) {
         console.error('Error fetching sensors:', error);
-        // Return empty array instead of throwing to prevent rendering issues
         return [];
       }
     },
-    refetchInterval: 10000, // Refetch every 10 seconds
-    retry: false, // Disable automatic retries
+    refetchInterval: 10000,
+    retry: false, 
   });
 
-
-  // Fetch readings for selected sensor
   const { data: readings = [] } = useQuery({
     queryKey: ['readings', selectedSensor?.deviceId],
     queryFn: async () => {
       try {
         if (!selectedSensor?.deviceId) return [];
         const result = await iotService.getReadings(selectedSensor.deviceId, 50);
-        // Ensure the result is an array
         return Array.isArray(result) ? result : [];
       } catch (error) {
         console.error('Error fetching readings:', error);
-        return []; // Return empty array instead of throwing
+        return []; 
       }
     },
     enabled: !!selectedSensor?.deviceId,
-    refetchInterval: 5000, // Refetch every 5 seconds for real-time data
-    retry: false, // Disable automatic retries
+    refetchInterval: 5000, 
+    retry: false, 
   });
 
-  // Handle sensor selection
   const handleSensorSelect = (sensor) => {
     setSelectedSensor(sensor);
   };
 
-  // Handle filter changes
   const handleFilterChange = (filter, value) => {
     switch (filter) {
       case 'temperature':
@@ -243,10 +210,8 @@ const ModernIotPage = () => {
     }
   };
 
-  // Update chart data when readings change
   useEffect(() => {
     if (readings && readings.length > 0) {
-      // Filter out any React component objects
       const validReadings = readings.filter(reading => {
         return reading && 
                typeof reading === 'object' && 
@@ -260,23 +225,19 @@ const ModernIotPage = () => {
     }
   }, [readings]);
 
-  // Handle new readings from socket
   useEffect(() => {
     if (socket.latestReading && typeof socket.latestReading === 'object' && socket.latestReading !== null) {
-      // Ensure it's a plain object, not a React component
       const isPlainObject = socket.latestReading.constructor === Object && socket.latestReading.$typeof === undefined;
       
       if (isPlainObject) {
-        // Update chart with new reading
         setChartData(prev => {
           const newData = [...prev, socket.latestReading];
-          return newData.slice(-50); // Keep last 50 readings
+          return newData.slice(-50); 
         });
       }
     }
   }, [socket.latestReading]);
 
-  // Mock data for demo when no real data is available
   const getMockSensors = () => [
     {
       _id: '1',
@@ -310,13 +271,11 @@ const ModernIotPage = () => {
     }
   ];
 
-  // Get sensors (real or mock)
   const displaySensors = React.useMemo(() => {
     const validSensors = Array.isArray(sensors) ? sensors : [];
     return validSensors.length > 0 ? validSensors : getMockSensors();
   }, [sensors]);
 
-  // Mock data for side panel
   const mockCultivoData = {
     cultivo: 'Tomate',
     clima: 'Soleado',
@@ -501,7 +460,6 @@ class ErrorBoundary extends React.Component {
     this.state = { hasError: false };
   }
 
-  // eslint-disable-next-line no-unused-vars
   static getDerivedStateFromError(error) {
     return { hasError: true };
   }

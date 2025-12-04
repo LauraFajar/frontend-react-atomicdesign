@@ -11,11 +11,9 @@ import {
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const SidePanel = ({ cultivo: cultivoProp, clima: climaProp, rendimiento: rendimientoProp }) => {
-  // Ensure props are primitive values, not React elements
   const cultivo = typeof cultivoProp === 'string' ? cultivoProp : 'Sin definir';
   const clima = typeof climaProp === 'string' ? climaProp : 'Desconocido';
   const rendimiento = typeof rendimientoProp === 'number' ? rendimientoProp : 75;
-  // Datos para el doughnut chart del rendimiento
   const rendimientoData = {
     labels: ['Rendimiento', 'Restante'],
     datasets: [
@@ -56,7 +54,6 @@ const SidePanel = ({ cultivo: cultivoProp, clima: climaProp, rendimiento: rendim
     },
   };
 
-  // Determinar el color del clima
   const getClimaColor = (clima) => {
     if (!clima) return '#9c27b0';
     const climaLower = clima.toLowerCase();

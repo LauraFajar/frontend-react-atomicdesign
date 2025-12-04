@@ -24,7 +24,7 @@ export const getAllSensors = async () => {
     return res.data.sensors || [];
   } catch (error) {
     console.error('Error fetching sensors:', error);
-    return []; // Return empty array instead of throwing
+    return []; 
   }
 };
 
@@ -37,14 +37,13 @@ export const createSensor = (sensorData) =>
 export const getSensorsByTopic = (topic) => 
   api.get(`/api/iot/sensors/topic/${topic}`).then(res => res.data.sensors);
 
-// Reading endpoints
 export const getReadings = async (deviceId, limit = 100) => {
   try {
     const res = await api.get(`/api/iot/readings/${deviceId}?limit=${limit}`);
     return res.data.readings || [];
   } catch (error) {
     console.error('Error fetching readings:', error);
-    return []; // Return empty array instead of throwing
+    return []; 
   }
 };
 
@@ -67,7 +66,6 @@ export const updateBroker = (id, brokerData) =>
 export const deleteBroker = (id) => 
   api.delete(`/api/iot/brokers/${id}`).then(res => res.data.message);
 
-// Dashboard endpoints
 export const getDashboardData = () => 
   api.get('/api/iot/dashboard').then(res => res.data);
 
@@ -77,7 +75,6 @@ export const getLatestReadings = () =>
 export const getBrokersStatus = () => 
   api.get('/api/iot/dashboard/brokers-status').then(res => res.data.brokerStatus);
 
-// Export endpoints
 export const exportToPdf = async (params = {}) => {
   try {
     const queryParams = new URLSearchParams();

@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const API_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL)
   || process.env.REACT_APP_API_URL
-  || 'http://localhost:3000';
+  || 'http://localhost:3001';
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -10,7 +10,6 @@ export const api = axios.create({
   withCredentials: true,
 });
 
-// Optional: attach token automatically if present
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token') || localStorage.getItem('token');
   if (token) {

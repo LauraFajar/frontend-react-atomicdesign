@@ -78,7 +78,7 @@ const IotPage = () => {
   const [mqttStatus, setMqttStatus] = useState('disconnected');
   const [liveDevices, setLiveDevices] = useState({}); // { nombre: { temperatura, unidad, ts } }
   const [selectedSensorId, setSelectedSensorId] = useState(null);
-  const [historicalMode, setHistoricalMode] = useState('stack'); // 'stack' | 'overlay'
+  const [historicalMode, setHistoricalMode] = useState('stack'); 
   // Nuevo: tópico activo y métrica seleccionada para historial/reportes
   const [activeTopic, setActiveTopic] = useState('luixxa/dht11');
   const [selectedMetric, setSelectedMetric] = useState('temperatura');
@@ -109,7 +109,6 @@ const IotPage = () => {
       if (bomba) live['bomba_estado'] = { nombre: 'bomba_estado', valor: bomba, unidad: 'estado', ts: now };
       setLiveDevices(live);
   
-      // Actualiza buffer de series en tiempo real (máx 60 puntos por clave)
       setRtSeries((prev) => {
         const next = { ...prev };
         Object.entries(live).forEach(([key, device]) => {
@@ -127,7 +126,6 @@ const IotPage = () => {
     setMqttStatus(mqtt.connected ? 'connected' : 'disconnected');
   }, [mqtt.connected]);
   
-  // Add fallback mock data when MQTT fails (no data for 30 seconds)
   useEffect(() => {
     const fallbackTimer = setTimeout(() => {
       if (Object.keys(liveDevices).length === 0) {
@@ -141,7 +139,6 @@ const IotPage = () => {
         };
         setLiveDevices(mockLiveDevices);
 
-        // Add to real-time series
         setRtSeries((prev) => {
           const next = { ...prev };
           Object.entries(mockLiveDevices).forEach(([ , device]) => {
@@ -243,7 +240,7 @@ const IotPage = () => {
     // Crear sensores virtuales basados en los datos MQTT disponibles
     if (Object.keys(liveDevices).length > 0) {
       Object.entries(liveDevices).forEach(([key, device]) => {
-        if (key !== 'bomba_estado') { // Excluir bomba de los sensores
+        if (key !== 'bomba_estado') { 
           const sensorData = {
             id: mqttSensors.length + 1,
             tipo_sensor: device.nombre || key,
@@ -275,7 +272,6 @@ const IotPage = () => {
     }
   });
 
-  // FIX: Move historialData useQuery BEFORE useMemo that depends on it
   const { data: historialData = [] } = useQuery({
      queryKey: ['historial-topic', activeTopic, selectedMetric, startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]],
      queryFn: ({ signal }) => sensoresService.getHistorialByTopic(
@@ -295,7 +291,6 @@ const IotPage = () => {
      onError: (err) => {
        console.warn('Historical data API not available, using mock data:', err.message);
        
-       // Generate mock historical data when API fails
        const mockData = [];
        const now = new Date();
        for (let i = 23; i >= 0; i--) {
@@ -331,19 +326,17 @@ const IotPage = () => {
 
   // Filtrar datos históricos según el sensor seleccionado para reportes
   const filteredHistorialData = useMemo(() => {
-    // SAFETY: Check if historialData exists before using it
     if (!historialData || !Array.isArray(historialData)) {
       return [];
     }
     
     if (!selectedSensorForReport || selectedSensorForReport === '') {
-      return historialData; // Todos los sensores
+      return historialData; 
     }
     
     const selectedSensor = sensors.find(s => s.id === parseInt(selectedSensorForReport));
     if (!selectedSensor) return historialData;
     
-    // Filtrar datos según el tipo de sensor seleccionado
     return historialData.filter(item => {
       const itemTipo = item.tipo_sensor || item.tipo || item.metric || '';
       const selectedTipo = selectedSensor.tipo_sensor.toLowerCase();
@@ -356,11 +349,10 @@ const IotPage = () => {
         return itemTipo.toLowerCase().includes('humedad') && itemTipo.toLowerCase().includes('suelo');
       }
       
-      return true; // Si no coincide exactamente, incluir
+      return true; 
     });
   }, [historialData, selectedSensorForReport, sensors]);
 
-  // Si solo hay un tópico disponible y no se ha definido, usarlo por defecto
   useEffect(() => {
     if (Array.isArray(topics) && topics.length === 1 && !activeTopic) {
       setActiveTopic(topics[0]);
@@ -415,7 +407,6 @@ const IotPage = () => {
     onError: (e) => alert.error('Error', e.message || 'No se pudo eliminar el sensor'),
   });
 
-  // Estado MQTT controlado por suscripción WebSocket (useMQTT)
 
   useEffect(() => {
     if (realTimeDataResponse && Array.isArray(realTimeDataResponse)) {
@@ -433,8 +424,6 @@ const IotPage = () => {
       setRealTimeData(map);
     }
   }, [realTimeDataResponse, realTimeData]);
-
-  // Eliminado: generador de datos mock en tiempo real para evitar datos falsos.
 
   useEffect(() => {
     const flag = localStorage.getItem('esp32_sensors_created');
@@ -627,7 +616,6 @@ const IotPage = () => {
                     const color = getSensorColor(sensor.tipo_sensor);
                     const currentValue = realTimeData[sensor.id]?.valor_actual ?? (sensor.valor_actual || 0);
 
-                    // Componente de recomendaciones (inline)
                     const RecommendationsBox = () => {
                       return (
                         <Box sx={{ mt: 1 }}>
@@ -682,7 +670,6 @@ const IotPage = () => {
                                 })()}
                               </Box>
 
-                              {/* Recomendaciones por sensor (RF06) */}
                               <RecommendationsBox />
                             </Box>
                           </CardContent>
@@ -726,7 +713,6 @@ const IotPage = () => {
                       const sensor = sensors.find((s) => s.id === selectedSensorId);
                       if (!sensor) return null;
                       const color = getSensorColor(sensor.tipo_sensor);
-                      // Construye datos para la gráfica: usa historial si existe; si no, usa serie en tiempo real por MQTT
                       let chartData = [];
                       if (Array.isArray(historialData) && historialData.length > 0) {
                         chartData = historialData.map((entry) => {
@@ -1156,7 +1142,6 @@ const IotPage = () => {
 export default IotPage;
 
 
-// Tooltip moderno para gráfica histórica
 const renderHistoricalTooltip = ({ active, payload, label }) => {
   if (!active || !payload || payload.length === 0) return null;
   return (
@@ -1174,9 +1159,6 @@ const renderHistoricalTooltip = ({ active, payload, label }) => {
   );
 };
 
-
-
-// Función de mapping del tipo de sensor a la clave MQTT
 const toMqttKeyFromTipo = (tipo) => {
 const t = (tipo || '').toLowerCase();
 if (t.includes('temperatura')) return 'temperatura';

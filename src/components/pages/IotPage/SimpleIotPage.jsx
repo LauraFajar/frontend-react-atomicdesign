@@ -21,7 +21,6 @@ import {
 } from '@mui/material';
 import { Wifi, WifiOff, PictureAsPdf, TableChart, Download, DeviceThermostat, WaterDrop, Grass, ShowChart, PowerSettingsNew, ChevronLeft, ChevronRight, Settings } from '@mui/icons-material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-// eslint-disable-next-line no-unused-vars
 import iotService from '../../../services/iotService';
 import useIotSocket from '../../../hooks/useIotSocket';
 import ChangeBrokerModal from '../../../components/molecules/ChangeBrokerModal/ChangeBrokerModal';
@@ -33,20 +32,17 @@ const SimpleIotPage = () => {
   const [error, setError] = useState(null);
   const [exporting, setExporting] = useState(false);
   
-  // Report filters
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [reportSensor, setReportSensor] = useState('all');
   
   const [sensorHistory, setSensorHistory] = useState({});
-  const [currentCardIndex, setCurrentCardIndex] = useState(0); // Carousel index
-  const [sensorStates, setSensorStates] = useState({}); // Sensor on/off states
+  const [currentCardIndex, setCurrentCardIndex] = useState(0); 
+  const [sensorStates, setSensorStates] = useState({}); 
   
-  // New sensor selection state for unified graph
   const [selectedSensors, setSelectedSensors] = useState(['temperatura', 'humedad_aire', 'humedad_suelo_adc']); // Default all selected
-  const [pumpState, setPumpState] = useState(false); // Pump state from MQTT
+  const [pumpState, setPumpState] = useState(false); 
   
-  // Broker configuration state
   const [openChangeBrokerModal, setOpenChangeBrokerModal] = useState(false);
   const [currentBrokerConfig, setCurrentBrokerConfig] = useState({
     brokerUrl: 'wss://broker.hivemq.com:8884/mqtt',
@@ -55,7 +51,6 @@ const SimpleIotPage = () => {
   
   const { connected, latestReading } = useIotSocket();
 
-  // Sensor configurations - using useMemo for stable reference
   const sensorConfigs = useMemo(() => ({
     temperatura: {
       name: 'Temperatura ambiente',
@@ -87,32 +82,24 @@ const SimpleIotPage = () => {
     }
   }), []);
 
-  // Initialize app - don't load sensors from DB, only use MQTT data
   useEffect(() => {
-    setLoading(false); // We're not loading from DB anymore
+    setLoading(false); 
     setError(null);
     console.log('SimpleIotPage initialized - will use data from MQTT topics only');
   }, []);
 
-  // Process real sensor data from MQTT/WebSocket
-  // IMPORTANT: This function processes data directly from MQTT topics via WebSocket
-  // NO se usan sensores de la base de datos - solo datos en tiempo real del broker
   const processRealSensorData = useCallback((reading) => {
     const newSensors = [];
     const timestamp = new Date();
     
     console.log(' Processing MQTT reading from WebSocket:', reading);
     
-    // Process each property from the topic data
     Object.entries(reading).forEach(([key, value]) => {
       if (value !== undefined && sensorConfigs[key]) {
         const config = sensorConfigs[key];
         let processedValue = value;
         let displayValue = value;
-        
-        // Special processing for specific sensors
-      
-        
+  
         const sensorData = {
           _id: key,
           deviceId: key,
@@ -124,15 +111,13 @@ const SimpleIotPage = () => {
           crop: 'Invernadero',
           topic: 'luixxa/dht11',
           lastUpdate: timestamp,
-          rawValue: value, // Store original value
+          rawValue: value,
           color: config.color,
           icon: config.icon
         };
         
         newSensors.push(sensorData);
         
-        // Update history for graph (use deviceId as key) - skip pump for history
-        // NOTE: We store history for charting, but this is still from MQTT data, not DB
         if (key !== 'bomba_estado') {
           setSensorHistory(prev => ({
             ...prev,
@@ -142,7 +127,6 @@ const SimpleIotPage = () => {
             }].slice(-50)
           }));
         } else {
-          // Update pump state from MQTT data
           const isPumpOn = value === 'ENCENDIDA' || value === true || value === 1 || value === 'ON';
           setPumpState(isPumpOn);
         }
@@ -150,46 +134,35 @@ const SimpleIotPage = () => {
     });
     
     if (newSensors.length > 0) {
-      // UPDATE: Replace all sensors with MQTT data (no DB data used)
       setSensors(newSensors);
       setError(null);
       console.log(`🔄 Updated ${newSensors.length} sensors from MQTT data`);
       
-      // Auto-select first sensor if none selected
       if (!selectedSensor && newSensors.length > 0) {
         setSelectedSensor(newSensors[0]);
       }
     }
   }, [selectedSensor, sensorConfigs]);
-
-  // Process real WebSocket data if available
   useEffect(() => {
     if (latestReading && Object.keys(latestReading).length > 0) {
       console.log('✅ Real WebSocket data received from IoT gateway:', latestReading);
       
-      // Process real reading using MQTT data only (no DB)
       processRealSensorData(latestReading);
     }
   }, [latestReading, processRealSensorData]);
 
-  // Debug WebSocket connection status
   useEffect(() => {
     console.log(`🔌 WebSocket connection status: ${connected ? 'CONNECTED' : 'DISCONNECTED'}`);
   }, [connected]);
 
-
-
-  // Get unified chart data for multiple sensors
   const getUnifiedChartData = () => {
     if (!sensorHistory || Object.keys(sensorHistory).length === 0) return [];
     
-    // Get all timestamps
     const allTimestamps = new Set();
     Object.values(sensorHistory).forEach(history => {
       history?.forEach(item => allTimestamps.add(item.timestamp.getTime()));
     });
     
-    // Create unified data array
     const timestamps = Array.from(allTimestamps).sort();
     
     return timestamps.map(ts => {
@@ -201,7 +174,6 @@ const SimpleIotPage = () => {
         })
       };
       
-      // Add data for each selected sensor
       selectedSensors.forEach(sensorKey => {
         const history = sensorHistory[sensorKey];
         if (history) {
@@ -219,29 +191,23 @@ const SimpleIotPage = () => {
     });
   };
 
-  // Handle sensor selection for unified graph
   const handleSensorFilterChange = (sensorKey) => {
     setSelectedSensors(prev => {
       if (prev.includes(sensorKey)) {
-        // Remove sensor
         const newSelection = prev.filter(key => key !== sensorKey);
-        // Don't allow empty selection for chart sensors
         const chartSensors = newSelection.filter(key => key !== 'bomba_estado');
         if (chartSensors.length === 0) return prev;
         return newSelection;
       } else {
-        // Add sensor
         return [...prev, sensorKey];
       }
     });
   };
 
   const handleSelectAllSensors = () => {
-    // Select all sensors for chart (excluding pump from chart display)
     setSelectedSensors(['temperatura', 'humedad_aire', 'humedad_suelo_adc']);
   };
 
-  // Carousel navigation
   const sensorKeys = ['temperatura', 'humedad_aire', 'humedad_suelo_adc', 'bomba_estado'];
   
   const nextCard = () => {
@@ -252,7 +218,6 @@ const SimpleIotPage = () => {
     setCurrentCardIndex(prev => (prev - 1 + sensorKeys.length) % sensorKeys.length);
   };
 
-  // Toggle sensor state
   const handleToggleSensor = (sensorKey) => {
     setSensorStates(prev => ({
       ...prev,
@@ -261,30 +226,22 @@ const SimpleIotPage = () => {
     console.log(`Sensor ${sensorKey} toggled to: ${!sensorStates[sensorKey]}`);
   };
 
-  // Get current sensor value from sensors array
   const getSensorValue = (sensorKey) => {
     const sensor = sensors.find(s => s._id === sensorKey);
     return sensor?.valor_actual ?? '--';
   };
 
-  // Handle broker configuration change
   const handleBrokerChange = async (newConfig) => {
     try {
       console.log('🔧 Updating broker configuration:', newConfig);
-      
-      // Update local configuration
       setCurrentBrokerConfig(newConfig);
       
-      // In a real implementation, this would reconnect to the new broker
-      // For now, we'll just show a success message
       alert(`✅ Configuración actualizada exitosamente:\n\nBroker: ${newConfig.brokerUrl}\nTopic: ${newConfig.topic}\n\n⚠️ Nota: La reconexión al nuevo broker requiere implementación del backend.`);
       
-      // You could also trigger a page reload or call a service to reconnect
-      // window.location.reload(); // Uncomment if you want to reload the page
       
     } catch (error) {
       console.error('❌ Error updating broker configuration:', error);
-      throw error; // Re-throw to let the modal handle it
+      throw error; 
     }
   };
 
@@ -313,7 +270,6 @@ const SimpleIotPage = () => {
       setExporting(true);
       setError(null);
       
-      // Build parameters object
       const params = {
         sensor: reportSensor !== 'all' ? reportSensor : undefined,
         fecha_desde: fechaInicio || undefined,
@@ -322,7 +278,6 @@ const SimpleIotPage = () => {
       
       console.log('📤 Exportando PDF con parámetros:', params);
       
-      // Use service method
       const response = await iotService.exportToPdf(params);
       
       if (!response.data) {
@@ -336,7 +291,6 @@ const SimpleIotPage = () => {
       
       downloadBlob(blob, filename);
       
-      // Show success message
       console.log('✅ PDF exportado exitosamente');
       
     } catch (err) {
@@ -358,7 +312,6 @@ const SimpleIotPage = () => {
       setExporting(true);
       setError(null);
       
-      // Build parameters object
       const params = {
         sensor: reportSensor !== 'all' ? reportSensor : undefined,
         fecha_desde: fechaInicio || undefined,
@@ -367,7 +320,6 @@ const SimpleIotPage = () => {
       
       console.log('📤 Exportando Excel con parámetros:', params);
       
-      // Use service method
       const response = await iotService.exportToExcel(params);
       
       if (!response.data) {
@@ -383,7 +335,6 @@ const SimpleIotPage = () => {
       
       downloadBlob(blob, filename);
       
-      // Show success message
       console.log('✅ Excel exportado exitosamente');
       
     } catch (err) {
@@ -756,7 +707,7 @@ const SimpleIotPage = () => {
           </Card>
         </Box>
 
-        {/* Estado de la Bomba - Below both carousel and graph */}
+        {/* Estado de la Bomba  */}
         <Box sx={{ mt: 2 }}>
           <Card sx={{ 
             height: "150px",
@@ -801,7 +752,6 @@ const SimpleIotPage = () => {
           </Card>
         </Box>
 
-        {/* Report Export Section */}
         <Card sx={{ borderRadius: 2, boxShadow: 3, mt: 2 }}>
           <CardContent sx={{ p: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
@@ -813,7 +763,7 @@ const SimpleIotPage = () => {
             <Divider sx={{ mb: 2 }} />
             
             <Grid container spacing={2} alignItems="center">
-              {/* Sensor Selection */}
+        
               <Grid item xs={12} md={3}>
                 <FormControl fullWidth size="small">
                   <InputLabel sx={{ fontSize: '0.7rem' }}>Sensor</InputLabel>
@@ -832,7 +782,6 @@ const SimpleIotPage = () => {
                 </FormControl>
               </Grid>
 
-              {/* Date Range */}
               <Grid item xs={12} md={3}>
                 <TextField
                   fullWidth
@@ -858,7 +807,6 @@ const SimpleIotPage = () => {
                 />
               </Grid>
 
-              {/* Export Buttons */}
               <Grid item xs={12} md={3}>
                 <Stack direction="row" spacing={0.5}>
                   <Button
@@ -894,7 +842,6 @@ const SimpleIotPage = () => {
         </Card>
       </Box>
 
-      {/* Change Broker Modal */}
       <ChangeBrokerModal
         open={openChangeBrokerModal}
         onClose={() => setOpenChangeBrokerModal(false)}

@@ -62,7 +62,6 @@ const AgroticIotDashboard = () => {
 
   const { connected, latestReading } = useIotSocket();
 
-  // Process real sensor data from MQTT
   const processSensorData = useCallback((reading) => {
     console.log('📡 Processing real MQTT data:', reading);
     
@@ -73,7 +72,6 @@ const AgroticIotDashboard = () => {
       bomba_estado: reading.bomba_estado || reading.pumpState
     });
 
-    // Update historical data
     const timestamp = new Date();
     setHistoricalData(prev => {
       const newData = { ...prev };
@@ -90,7 +88,6 @@ const AgroticIotDashboard = () => {
       
       if (reading.humedad_suelo_adc || reading.soilHumidity) {
         const soilAdc = parseFloat(reading.humedad_suelo_adc || reading.soilHumidity);
-        // Convert ADC to percentage
         const soilPercent = soilAdc > 100 ? Math.round((1 - soilAdc / 4095) * 100) : soilAdc;
         newData.humedad_suelo = [...newData.humedad_suelo, { timestamp, value: soilPercent }].slice(-50);
       }
@@ -98,7 +95,6 @@ const AgroticIotDashboard = () => {
       return newData;
     });
 
-    // Update pump state
     const pumpState = (reading.bomba_estado || reading.pumpState) === 'ENCENDIDA' || 
                      (reading.bomba_estado || reading.pumpState) === true ||
                      (reading.bomba_estado || reading.pumpState) === 1;
@@ -108,14 +104,12 @@ const AgroticIotDashboard = () => {
     }));
   }, []);
 
-  // Handle WebSocket data
   useEffect(() => {
     if (latestReading && Object.keys(latestReading).length > 0) {
       processSensorData(latestReading);
     }
   }, [latestReading, processSensorData]);
 
-  // Auto-rotate carousel every 5 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentCardIndex(prev => (prev + 1) % 4);
@@ -123,7 +117,6 @@ const AgroticIotDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Sensor configurations
   const sensorCards = useMemo(() => [
     {
       id: 'temperatura',
@@ -168,13 +161,11 @@ const AgroticIotDashboard = () => {
     }
   ], [sensorData]);
 
-  // MQTT Control Commands
   const sendMqttCommand = async (command) => {
     try {
-      const baseUrl = process.env.REACT_APP_API_URL || process.env.REACT_APP_API_BASE_URL || 'http://localhost:3000';
+      const baseUrl = process.env.REACT_APP_API_URL || process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001';
       console.log(`📤 Sending MQTT command to luixxa/control: ${command}`);
       
-      // Call backend API to send MQTT command
       const response = await fetch(`${baseUrl}/api/iot/control`, {
         method: 'POST',
         headers: {
@@ -189,7 +180,6 @@ const AgroticIotDashboard = () => {
       const result = await response.json();
       console.log('MQTT command response:', result);
       
-      // Update local switch state for immediate feedback
       if (command === 'SISTEMA_ON') {
         setSwitchStates(prev => ({ ...prev, sistema: true }));
       } else if (command === 'SISTEMA_OFF') {
@@ -224,10 +214,8 @@ const AgroticIotDashboard = () => {
 
   const applyBrokerConfig = async () => {
     try {
-      // In a real implementation, this would send the new config to the backend
       console.log('Applying new broker configuration:', brokerConfig);
       
-      // For now, just show a success message
       alert(`Configuración actualizada:\nBroker: ${brokerConfig.brokerUrl}\nTopic: ${brokerConfig.topic}\n\nNota: Esta funcionalidad requiere implementación del backend`);
       setShowConfig(false);
     } catch (error) {
@@ -236,11 +224,9 @@ const AgroticIotDashboard = () => {
     }
   };
 
-  // Graph data preparation
   const getChartData = () => {
     const timestamps = new Set();
     
-    // Collect all timestamps
     Object.values(historicalData).forEach(sensorHistory => {
       sensorHistory.forEach(item => timestamps.add(item.timestamp.getTime()));
     });
@@ -280,20 +266,18 @@ const AgroticIotDashboard = () => {
     });
   };
 
-  // Export functions - connected to backend
   const handleExportPdf = async () => {
     setExporting(true);
     try {
       const baseUrl = process.env.REACT_APP_API_URL || process.env.REACT_APP_API_BASE_URL || 'http://localhost:3000';
       console.log('Exporting PDF with real data...');
       
-      // Call backend API to export PDF
       const response = await fetch(`${baseUrl}/api/iot/export/pdf`, {
         method: 'GET',
         headers: {
           'Accept': 'application/pdf',
         },
-        body: null // GET request doesn't need body
+        body: null 
       });
       
       if (!response.ok) {
@@ -325,13 +309,12 @@ const AgroticIotDashboard = () => {
       const baseUrl = process.env.REACT_APP_API_URL || process.env.REACT_APP_API_BASE_URL || 'http://localhost:3000';
       console.log('Exporting Excel with real data...');
       
-      // Call backend API to export Excel
       const response = await fetch(`${baseUrl}/api/iot/export/excel`, {
         method: 'GET',
         headers: {
           'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         },
-        body: null // GET request doesn't need body
+        body: null 
       });
       
       if (!response.ok) {
@@ -357,7 +340,6 @@ const AgroticIotDashboard = () => {
     }
   };
 
-  // Carousel navigation
   const nextCard = () => {
     setCurrentCardIndex(prev => (prev + 1) % sensorCards.length);
   };
@@ -410,7 +392,6 @@ const AgroticIotDashboard = () => {
           </Box>
         </Paper>
 
-        {/* Waiting for Data Message */}
         {!connected && (
           <Alert severity="info" sx={{ mb: 3 }}>
             <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
@@ -430,7 +411,6 @@ const AgroticIotDashboard = () => {
           mb: 3
         }}>
           
-          {/* Carousel Section */}
           <Card sx={{ 
             height: '400px', 
             borderRadius: 2,
@@ -537,7 +517,6 @@ const AgroticIotDashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Unified Graph Section */}
           <Card sx={{ 
             height: '400px', 
             borderRadius: 2,
@@ -674,7 +653,6 @@ const AgroticIotDashboard = () => {
           </Card>
         </Box>
 
-        {/* Broker Configuration Section */}
         <Card sx={{ borderRadius: 2, boxShadow: 3, mb: 3 }}>
           <CardContent sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
@@ -782,7 +760,6 @@ const AgroticIotDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Export Section */}
         <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
           <CardContent sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>

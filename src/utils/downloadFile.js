@@ -28,7 +28,6 @@ export async function downloadFile(url, params, filename, token) {
 
 export function extractFilename(contentDisposition) {
   if (!contentDisposition) return null;
-  // Try RFC 5987 filename*
   const star = /filename\*=(?:UTF-8''|utf-8'')([^;\n]+)/i.exec(contentDisposition);
   if (star && star[1]) {
     try {
@@ -37,7 +36,6 @@ export function extractFilename(contentDisposition) {
       return star[1];
     }
   }
-  // Fallback to filename="..."
   const match = /filename="?([^";]+)"?/i.exec(contentDisposition);
   return match ? match[1] : null;
 }

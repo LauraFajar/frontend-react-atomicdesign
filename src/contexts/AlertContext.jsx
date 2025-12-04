@@ -14,7 +14,7 @@ export const useAlert = () => {
   return context;
 };
 
-export const AlertProvider = ({ children }) => {
+export function AlertProvider({ children }) {
   const [alerts, setAlerts] = useState([]);
   const [socketConnected, setSocketConnected] = useState(false);
 
@@ -44,7 +44,6 @@ export const AlertProvider = ({ children }) => {
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
 
-    // Suscripción a evento newAlert del backend
     socket.on('newAlert', (payload) => {
       try {
         const severity = payload?.severity || 'warning';
@@ -54,7 +53,6 @@ export const AlertProvider = ({ children }) => {
         const message = payload?.message || `${sensorName} fuera de rango ${valueStr}`;
         addAlert({ severity, title, message, autoHideDuration: 8000 });
       } catch (e) {
-        // fallback
         addAlert({ severity: 'warning', title: 'Alerta', message: 'Nueva alerta recibida', autoHideDuration: 6000 });
       }
     });
@@ -77,7 +75,7 @@ export const AlertProvider = ({ children }) => {
     info: (title, message, options) =>
       addAlert({ severity: 'info', title, message, ...options }),
     remove: removeAlert,
-    alerts, // Exponer lista para panel
+    alerts,
     socketConnected,
   };
 
@@ -113,6 +111,6 @@ export const AlertProvider = ({ children }) => {
       </div>
     </AlertContext.Provider>
   );
-};
+}
 
 export default AlertContext;

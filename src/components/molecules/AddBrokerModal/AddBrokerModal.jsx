@@ -30,7 +30,6 @@ const AddBrokerModal = ({ open, onClose, onSuccess }) => {
       [field]: value
     }));
     
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({
         ...prev,
@@ -101,7 +100,6 @@ const AddBrokerModal = ({ open, onClose, onSuccess }) => {
 
       await iotService.createBroker(payload);
       
-      // Reset form
       setFormData({
         name: '',
         host: '',

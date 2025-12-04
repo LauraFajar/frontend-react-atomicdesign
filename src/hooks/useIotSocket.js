@@ -11,7 +11,7 @@ export default function useIotSocket() {
   const socketRef = useRef(null);
 
   useEffect(() => {
-    const baseUrl = process.env.REACT_APP_API_URL || process.env.REACT_APP_API_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.REACT_APP_API_URL || process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001';
     console.log('🔌 Connecting to IoT WebSocket at:', `${baseUrl}/iot`);
     
     const socket = io(`${baseUrl}/iot`, {
@@ -39,13 +39,11 @@ export default function useIotSocket() {
       setConnected(false);
     });
 
-    // Listen for new readings
     socket.on('reading', (reading) => {
       console.log('New reading received:', reading);
       setLatestReading(reading);
     });
 
-    // Listen for broker status updates
     socket.on('brokerStatus', ({ brokerId, status }) => {
       console.log(`Broker ${brokerId} status: ${status}`);
       setBrokersStatus(prev => ({
@@ -54,7 +52,6 @@ export default function useIotSocket() {
       }));
     });
 
-    // Listen for sensor status updates
     socket.on('sensorStatus', ({ deviceId, status }) => {
       console.log(`Sensor ${deviceId} status: ${status}`);
       setSensorStatus(prev => ({
@@ -63,13 +60,11 @@ export default function useIotSocket() {
       }));
     });
 
-    // Listen for bulk readings
     socket.on('bulkReadings', (readings) => {
       console.log('Bulk readings received:', readings);
       setBulkReadings(readings);
     });
 
-    // Listen for dashboard updates
     socket.on('dashboardUpdate', (data) => {
       console.log('Dashboard data updated:', data);
       setDashboardData(data);
@@ -96,7 +91,6 @@ export default function useIotSocket() {
     bulkReadings,
     dashboardData,
     emitMessage,
-    // Helper functions
     isBrokerConnected: (brokerId) => brokersStatus[brokerId] || false,
     isSensorOnline: (deviceId) => sensorStatus[deviceId] || false,
     getLatestReadingByDevice: (deviceId) => {

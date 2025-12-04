@@ -27,7 +27,6 @@ const ChangeBrokerModal = ({
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
-  // Initialize form with current values when modal opens
   useEffect(() => {
     if (open) {
       setFormData({
@@ -45,7 +44,6 @@ const ChangeBrokerModal = ({
       [field]: value
     }));
     
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({
         ...prev,
@@ -78,7 +76,6 @@ const ChangeBrokerModal = ({
 
     setLoading(true);
     try {
-      // Call the onSave callback with the new configuration
       await onSave({
         brokerUrl: formData.brokerUrl.trim(),
         topic: formData.topic.trim()
@@ -166,7 +163,6 @@ const ChangeBrokerModal = ({
           />
         </Box>
 
-        {/* Current configuration display */}
         <Alert severity="info" className="current-config-alert">
           <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
             Configuración actual:

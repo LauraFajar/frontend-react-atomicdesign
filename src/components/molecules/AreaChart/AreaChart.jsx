@@ -7,7 +7,6 @@ const AreaChartComponent = ({ data, showTemp, showHum, showSoil, onFilterChange 
     if (!data || !Array.isArray(data)) return [];
     
     return data.map(item => {
-      // Ensure each item is a plain object and not a React component
       if (!item || typeof item !== 'object' || item.$typeof !== undefined) {
         return {
           time: 'N/A',

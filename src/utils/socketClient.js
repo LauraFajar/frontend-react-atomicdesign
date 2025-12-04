@@ -14,7 +14,6 @@ export function getSocket() {
     });
 
     socket.on('connect_error', (err) => {
-      // Silenciamos el error para no interrumpir flujos como descargas
       if (process.env.NODE_ENV !== 'production') {
         console.debug('[socket] connect_error:', err?.message);
       }
