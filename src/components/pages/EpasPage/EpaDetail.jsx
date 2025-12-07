@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import epaService from '../../../services/epaService';
 import config from '../../../config/environment';
 import { 
   Button, 
@@ -8,7 +10,10 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Card,
+  CardContent,
+  Divider
 } from '@mui/material';
 import './EpaDetail.css';
 
@@ -38,15 +43,30 @@ const typeConfig = {
   }
 };
 
-const EpaDetail = ({ open, epa, onClose }) => {
-  const raw = epa?.imagen_referencia || '';
-  const rel = raw.startsWith('/') ? raw : `/${raw}`;
-  const base = (config.api.baseURL || '').replace(/\/$/, '');
-  const srcAbs = raw.startsWith('http') ? raw : `${base}${rel}`;
-  const [imgSrc, setImgSrc] = useState(srcAbs);
-  useEffect(() => { setImgSrc(srcAbs); }, [srcAbs]);
+const EpaDetail = ({ open, epaId, onClose }) => {
+  const { data: epa, isLoading, isError, error } = useQuery({
+    queryKey: ['epa', epaId],
+    queryFn: () => epaService.getEpaById(epaId),
+    enabled: !!epaId && open, 
+    staleTime: 1000 * 60 * 5, 
+  });
 
-  if (!epa) return null;
+  const [imgSrc, setImgSrc] = useState('');
+
+  useEffect(() => {
+    if (epa?.imagen_referencia) {
+      const raw = epa.imagen_referencia;
+      const rel = raw.startsWith('/') ? raw : `/${raw}`;
+      const base = (config.api.baseURL || '').replace(/\/$/, '');
+      const srcAbs = raw.startsWith('http') ? raw : `${base}${rel}`;
+      setImgSrc(srcAbs);
+    }
+  }, [epa]);
+
+  if (!open) return null;
+
+  const rel = epa?.imagen_referencia ? (epa.imagen_referencia.startsWith('/') ? epa.imagen_referencia : `/${epa.imagen_referencia}`) : '';
+
 
   return (
     <Dialog 
@@ -59,10 +79,18 @@ const EpaDetail = ({ open, epa, onClose }) => {
         Detalles de EPA
       </DialogTitle>
       
-      <DialogContent>
+            <DialogContent>
+        {isLoading ? (
+          <Typography>Cargando detalles...</Typography>
+        ) : isError ? (
+          <Typography color="error">Error al cargar los detalles: {error.message}</Typography>
+        ) : !epa ? (
+          <Typography>No se encontró la EPA.</Typography>
+        ) : (
+          <>
         <div className="detail-section">
           <Typography variant="h6" className="detail-label">Nombre:</Typography>
-          <Typography variant="body1" className="detail-value">{epa.nombre}</Typography>
+          <Typography variant="body1" className="detail-value">{epa.nombre_epa}</Typography>
         </div>
 
         <div className="detail-section">
@@ -105,14 +133,11 @@ const EpaDetail = ({ open, epa, onClose }) => {
               <div className="image-container">
                 <img
                   src={imgSrc}
-                  alt={`Imagen de ${epa.nombre}`}
+                  alt={`Imagen de ${epa.nombre_epa}`}
                   className="detail-image"
                   onError={() => { setImgSrc(rel); }}
                   style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '4px' }}
                 />
-                <Typography variant="body2" color="textSecondary" style={{ marginTop: '4px' }}>
-                  URL: {epa.imagen_referencia}
-                </Typography>
               </div>
             ) : (
               <div className="no-image-container">
@@ -124,6 +149,53 @@ const EpaDetail = ({ open, epa, onClose }) => {
           </div>
         </div>
 
+        <Divider style={{ margin: '20px 0' }} />
+
+        <div className="detail-section">
+          <Typography variant="h5" className="detail-label" gutterBottom>Tratamientos Recomendados</Typography>
+
+          {/* Tratamientos Biológicos */}
+          <Typography variant="h6" style={{ marginTop: '16px', color: '#2e7d32' }}>Biológicos</Typography>
+          {(epa.tratamientos?.filter(t => t.tipo === 'Biologico') || []).length > 0 ? (
+            (epa.tratamientos?.filter(t => t.tipo === 'Biologico') || []).map(t => (
+              <Card key={t.id_tratamiento} variant="outlined" style={{ marginTop: '8px' }}>
+                <CardContent>
+                  <Typography variant="body1">{t.descripcion}</Typography>
+                  <Typography variant="body2" color="textSecondary" style={{ marginTop: '8px' }}>
+                    <strong>Dosis:</strong> {t.dosis}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    <strong>Frecuencia:</strong> {t.frecuencia}
+                  </Typography>
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <Typography variant="body2" color="textSecondary">No hay tratamientos biológicos recomendados.</Typography>
+          )}
+
+          {/* Tratamientos Químicos */}
+          <Typography variant="h6" style={{ marginTop: '16px', color: '#d32f2f' }}>Químicos</Typography>
+          {(epa.tratamientos?.filter(t => t.tipo === 'Quimico') || []).length > 0 ? (
+            (epa.tratamientos?.filter(t => t.tipo === 'Quimico') || []).map(t => (
+              <Card key={t.id_tratamiento} variant="outlined" style={{ marginTop: '8px' }}>
+                <CardContent>
+                  <Typography variant="body1">{t.descripcion}</Typography>
+                  <Typography variant="body2" color="textSecondary" style={{ marginTop: '8px' }}>
+                    <strong>Dosis:</strong> {t.dosis}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    <strong>Frecuencia:</strong> {t.frecuencia}
+                  </Typography>
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <Typography variant="body2" color="textSecondary">No hay tratamientos químicos recomendados.</Typography>
+          )}
+        </div>
+          </>
+        )}
       </DialogContent>
       
       <DialogActions className="dialog-actions">

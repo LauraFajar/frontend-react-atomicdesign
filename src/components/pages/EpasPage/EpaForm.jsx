@@ -14,7 +14,7 @@ import {
 } from '@mui/material';
 import './EpaForm.css';
 
-const EpaForm = ({ open, onClose, onSubmit, epa }) => {
+const EpaForm = ({ open, onClose, onSubmit, epa, onAddTratamiento }) => {
   const [formData, setFormData] = useState({
     nombre_epa: '',
     descripcion: '',
@@ -213,6 +213,25 @@ const EpaForm = ({ open, onClose, onSubmit, epa }) => {
           {selectedFile && (
             <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
               Archivo seleccionado: {selectedFile.name}
+            </Typography>
+          )}
+        </div>
+
+        <div className="modal-form-field">
+          <Typography 
+            variant="body2" 
+            onClick={epa ? onAddTratamiento : undefined} 
+            sx={{
+              cursor: epa ? 'pointer' : 'not-allowed',
+              color: epa ? 'primary.main' : 'text.disabled',
+              mt: 1,
+            }}
+          >
+            Añadir Tratamiento
+          </Typography>
+          {!epa && (
+            <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+              (Guarde la EPA para añadir tratamientos)
             </Typography>
           )}
         </div>

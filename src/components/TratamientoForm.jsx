@@ -35,12 +35,14 @@ const TratamientoForm = ({ open, onClose, onSubmit, tratamiento, epas = [] }) =>
 
   useEffect(() => {
     if (tratamiento) {
+      const epaId = tratamiento.id_epa?.id_epa || tratamiento.id_epa || '';
+      
       setValues({
         descripcion: tratamiento.descripcion || '',
         dosis: tratamiento.dosis || '',
         frecuencia: tratamiento.frecuencia || '',
-        id_epa: tratamiento.id_epa || '',
-        tipo: tratamiento.tipo || 'biologico'
+        id_epa: epaId,
+        tipo: tratamiento.tipo?.toLowerCase() || 'biologico'
       });
     } else {
       setValues(initialValues);

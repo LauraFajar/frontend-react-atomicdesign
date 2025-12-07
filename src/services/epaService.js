@@ -16,6 +16,7 @@ const mapEpa = (e) => ({
   tipo: e.tipo,
   estado: e.estado,
   imagen_referencia: e.imagen_referencia || e.imagen,
+  tratamientos: e.tratamientos || [],
   raw: e
 });
 
@@ -39,7 +40,8 @@ const epaService = {
     const response = await axios.get(`${API_URL}/epa/${id}`, {
       headers: getAuthHeader()
     });
-    return mapEpa(response.data);
+    console.log('Respuesta cruda de getEpaById:', response.data); 
+    return response.data; 
   },
 
   createEpa: async (epaData) => {

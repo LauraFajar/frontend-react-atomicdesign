@@ -6,8 +6,10 @@ import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRo
 import { Add, Edit, Delete, Search } from '@mui/icons-material';
 import ConfirmModal from '../../molecules/ConfirmModal/ConfirmModal';
 import EpaForm from './EpaForm';
+import TratamientoForm from '../TratamientosPage/TratamientoForm';
 import EpaDetail from './EpaDetail';
 import epaService from '../../../services/epaService';
+import tratamientoService from '../../../services/tratamientoService';
 import './EpasPage.css';
 
 const statusConfig = {
@@ -54,6 +56,7 @@ const EpasPage = () => {
   const [selectedEpa, setSelectedEpa] = useState(null);
   const [epaToChangeStatus, setEpaToChangeStatus] = useState(null);
   const [epaToDelete, setEpaToDelete] = useState(null);
+  const [isTratamientoModalOpen, setIsTratamientoModalOpen] = useState(false);
 
   const isAdmin = user?.role === 'administrador' || user?.roleId === 4;
   const isInstructor = user?.role === 'instructor' || user?.roleId === 1;
@@ -153,6 +156,21 @@ const EpasPage = () => {
     },
   });
 
+  const createTratamientoMutation = useMutation({
+    mutationFn: tratamientoService.createTratamiento,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['epas']);
+      handleCloseTratamientoModal();
+      alert.success('¡Éxito!', 'Tratamiento creado correctamente.');
+      if (openDetailModal) {
+        handleCloseDetailModal();
+      }
+    },
+    onError: (err) => {
+      alert.error('Error', err.message || 'No se pudo crear el tratamiento.');
+    },
+  });
+
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, data }) => epaService.updateEpa(id, data),
     onSuccess: (data) => {
@@ -189,6 +207,14 @@ const EpasPage = () => {
   const handleCloseDetailModal = () => {
     setOpenDetailModal(false);
     setSelectedEpa(null);
+  };
+
+  const handleOpenTratamientoModal = () => {
+    setIsTratamientoModalOpen(true);
+  };
+
+  const handleCloseTratamientoModal = () => {
+    setIsTratamientoModalOpen(false);
   };
 
   const handleSaveEpa = async (epaData) => {
@@ -386,13 +412,14 @@ const EpasPage = () => {
           onClose={handleCloseModal}
           onSubmit={handleSaveEpa}
           epa={selectedEpa}
+          onAddTratamiento={handleOpenTratamientoModal}
         />
 
         {/* Modal para ver detalles de EPA */}
         <EpaDetail
           open={openDetailModal}
           onClose={handleCloseDetailModal}
-          epa={selectedEpa}
+          epaId={selectedEpa?.id}
         />
 
         {/* Modal de confirmación para cambiar estado */}
@@ -415,6 +442,14 @@ const EpasPage = () => {
           cancelText="Cancelar"
           type="danger"
           loading={deleteEpaMutation.isLoading}
+        />
+
+        {/* Modal para crear tratamiento */}
+        <TratamientoForm
+          open={isTratamientoModalOpen}
+          onClose={handleCloseTratamientoModal}
+          onSubmit={createTratamientoMutation.mutate}
+          epaId={selectedEpa?.id}
         />
 
         {totalPages > 1 && (
