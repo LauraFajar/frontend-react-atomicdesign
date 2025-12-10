@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, TextField, Typography, CircularProgress, Table, TableHead, TableRow, TableCell, TableBody, IconButton } from '@mui/material';
+import { Button, TextField, Typography, CircularProgress, Table, TableHead, TableRow, TableCell, TableBody, IconButton, Pagination } from '@mui/material';
 import { Add, Search as SearchIcon, Delete, Edit } from '@mui/icons-material';
 import { useAlert } from '../../../contexts/AlertContext';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -13,6 +13,7 @@ import insumosService from '../../../services/insumosService';
 import movimientosService from '../../../services/movimientosService';
 import categoriasService from '../../../services/categoriasService';
 import almacenesService from '../../../services/almacenesService';
+import financeService from '../../../services/financeService';
 import './InventoryPage.css';
 
 const InventoryPage = () => {
@@ -24,6 +25,11 @@ const InventoryPage = () => {
   const [openMovementModal, setOpenMovementModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [movementToDelete, setMovementToDelete] = useState(null);
+  
+  const [entradasPage, setEntradasPage] = useState(0);
+  const [entradasRowsPerPage, setEntradasRowsPerPage] = useState(10);
+  const [salidasPage, setSalidasPage] = useState(0);
+  const [salidasRowsPerPage, setSalidasRowsPerPage] = useState(10);
   
   const [filterTerm, setFilterTerm] = useState('');
   const alert = useAlert();
@@ -77,6 +83,13 @@ const InventoryPage = () => {
     enabled: canView,
   });
 
+  const { data: salidasData, isError: salidasError, isFetching: salidasFetching } = useQuery({
+    queryKey: ['salidas'],
+    queryFn: () => financeService.getSalidas({}), 
+    retry: 0,
+    enabled: canView,
+  });
+
   const { data: categorias = [] } = useQuery({
     queryKey: ['categorias', 'inventory-page'],
     queryFn: () => categoriasService.getCategorias(1, 100),
@@ -95,9 +108,44 @@ const InventoryPage = () => {
     staleTime: 60 * 1000,
   });
 
+  const mapSalida = (s) => {
+    const rawInsumo = s.insumo;
+    
+    let categoriaId = null;
+    let almacenId = null;
+    
+    if (typeof rawInsumo === 'object') {
+      categoriaId = rawInsumo?.id_categoria?.id ?? 
+                   rawInsumo?.id_categoria?.id_categoria ?? 
+                   rawInsumo?.id_categoria;
+      almacenId = rawInsumo?.id_almacen?.id ?? 
+                 rawInsumo?.id_almacen?.id_almacen ?? 
+                 rawInsumo?.id_almacen;
+    } else {
+      categoriaId = s.id_categoria;
+      almacenId = s.id_almacen;
+    }
+    
+    return {
+      id: s.id_salida,
+      id_insumo: Number(rawInsumo?.id_insumo || s.id_insumo || s.cultivo?.id_insumo || 0),
+      nombre: rawInsumo?.nombre_insumo || s.nombre_insumo || `#${s.cultivo?.id_insumo || 0}`,
+      tipo_movimiento: 'salida',
+      cantidad: Number(s.cantidad || 0),
+      unidad_medida: s.unidad_medida || '',
+      fecha_movimiento: s.fecha_salida || null,
+      observacion: s.observacion || '',
+      insumo_categoria: typeof rawInsumo === 'object' ? (rawInsumo?.id_categoria?.nombre ?? '') : '',
+      insumo_almacen: typeof rawInsumo === 'object' ? (rawInsumo?.id_almacen?.nombre_almacen ?? '') : '',
+      id_categoria: categoriaId,
+      id_almacen: almacenId,
+      raw: s,
+    };
+  };
 
   const items = data?.items || [];
   const movimientosEnabled = !!movimientosData?.items && !movimientosError;
+  const salidasEnabled = !!salidasData?.length && !salidasError; 
   const catNameById = useMemo(() => {
     const m = new Map();
     const list = Array.isArray(categorias?.items) ? categorias.items : (Array.isArray(categorias) ? categorias : []);
@@ -107,7 +155,7 @@ const InventoryPage = () => {
   const almacenNameById = useMemo(() => {
     const m = new Map();
     const list = Array.isArray(almacenes?.items) ? almacenes.items : (Array.isArray(almacenes) ? almacenes : []);
-    list.forEach((a) => m.set(Number(a.id), a.nombre));
+    list.forEach((a) => m.set(Number(a.id), a.nombre_almacen || a.nombre));
     return m;
   }, [almacenes]);
 
@@ -143,6 +191,16 @@ const InventoryPage = () => {
     });
     return acc;
   }, [movimientosEnabled, movimientosData]);
+
+  const combinedSalidas = useMemo(() => {
+    const manualSalidas = (movimientosData?.items || []).filter(m => m.tipo_movimiento === 'salida');
+    const autoSalidas = (salidasData || []).map(mapSalida);
+    return [...manualSalidas, ...autoSalidas].sort((a, b) => {
+      const dateA = new Date(a.fecha_movimiento || a.fecha_salida);
+      const dateB = new Date(b.fecha_movimiento || b.fecha_salida);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }, [movimientosData, salidasData]);
 
   const getStockStatus = (cantidad) => {
     const qty = Number(cantidad || 0);
@@ -424,6 +482,28 @@ const InventoryPage = () => {
     setTimeout(() => { const el = document.activeElement; if (el && typeof el.blur === 'function') { el.blur(); } }, 0);
   };
 
+  const handleEntradasPageChange = (event, newPage) => {
+    setEntradasPage(newPage - 1); 
+  };
+
+  const handleSalidasPageChange = (event, newPage) => {
+    setSalidasPage(newPage - 1); 
+  };
+
+  const entradasData = (movimientosData?.items || []).filter(m => m.tipo_movimiento === 'entrada');
+  const paginatedEntradas = entradasData.slice(
+    entradasPage * entradasRowsPerPage,
+    entradasPage * entradasRowsPerPage + entradasRowsPerPage
+  );
+  const entradasTotalPages = Math.ceil(entradasData.length / entradasRowsPerPage);
+
+  const salidasForPagination = combinedSalidas;
+  const paginatedSalidas = salidasForPagination.slice(
+    salidasPage * salidasRowsPerPage,
+    salidasPage * salidasRowsPerPage + salidasRowsPerPage
+  );
+  const salidasTotalPages = Math.ceil(salidasForPagination.length / salidasRowsPerPage);
+
 
   if (!canView) {
     return (
@@ -590,22 +670,33 @@ const InventoryPage = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {((movimientosData?.items || []).filter(m => m.tipo_movimiento === 'entrada')).length === 0 ? (
+              {entradasData.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6}>
                     <Typography variant="body2" color="text.secondary">Sin entradas registradas.</Typography>
                   </TableCell>
                 </TableRow>
               ) : (
-                (movimientosData?.items || [])
-                  .filter(m => m.tipo_movimiento === 'entrada')
+                paginatedEntradas
                   .map((m) => {
-                    const itemMatch = items.find((it) => Number(it.insumoId) === Number(m.id_insumo));
-                    const nombre = itemMatch?.nombre || `#${m.id_insumo}`;
-                    const catIdForInsumo = (itemMatch?.idCategoria != null ? Number(itemMatch.idCategoria) : insumoCatIdById.get(Number(m.id_insumo))) || undefined;
-                    const almIdForInsumo = (itemMatch?.idAlmacen != null ? Number(itemMatch.idAlmacen) : insumoAlmIdById.get(Number(m.id_insumo))) || undefined;
-                    const categoria = m.insumo_categoria || (catIdForInsumo ? (catNameById.get(Number(catIdForInsumo)) || '') : '') || itemMatch?.categoria || '-';
-                    const almacen = m.insumo_almacen || (almIdForInsumo ? (almacenNameById.get(Number(almIdForInsumo)) || '') : '') || itemMatch?.almacen || '-';
+                    const nombre = m.nombre || `#${m.id_insumo}`; 
+                    
+                    let categoria = m.insumo_categoria || '-';
+                    if (!categoria || categoria === '-') {
+                      const catId = m.id_categoria || insumoCatIdById.get(Number(m.id_insumo));
+                      if (catId) {
+                        categoria = catNameById.get(Number(catId)) || '-';
+                      }
+                    }
+                    
+                    let almacen = m.insumo_almacen || '-';
+                    if (!almacen || almacen === '-') {
+                      const almId = m.id_almacen || insumoAlmIdById.get(Number(m.id_insumo));
+                      if (almId) {
+                        almacen = almacenNameById.get(Number(almId)) || '-';
+                      }
+                    }
+                    
                     const fecha = m.fecha_movimiento ? new Date(m.fecha_movimiento) : null;
                     const fechaStr = fecha && !Number.isNaN(fecha.getTime()) ? fecha.toLocaleString() : '-';
                     return (
@@ -640,6 +731,16 @@ const InventoryPage = () => {
               )}
             </TableBody>
           </Table>
+          {entradasData.length > 0 && (
+            <div className="pagination-container">
+              <Pagination
+                count={entradasTotalPages}
+                page={entradasPage + 1}
+                onChange={handleEntradasPageChange}
+                color="primary"
+              />
+            </div>
+          )}
         </div>
 
         <div className="users-table-container" style={{ marginTop: 8 }}>
@@ -659,22 +760,44 @@ const InventoryPage = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {((movimientosData?.items || []).filter(m => m.tipo_movimiento === 'salida')).length === 0 ? (
+              {combinedSalidas.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6}>
                     <Typography variant="body2" color="text.secondary">Sin salidas registradas.</Typography>
                   </TableCell>
                 </TableRow>
               ) : (
-                (movimientosData?.items || [])
-                  .filter(m => m.tipo_movimiento === 'salida')
-                  .map((m) => {
-                    const itemMatch = items.find((it) => Number(it.insumoId) === Number(m.id_insumo));
-                    const nombre = itemMatch?.nombre || `#${m.id_insumo}`;
-                    const catIdForInsumo = (itemMatch?.idCategoria != null ? Number(itemMatch.idCategoria) : insumoCatIdById.get(Number(m.id_insumo))) || undefined;
-                    const almIdForInsumo = (itemMatch?.idAlmacen != null ? Number(itemMatch.idAlmacen) : insumoAlmIdById.get(Number(m.id_insumo))) || undefined;
-                    const categoria = m.insumo_categoria || (catIdForInsumo ? (catNameById.get(Number(catIdForInsumo)) || '') : '') || itemMatch?.categoria || '-';
-                    const almacen = m.insumo_almacen || (almIdForInsumo ? (almacenNameById.get(Number(almIdForInsumo)) || '') : '') || itemMatch?.almacen || '-';
+                paginatedSalidas.map((m) => {
+                    let nombre = m.nombre;
+                    if (!nombre || nombre === '' || nombre.startsWith('#')) {
+                      const insumo = insumosList.find(ins => Number(ins.id) === Number(m.id_insumo));
+                      if (insumo) {
+                        nombre = insumo.nombre || `#${m.id_insumo}`;
+                      } else {
+                        console.log('Insumo no encontrado para salida:', {
+                          id_insumo: m.id_insumo,
+                          salidaId: m.id,
+                          insumosDisponibles: insumosList.map(ins => ({ id: ins.id, nombre: ins.nombre }))
+                        });
+                      }
+                    }
+                    
+                    let categoria = m.insumo_categoria || '-';
+                    if (!categoria || categoria === '-') {
+                      const catId = m.id_categoria || insumoCatIdById.get(Number(m.id_insumo));
+                      if (catId) {
+                        categoria = catNameById.get(Number(catId)) || '-';
+                      }
+                    }
+                    
+                    let almacen = m.insumo_almacen || '-';
+                    if (!almacen || almacen === '-') {
+                      const almId = m.id_almacen || insumoAlmIdById.get(Number(m.id_insumo));
+                      if (almId) {
+                        almacen = almacenNameById.get(Number(almId)) || '-';
+                      }
+                    }
+                    
                     const fecha = m.fecha_movimiento ? new Date(m.fecha_movimiento) : null;
                     const fechaStr = fecha && !Number.isNaN(fecha.getTime()) ? fecha.toLocaleString() : '-';
                     return (
@@ -709,6 +832,16 @@ const InventoryPage = () => {
               )}
             </TableBody>
           </Table>
+          {combinedSalidas.length > 0 && (
+            <div className="pagination-container">
+              <Pagination
+                count={salidasTotalPages}
+                page={salidasPage + 1}
+                onChange={handleSalidasPageChange}
+                color="primary"
+              />
+            </div>
+          )}
         </div>
 
         {/* Confirmación para eliminar registro de inventario */}

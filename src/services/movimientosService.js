@@ -12,17 +12,38 @@ const getAuthHeader = () => {
 const mapMovimiento = (m) => {
   const rawInsumo = m.id_insumo ?? m.insumo;
   const nestedId = typeof rawInsumo === 'object' ? (rawInsumo.id_insumo || rawInsumo.id) : rawInsumo;
+  
+  let categoriaNombre = '';
+  let almacenNombre = '';
+  
+  if (typeof rawInsumo === 'object') {
+    categoriaNombre = rawInsumo?.id_categoria?.nombre ?? 
+                     rawInsumo?.categoria?.nombre ?? 
+                     rawInsumo?.categoria_nombre ?? 
+                     rawInsumo?.nombre_categoria ?? '';
+    
+    almacenNombre = rawInsumo?.id_almacen?.nombre_almacen ?? 
+                   rawInsumo?.almacen?.nombre_almacen ?? 
+                   rawInsumo?.almacen_nombre ?? 
+                   rawInsumo?.nombre_almacen ?? '';
+  }
+  
   return {
     id: m.id_movimiento || m.id,
     id_insumo: Number(nestedId || m.insumoId || m?.insumo?.id_insumo || m?.insumo?.id || 0),
+    nombre: typeof rawInsumo === 'object' ? (rawInsumo.nombre_insumo || '') : '',
     tipo_movimiento: (m.tipo_movimiento || m.tipo || '').toLowerCase(),
     cantidad: Number(m.cantidad || 0),
     unidad_medida: m.unidad_medida || m.unidad || '',
     fecha_movimiento: m.fecha_movimiento || m.fecha || m.createdAt || null,
     responsable: m.responsable || '',
     observacion: m.observacion || '',
-    insumo_categoria: typeof rawInsumo === 'object' ? (rawInsumo?.id_categoria?.nombre ?? '') : '',
-    insumo_almacen: typeof rawInsumo === 'object' ? (rawInsumo?.id_almacen?.nombre_almacen ?? '') : '',
+    insumo_categoria: categoriaNombre,
+    insumo_almacen: almacenNombre,
+    id_categoria: typeof rawInsumo === 'object' ? 
+      (rawInsumo?.id_categoria?.id ?? rawInsumo?.id_categoria?.id_categoria ?? rawInsumo?.id_categoria) : null,
+    id_almacen: typeof rawInsumo === 'object' ? 
+      (rawInsumo?.id_almacen?.id ?? rawInsumo?.id_almacen?.id_almacen ?? rawInsumo?.id_almacen) : null,
     raw: m,
   };
 };
