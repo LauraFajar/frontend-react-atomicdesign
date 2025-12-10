@@ -19,15 +19,18 @@ const inferTipoTratamiento = (descripcion = '') => {
   
   for (const keyword of biologicoKeywords) {
     if (desc.includes(keyword)) {
-      return 'biologico';
+      return 'Biologico';
     }
   }
   
-  return 'quimico';
+  return 'Quimico';
 };
 
 const mapTratamiento = (t) => {
   if (!t) return null;
+  
+  console.log('Datos crudos del backend:', t);
+  console.log('tratamientoInsumos:', t.tratamientoInsumos);
   
   const epaField = t.id_epa;
   const epaObj = epaField && typeof epaField === 'object' ? epaField : null;
@@ -37,6 +40,16 @@ const mapTratamiento = (t) => {
   const tipoRaw = t.tipo || inferTipoTratamiento(t.descripcion);
   const tipo = String(tipoRaw).toLowerCase() === 'biologico' ? 'biologico' : 'quimico';
 
+  const insumos = t.tratamientoInsumos ? t.tratamientoInsumos.map(ti => ({
+    id_tratamiento_insumo: ti.id_tratamiento_insumo,
+    id_insumo: ti.id_insumos?.id_insumo || ti.id_insumo,
+    nombre_insumo: ti.id_insumos?.nombre_insumo || '',
+    cantidad_usada: ti.cantidad_usada,
+    unidad_medida: ti.unidad_medida || 'unidades'
+  })) : [];
+
+  console.log('Insumos mapeados:', insumos);
+
   return {
     id: t.id_tratamiento || t.id,
     descripcion: t.descripcion || '',
@@ -45,6 +58,7 @@ const mapTratamiento = (t) => {
     id_epa: epaId,
     epa_nombre: epaName,
     tipo: tipo,
+    insumos: insumos,
     createdAt: t.createdAt,
     updatedAt: t.updatedAt,
     raw: t
@@ -78,9 +92,11 @@ const tratamientoService = {
         for (const insumo of data.insumos) {
           if (insumo.id_insumo && insumo.cantidad_usada) {
             await axios.post(`${API_URL}/movimientos`, {
+              tipo_movimiento: 'Salida',
               id_insumo: insumo.id_insumo,
               cantidad: Number(insumo.cantidad_usada),
-              tipo: 'salida',
+              unidad_medida: insumo.unidad_medida || 'unidades',
+              fecha_movimiento: new Date().toISOString().slice(0, 10),
               motivo: `Usado en tratamiento: ${data.descripcion}`,
               id_epa: idEpaNum
             }, {

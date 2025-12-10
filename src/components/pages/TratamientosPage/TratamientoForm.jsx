@@ -6,21 +6,39 @@ import { useQuery } from '@tanstack/react-query';
 import insumoService from '../../../services/insumosService';
 import epaService from '../../../services/epaService';
 
-const TratamientoForm = ({ open, onClose, onSubmit, epaId, epas = [] }) => {
+const TratamientoForm = ({ open, onClose, onSubmit, tratamiento: tratamientoProp, epas = [] }) => {
   const [tratamiento, setTratamiento] = useState({
     descripcion: '',
     dosis: '',
     frecuencia: '',
     tipo: 'Biologico',
-    id_epa: epaId || '',
+    id_epa: '',
     insumos: []
   });
 
+  const isEditing = Boolean(tratamientoProp?.id);
+
   useEffect(() => {
-    if (epaId) {
-      setTratamiento(prev => ({ ...prev, id_epa: epaId }));
+    if (tratamientoProp) {
+      setTratamiento({
+        descripcion: tratamientoProp.descripcion || '',
+        dosis: tratamientoProp.dosis || '',
+        frecuencia: tratamientoProp.frecuencia || '',
+        tipo: tratamientoProp.tipo ? tratamientoProp.tipo.charAt(0).toUpperCase() + tratamientoProp.tipo.slice(1).toLowerCase() : 'Biologico',
+        id_epa: tratamientoProp.id_epa || '',
+        insumos: tratamientoProp.insumos || []
+      });
+    } else {
+      setTratamiento({
+        descripcion: '',
+        dosis: '',
+        frecuencia: '',
+        tipo: 'Biologico',
+        id_epa: '',
+        insumos: []
+      });
     }
-  }, [epaId]);
+  }, [tratamientoProp, open]);
 
   const { data: insumos = [] } = useQuery({
     queryKey: ['insumos'],
@@ -68,7 +86,7 @@ const TratamientoForm = ({ open, onClose, onSubmit, epaId, epas = [] }) => {
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
-      <DialogTitle>Nuevo Tratamiento</DialogTitle>
+      <DialogTitle>{isEditing ? 'Actualizar Tratamiento' : 'Nuevo Tratamiento'}</DialogTitle>
       <DialogContent>
         <TextField
           autoFocus
@@ -123,7 +141,7 @@ const TratamientoForm = ({ open, onClose, onSubmit, epaId, epas = [] }) => {
             value={tratamiento.id_epa}
             label="EPA"
             onChange={handleChange}
-            disabled={!!epaId}
+            disabled={isEditing}
           >
             {epas.map((epa) => (
               <MenuItem key={epa.id} value={epa.id}>

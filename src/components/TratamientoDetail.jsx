@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Button, 
   Typography, 
@@ -7,11 +7,35 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  List,
+  ListItem,
+  ListItemText,
+  Divider,
+  Grid
 } from '@mui/material';
+import tratamientoService from '../services/tratamientoService';
 import './TratamientoDetail.css';
 
 const TratamientoDetail = ({ open, onClose, tratamiento }) => {
+  const [insumos, setInsumos] = useState([]);
+
+  useEffect(() => {
+    console.log('useEffect triggered - open:', open, 'tratamiento:', tratamiento);
+    if (tratamiento && open) {
+      console.log('Tratamiento completo:', tratamiento);
+      console.log('Insumos del tratamiento:', tratamiento.insumos);
+      console.log('tratamientoInsumos:', tratamiento.tratamientoInsumos);
+      console.log('ID del tratamiento:', tratamiento.id);
+      
+      if (tratamiento.insumos) {
+        setInsumos(tratamiento.insumos);
+      } else {
+        setInsumos([]);
+      }
+    }
+  }, [tratamiento, open]);
+
   if (!tratamiento) return null;
 
   return (
@@ -62,6 +86,39 @@ const TratamientoDetail = ({ open, onClose, tratamiento }) => {
             size="small" 
             className="epa-chip"
           />
+        </div>
+
+        {/* Sección de Insumos */}
+        <div className="detail-section">
+          <Typography variant="h6" className="detail-label">Insumos Utilizados:</Typography>
+          {insumos.length > 0 ? (
+            <List className="insumos-list">
+              {insumos.map((insumo, index) => (
+                <ListItem key={index} className="insumo-item">
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                      <ListItemText 
+                        primary={insumo.nombre_insumo || `Insumo ID: ${insumo.id_insumo}`}
+                        secondary={`Cantidad: ${insumo.cantidad_usada} ${insumo.unidad_medida || 'unidades'}`}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Chip 
+                        label={`${insumo.cantidad_usada} ${insumo.unidad_medida || 'unidades'}`}
+                        size="small"
+                        className="cantidad-chip"
+                      />
+                    </Grid>
+                  </Grid>
+                  {index < insumos.length - 1 && <Divider />}
+                </ListItem>
+              ))}
+            </List>
+          ) : (
+            <Typography variant="body2" color="text.secondary" className="no-insumos">
+              No hay insumos registrados para este tratamiento
+            </Typography>
+          )}
         </div>
       </DialogContent>
       
