@@ -13,8 +13,7 @@ import InfoIcon from '@mui/icons-material/Info';
 import tratamientoService from '../../../services/tratamientoService';
 import epaService from '../../../services/epaService';
 import './TratamientosPage.css';
-
-import TratamientoForm from '../../TratamientoForm';
+import TratamientoForm from './TratamientoForm';
 import TratamientoDetail from '../../TratamientoDetail';
 import ConfirmModal from '../../molecules/ConfirmModal/ConfirmModal';
 
@@ -93,7 +92,7 @@ const TratamientosPage = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (values) => tratamientoService.updateTratamiento(selected.id, values),
+    mutationFn: (values) => tratamientoService.updateTratamiento(selected?.id, values),
     onSuccess: () => {
       queryClient.invalidateQueries(['tratamientos']);
       setOpenForm(false);
@@ -137,7 +136,7 @@ const TratamientosPage = () => {
 
   const handleConfirmDelete = () => {
     if (!canDelete || !tratamientoToDelete) return;
-    deleteMutation.mutate(tratamientoToDelete.id);
+    deleteMutation.mutate(tratamientoToDelete?.id);
   };
 
   const handleCancelDelete = () => {
@@ -168,7 +167,7 @@ const TratamientosPage = () => {
     return [...tratamientos].sort((a, b) => {
       if (a.tipo === 'biologico' && b.tipo !== 'biologico') return -1;
       if (a.tipo !== 'biologico' && b.tipo === 'biologico') return 1;
-      return a.id - b.id;
+      return (a?.id || 0) - (b?.id || 0);
     });
   }, [tratamientos]);
 
@@ -176,11 +175,11 @@ const TratamientosPage = () => {
     const grouped = {};
     
     sortedTratamientos.forEach(t => {
-      const epaId = t.id_epa;
+      const epaId = t?.id_epa || 'sin-epa';
       if (!grouped[epaId]) {
         grouped[epaId] = {
           epaId,
-          epaNombre: t.epa_nombre || `EPA ${epaId}`,
+          epaNombre: t?.epa_nombre || `EPA ${epaId}`,
           tratamientos: []
         };
       }
@@ -231,7 +230,7 @@ const TratamientosPage = () => {
                 <em>Todos los EPAs</em>
               </MenuItem>
               {epas.map((e) => (
-                <MenuItem key={e.id} value={e.id}>{e.nombre || e.descripcion || `EPA ${e.id}`}</MenuItem>
+                <MenuItem key={e?.id || `epa-${Math.random()}`} value={e?.id}>{e?.nombre || e?.descripcion || `EPA ${e?.id}`}</MenuItem>
               ))}
             </Select>
           </FormControl>
@@ -301,7 +300,7 @@ const TratamientosPage = () => {
               
               <Grid container spacing={3} className="tratamientos-grid">
                 {group.tratamientos.map((t) => (
-                  <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={t.id}>
+                  <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={t?.id || `tratamiento-${Math.random()}`}>
                     <Card 
                       className={`tratamiento-card ${t.tipo === 'biologico' ? 'biologico' : 'quimico'}`}
                       elevation={2}

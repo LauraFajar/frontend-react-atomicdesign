@@ -27,6 +27,8 @@ const inferTipoTratamiento = (descripcion = '') => {
 };
 
 const mapTratamiento = (t) => {
+  if (!t) return null;
+  
   const epaField = t.id_epa;
   const epaObj = epaField && typeof epaField === 'object' ? epaField : null;
   const epaId = epaObj ? (epaObj.id_epa ?? epaObj.id ?? null) : epaField;
@@ -37,9 +39,9 @@ const mapTratamiento = (t) => {
 
   return {
     id: t.id_tratamiento || t.id,
-    descripcion: t.descripcion,
-    dosis: t.dosis,
-    frecuencia: t.frecuencia,
+    descripcion: t.descripcion || '',
+    dosis: t.dosis || '',
+    frecuencia: t.frecuencia || '',
     id_epa: epaId,
     epa_nombre: epaName,
     tipo: tipo,
@@ -52,20 +54,50 @@ const mapTratamiento = (t) => {
 const tratamientoService = {
   createTratamiento: async (data) => {
     const idEpaNum = Number(data.id_epa);
+    const tipoRaw = data.tipo || inferTipoTratamiento(data.descripcion);
+    const tipoFormateado = tipoRaw.charAt(0).toUpperCase() + tipoRaw.slice(1).toLowerCase();
+    
     const payload = {
       descripcion: data.descripcion,
       dosis: data.dosis,
       frecuencia: data.frecuencia,
       id_epa: idEpaNum,
-      tipo: data.tipo || inferTipoTratamiento(data.descripcion)
+      tipo: tipoFormateado,
+      insumos: data.insumos || []
     };
-    const response = await axios.post(`${API_URL}/tratamientos`, payload, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeader()
+    
+    try {
+      const response = await axios.post(`${API_URL}/tratamientos`, payload, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeader()
+        }
+      });
+
+      if (data.insumos && data.insumos.length > 0) {
+        for (const insumo of data.insumos) {
+          if (insumo.id_insumo && insumo.cantidad_usada) {
+            await axios.post(`${API_URL}/movimientos`, {
+              id_insumo: insumo.id_insumo,
+              cantidad: Number(insumo.cantidad_usada),
+              tipo: 'salida',
+              motivo: `Usado en tratamiento: ${data.descripcion}`,
+              id_epa: idEpaNum
+            }, {
+              headers: {
+                'Content-Type': 'application/json',
+                ...getAuthHeader()
+              }
+            });
+          }
+        }
       }
-    });
-    return mapTratamiento(response.data);
+
+      return mapTratamiento(response.data);
+    } catch (error) {
+      console.error('Error creating tratamiento:', error);
+      throw error;
+    }
   },
 
   getTratamientos: async (filters = {}) => {
@@ -77,7 +109,8 @@ const tratamientoService = {
       headers: getAuthHeader()
     });
     const data = response.data;
-    return Array.isArray(data) ? data.map(mapTratamiento) : data;
+    const mapped = Array.isArray(data) ? data.map(mapTratamiento) : data;
+    return Array.isArray(mapped) ? mapped.filter(item => item !== null) : mapped;
   },
 
   getTratamientoById: async (id) => {
@@ -93,7 +126,9 @@ const tratamientoService = {
       ...(data.dosis !== undefined ? { dosis: data.dosis } : {}),
       ...(data.frecuencia !== undefined ? { frecuencia: data.frecuencia } : {}),
       ...(data.id_epa !== undefined && data.id_epa !== '' ? { id_epa: Number(data.id_epa) } : {}),
-      ...(data.tipo !== undefined ? { tipo: data.tipo } : {})
+      ...(data.tipo !== undefined ? { 
+        tipo: data.tipo.charAt(0).toUpperCase() + data.tipo.slice(1).toLowerCase() 
+      } : {})
     };
     const response = await axios.patch(`${API_URL}/tratamientos/${id}`, payload, {
       headers: {

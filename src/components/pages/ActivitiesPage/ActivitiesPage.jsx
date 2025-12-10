@@ -123,6 +123,9 @@ const ActivitiesPage = () => {
     mutationFn: activityService.createActivity,
     onSuccess: () => {
       queryClient.invalidateQueries(['activities']);
+      queryClient.invalidateQueries(['inventory']);
+      queryClient.invalidateQueries(['inventory', 'low-stock']); 
+      queryClient.removeQueries({ queryKey: ['inventory'] }); 
       handleCloseModal();
       alert.success('¡Éxito!', 'Actividad creada correctamente.');
     },
@@ -135,6 +138,9 @@ const ActivitiesPage = () => {
     mutationFn: ({ id, data }) => activityService.updateActivity(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries(['activities']);
+      queryClient.invalidateQueries(['inventory']);
+      queryClient.invalidateQueries(['inventory', 'low-stock']); 
+      queryClient.removeQueries({ queryKey: ['inventory'] }); 
       handleCloseModal();
       alert.success('¡Éxito!', 'Actividad actualizada correctamente.');
     },
