@@ -117,16 +117,27 @@ const tratamientoService = {
   },
 
   getTratamientos: async (filters = {}) => {
+    console.log('getTratamientos llamado con filtros:', filters);
     const params = new URLSearchParams();
     if (filters.epaId) params.append('epaId', filters.epaId);
     if (filters.tipo) params.append('tipo', filters.tipo);
     const url = `${API_URL}/tratamientos${params.toString() ? `?${params.toString()}` : ''}`;
+    
+    console.log('URL completa:', url);
+    
     const response = await axios.get(url, {
       headers: getAuthHeader()
     });
+    
+    console.log('Respuesta cruda del backend:', response.data);
+    
     const data = response.data;
     const mapped = Array.isArray(data) ? data.map(mapTratamiento) : data;
-    return Array.isArray(mapped) ? mapped.filter(item => item !== null) : mapped;
+    const result = Array.isArray(mapped) ? mapped.filter(item => item !== null) : mapped;
+    
+    console.log('Resultado final mapeado:', result);
+    
+    return result;
   },
 
   getTratamientoById: async (id) => {
