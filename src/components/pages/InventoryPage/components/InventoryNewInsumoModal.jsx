@@ -1,17 +1,42 @@
 import React, { useEffect, useState, useRef } from 'react';
 
 const InventoryNewInsumoModal = ({ open, onCancel, onSave, categorias = [], almacenes = [] }) => {
-  const [form, setForm] = useState({ nombre: '', codigo: '', unidad: '', fecha_entrada: '', observacion: '', id_categoria: '', id_almacen: '' });
+  const [form, setForm] = useState({ 
+    nombre: '', 
+    codigo: '', 
+    unidad: '', 
+    fecha_entrada: '', 
+    observacion: '', 
+    id_categoria: '', 
+    id_almacen: '',
+    es_herramienta: false,
+    costo_compra: '',
+    vida_util_horas: '',
+    fecha_compra: ''
+  });
 
   useEffect(() => {
     if (!open) {
-      setForm({ nombre: '', codigo: '', unidad: '', fecha_entrada: '', observacion: '', id_categoria: '', id_almacen: '' });
+      setForm({ 
+        nombre: '', 
+        codigo: '', 
+        unidad: '', 
+        fecha_entrada: '', 
+        observacion: '', 
+        id_categoria: '', 
+        id_almacen: '',
+        es_herramienta: false,
+        costo_compra: '',
+        vida_util_horas: '',
+        fecha_compra: ''
+      });
     }
   }, [open]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    const finalValue = type === 'checkbox' ? checked : value;
+    setForm((f) => ({ ...f, [name]: finalValue }));
   };
 
   const handleSubmit = (e) => {
@@ -20,6 +45,9 @@ const InventoryNewInsumoModal = ({ open, onCancel, onSave, categorias = [], alma
       ...form,
       id_categoria: form.id_categoria ? Number(form.id_categoria) : undefined,
       id_almacen: form.id_almacen ? Number(form.id_almacen) : undefined,
+      costo_compra: form.es_herramienta && form.costo_compra ? Number(form.costo_compra) : undefined,
+      vida_util_horas: form.es_herramienta && form.vida_util_horas ? Number(form.vida_util_horas) : undefined,
+      fecha_compra: form.es_herramienta && form.fecha_compra ? form.fecha_compra : undefined,
     };
     onSave?.(payload);
   };
@@ -97,6 +125,47 @@ const InventoryNewInsumoModal = ({ open, onCancel, onSave, categorias = [], alma
             value={form.observacion}
             onChange={handleChange}
           />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '10px 0' }}>
+            <input
+              type="checkbox"
+              name="es_herramienta"
+              id="es_herramienta"
+              checked={form.es_herramienta}
+              onChange={handleChange}
+            />
+            <label htmlFor="es_herramienta">Es herramienta/equipo</label>
+          </div>
+
+          {form.es_herramienta && (
+            <>
+              <input
+                type="number"
+                name="costo_compra"
+                placeholder="Costo de compra"
+                value={form.costo_compra}
+                onChange={handleChange}
+                step="0.01"
+                min="0"
+              />
+              <input
+                type="number"
+                name="vida_util_horas"
+                placeholder="Vida útil (horas)"
+                value={form.vida_util_horas}
+                onChange={handleChange}
+                step="0.01"
+                min="0"
+              />
+              <input
+                type="date"
+                name="fecha_compra"
+                placeholder="Fecha de compra"
+                value={form.fecha_compra}
+                onChange={handleChange}
+              />
+            </>
+          )}
+          
           <div className="modal-actions">
             <button type="button" className="btn-cancel" onClick={onCancel}>Cancelar</button>
             <button type="submit" className="btn-save">Guardar</button>

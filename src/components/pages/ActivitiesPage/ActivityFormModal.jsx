@@ -10,6 +10,7 @@ import config from '../../../config/environment';
 import activityService from '../../../services/activityService';
 import userService from '../../../services/userService';
 import insumosService from '../../../services/insumosService';
+import { useAuth } from '../../../contexts/AuthContext';
 
 const activityTypes = [
   { value: 'siembra', label: 'Siembra' },
@@ -28,16 +29,18 @@ const statusOptions = [
 ];
 
 const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'administrador' || user?.roleId === 4;
+  const isInstructor = user?.role === 'instructor' || user?.roleId === 1;
+  const canEditCosts = isAdmin || isInstructor;
   const [formData, setFormData] = useState({
     tipo_actividad: '',
     fecha: null,
     responsable: '',
-    responsable_id: '',
     detalles: '',
     estado: 'pendiente',
     id_cultivo: '',
-    costo_mano_obra: '',
-    costo_maquinaria: ''
+    costo_mano_obra: ''
   });
   const [recursos, setRecursos] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -89,8 +92,7 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
         detalles: activity.detalles || '',
         estado: activity.estado || 'pendiente',
         id_cultivo: activity.id_cultivo || '',
-        costo_mano_obra: activity.costo_mano_obra ?? '',
-        costo_maquinaria: activity.costo_maquinaria ?? ''
+        costo_mano_obra: activity.costo_mano_obra ?? ''
       });
       setRecursos(Array.isArray(activity?.recursos) ? activity.recursos.map(r => ({
         id_insumo: r.id_insumo,
@@ -116,8 +118,7 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
         detalles: '',
         estado: 'pendiente',
         id_cultivo: '',
-        costo_mano_obra: '',
-        costo_maquinaria: ''
+        costo_mano_obra: ''
       });
       setRecursos([]);
     }
@@ -194,7 +195,6 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
         id_cultivo: formData.id_cultivo ? parseInt(formData.id_cultivo, 10) : null,
         fecha: formData.fecha ? formData.fecha.toISOString() : null,
         costo_mano_obra: formData.costo_mano_obra !== '' && formData.costo_mano_obra != null ? Number(formData.costo_mano_obra) : undefined,
-        costo_maquinaria: formData.costo_maquinaria !== '' && formData.costo_maquinaria != null ? Number(formData.costo_maquinaria) : undefined,
         recursos: recursos
           .filter(r => r && r.id_insumo)
           .map(r => ({
@@ -394,24 +394,17 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
           </FormControl>
 
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-            <TextField
-              type="number"
-              label="Costo mano de obra"
-              name="costo_mano_obra"
-              value={formData.costo_mano_obra}
-              onChange={handleChange}
-              inputProps={{ min: 0, step: '0.01' }}
-              className="modal-form-field"
-            />
-            <TextField
-              type="number"
-              label="Costo maquinaria"
-              name="costo_maquinaria"
-              value={formData.costo_maquinaria}
-              onChange={handleChange}
-              inputProps={{ min: 0, step: '0.01' }}
-              className="modal-form-field"
-            />
+            {canEditCosts && (
+              <TextField
+                type="number"
+                label="Costo mano de obra"
+                name="costo_mano_obra"
+                value={formData.costo_mano_obra}
+                onChange={handleChange}
+                inputProps={{ min: 0, step: '0.01' }}
+                className="modal-form-field"
+              />
+            )}
           </Box>
 
           <TextField
@@ -485,16 +478,18 @@ const ActivityFormModal = ({ open, onClose, onSave, activity, crops = [] }) => {
                           margin="dense"
                         />
                       )}
-                      <TextField
-                        type="number"
-                        label="Costo unitario"
-                        value={r.costo_unitario}
-                        onChange={(e) => handleRecursoChange(idx, 'costo_unitario', e.target.value)}
-                        inputProps={{ min: 0, step: '0.01' }}
-                        fullWidth
-                        size="small"
-                        margin="dense"
-                      />
+                      {!isTool && (
+                        <TextField
+                          type="number"
+                          label="Costo unitario"
+                          value={r.costo_unitario}
+                          onChange={(e) => handleRecursoChange(idx, 'costo_unitario', e.target.value)}
+                          inputProps={{ min: 0, step: '0.01' }}
+                          fullWidth
+                          size="small"
+                          margin="dense"
+                        />
+                      )}
                       <Button
                         variant="outlined"
                         color="error"

@@ -6,12 +6,26 @@ import {
   DialogActions,
   Button,
   TextField,
-  Typography
+  Typography,
+  FormControlLabel,
+  Checkbox
 } from '@mui/material';
 import { FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 
 const InventoryItemModal = ({ open, selectedItem, onCancel, onSave, categorias = [], almacenes = [] }) => {
-  const [form, setForm] = useState({ nombre: '', cantidad: 0, unidad: '', ultima_fecha: '', observacion: '', id_categoria: '', id_almacen: '' });
+  const [form, setForm] = useState({ 
+    nombre: '', 
+    cantidad: 0, 
+    unidad: '', 
+    ultima_fecha: '', 
+    observacion: '', 
+    id_categoria: '', 
+    id_almacen: '',
+    es_herramienta: false,
+    costo_compra: '',
+    vida_util_horas: '',
+    fecha_compra: ''
+  });
   const [error, setError] = useState(null);
   const firstInputRef = useRef(null);
 
@@ -26,9 +40,25 @@ const InventoryItemModal = ({ open, selectedItem, onCancel, onSave, categorias =
         observacion: selectedItem.observacion ?? '',
         id_categoria: '',
         id_almacen: '',
+        es_herramienta: selectedItem.es_herramienta || false,
+        costo_compra: selectedItem.costo_compra || '',
+        vida_util_horas: selectedItem.vida_util_horas || '',
+        fecha_compra: selectedItem.fecha_compra || '',
       });
     } else {
-      setForm({ nombre: '', cantidad: 0, unidad: '', ultima_fecha: '', observacion: '', id_categoria: '', id_almacen: '' });
+      setForm({ 
+        nombre: '', 
+        cantidad: 0, 
+        unidad: '', 
+        ultima_fecha: '', 
+        observacion: '', 
+        id_categoria: '', 
+        id_almacen: '',
+        es_herramienta: false,
+        costo_compra: '',
+        vida_util_horas: '',
+        fecha_compra: ''
+      });
     }
     setTimeout(() => {
       const el = firstInputRef.current;
@@ -37,8 +67,9 @@ const InventoryItemModal = ({ open, selectedItem, onCancel, onSave, categorias =
   }, [open, selectedItem]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    const finalValue = type === 'checkbox' ? checked : value;
+    setForm((f) => ({ ...f, [name]: finalValue }));
   };
 
   const handleSubmit = (e) => {
@@ -56,6 +87,9 @@ const InventoryItemModal = ({ open, selectedItem, onCancel, onSave, categorias =
       ...form,
       id_categoria: form.id_categoria ? Number(form.id_categoria) : undefined,
       id_almacen: form.id_almacen ? Number(form.id_almacen) : undefined,
+      costo_compra: form.es_herramienta && form.costo_compra ? Number(form.costo_compra) : undefined,
+      vida_util_horas: form.es_herramienta && form.vida_util_horas ? Number(form.vida_util_horas) : undefined,
+      fecha_compra: form.es_herramienta && form.fecha_compra ? form.fecha_compra : undefined,
     };
     onSave?.(payload);
   };
@@ -165,6 +199,54 @@ const InventoryItemModal = ({ open, selectedItem, onCancel, onSave, categorias =
             inputProps={{ maxLength: 50 }}
             helperText={`Máximo 50 caracteres (${Math.min(50, (form.observacion || '').length)}/50)`}
           />
+
+          <FormControlLabel
+            control={
+              <Checkbox
+                name="es_herramienta"
+                checked={form.es_herramienta}
+                onChange={handleChange}
+                color="primary"
+              />
+            }
+            label="Es herramienta/equipo"
+            className="modal-form-field"
+          />
+
+          {form.es_herramienta && (
+            <>
+              <TextField
+                type="number"
+                fullWidth
+                name="costo_compra"
+                label="Costo de compra"
+                value={form.costo_compra}
+                onChange={handleChange}
+                className="modal-form-field"
+                inputProps={{ min: 0, step: 0.01 }}
+              />
+              <TextField
+                type="number"
+                fullWidth
+                name="vida_util_horas"
+                label="Vida útil (horas)"
+                value={form.vida_util_horas}
+                onChange={handleChange}
+                className="modal-form-field"
+                inputProps={{ min: 0, step: 0.01 }}
+              />
+              <TextField
+                type="date"
+                fullWidth
+                name="fecha_compra"
+                label="Fecha de compra"
+                value={form.fecha_compra}
+                onChange={handleChange}
+                className="modal-form-field"
+                InputLabelProps={{ shrink: true }}
+              />
+            </>
+          )}
 
           <DialogActions className="dialog-actions">
             <Button
