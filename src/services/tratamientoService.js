@@ -1,7 +1,7 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
 
 const getAuthHeader = () => {
   const token = Cookies.get('token');
@@ -87,31 +87,40 @@ const tratamientoService = {
           ...getAuthHeader()
         }
       });
+      console.log('DEBUG: Tratamiento creado exitosamente:', response.data);
 
       if (data.insumos && data.insumos.length > 0) {
+        console.log('DEBUG: Creando movimientos para insumos:', data.insumos);
         for (const insumo of data.insumos) {
           if (insumo.id_insumo && insumo.cantidad_usada) {
-            await axios.post(`${API_URL}/movimientos`, {
-              tipo_movimiento: 'Salida',
-              id_insumo: insumo.id_insumo,
-              cantidad: Number(insumo.cantidad_usada),
-              unidad_medida: insumo.unidad_medida || 'unidades',
-              fecha_movimiento: new Date().toISOString().slice(0, 10),
-              motivo: `Usado en tratamiento: ${data.descripcion}`,
-              id_epa: idEpaNum
-            }, {
-              headers: {
-                'Content-Type': 'application/json',
-                ...getAuthHeader()
-              }
-            });
+            console.log('DEBUG: Creando movimiento para insumo:', insumo);
+            try {
+              await axios.post(`${API_URL}/movimientos`, {
+                tipo_movimiento: 'Salida',
+                id_insumo: insumo.id_insumo,
+                cantidad: Number(insumo.cantidad_usada),
+                unidad_medida: insumo.unidad_medida || 'unidades',
+                fecha_movimiento: new Date().toISOString().slice(0, 10),
+                motivo: `Usado en tratamiento: ${data.descripcion}`,
+                id_epa: idEpaNum
+              }, {
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...getAuthHeader()
+                }
+              });
+              console.log('DEBUG: Movimiento creado exitosamente');
+            } catch (movError) {
+              console.error('DEBUG: Error al crear movimiento:', movError.response?.data || movError.message);
+              
+            }
           }
         }
       }
 
       return mapTratamiento(response.data);
     } catch (error) {
-      console.error('Error creating tratamiento:', error);
+      console.error('DEBUG: Error creating tratamiento:', error.response?.data || error.message);
       throw error;
     }
   },
@@ -148,6 +157,8 @@ const tratamientoService = {
   },
 
   updateTratamiento: async (id, data) => {
+    console.log('DEBUG: tratamientoService.updateTratamiento llamado con:', { id, data });
+    
     const payload = {
       ...(data.descripcion !== undefined ? { descripcion: data.descripcion } : {}),
       ...(data.dosis !== undefined ? { dosis: data.dosis } : {}),
@@ -157,13 +168,23 @@ const tratamientoService = {
         tipo: data.tipo.charAt(0).toUpperCase() + data.tipo.slice(1).toLowerCase() 
       } : {})
     };
-    const response = await axios.patch(`${API_URL}/tratamientos/${id}`, payload, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeader()
-      }
-    });
-    return mapTratamiento(response.data);
+    
+    console.log('DEBUG: Payload a enviar:', payload);
+    console.log('DEBUG: URL completa:', `${API_URL}/tratamientos/${id}`);
+    
+    try {
+      const response = await axios.patch(`${API_URL}/tratamientos/${id}`, payload, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeader()
+        }
+      });
+      console.log('DEBUG: Respuesta exitosa:', response.data);
+      return mapTratamiento(response.data);
+    } catch (error) {
+      console.error('DEBUG: Error en updateTratamiento:', error.response?.data || error.message);
+      throw error;
+    }
   },
 
   deleteTratamiento: async (id) => {

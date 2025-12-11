@@ -53,11 +53,7 @@ const TratamientosPage = () => {
     }
   }, [user?.id, refreshPermissions]);
 
-  useEffect(() => {
-    console.log('[TratamientosPage] user:', user);
-    console.log('[TratamientosPage] permissions:', permissions);
-    console.log('[TratamientosPage] flags:', { canView, canCreate, canEdit, canDelete, isAdmin, isInstructor });
-  }, [user, permissions, canView, canCreate, canEdit, canDelete, isAdmin, isInstructor]);
+
 
   const { data: epas = [] } = useQuery({
     queryKey: ['allEpas'],
@@ -92,7 +88,7 @@ const TratamientosPage = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (values) => tratamientoService.updateTratamiento(selected?.id, values),
+    mutationFn: ({ id, data }) => tratamientoService.updateTratamiento(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries(['tratamientos']);
       setOpenForm(false);
@@ -145,11 +141,23 @@ const TratamientosPage = () => {
   };
 
   const handleSave = (values) => {
+
+
+
+    
     if (selected) {
-      if (!canEdit) return;
-      updateMutation.mutate(values);
+      if (!canEdit) {
+  
+        return;
+      }
+
+      updateMutation.mutate({ id: selected.id, data: values });
     } else {
-      if (!canCreate) return;
+      if (!canCreate) {
+  
+        return;
+      }
+
       createMutation.mutate(values);
     }
   };
@@ -191,6 +199,7 @@ const TratamientosPage = () => {
     );
   }, [sortedTratamientos]);
 
+  console.log('Permisos evaluados:', { canView, canCreate, canEdit, canDelete });
   if (!canView) {
     return (
       <Box className="page-wrapper">
@@ -300,7 +309,7 @@ const TratamientosPage = () => {
               
               <Grid container spacing={3} className="tratamientos-grid">
                 {group.tratamientos.map((t) => (
-                  <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={t?.id || `tratamiento-${Math.random()}`}>
+                  <Grid item xs={12} sm={6} md={4} lg={3} key={t.id}>
                     <Card 
                       className={`tratamiento-card ${t.tipo === 'biologico' ? 'biologico' : 'quimico'}`}
                       elevation={2}

@@ -49,7 +49,7 @@ const TratamientoForm = ({ open, onClose, onSubmit, tratamiento: tratamientoProp
     staleTime: 5 * 60 * 1000,
   });
 
-  console.log('TratamientoForm - epas prop:', epas);
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -79,10 +79,36 @@ const TratamientoForm = ({ open, onClose, onSubmit, tratamiento: tratamientoProp
     }));
   };
 
-  const handleSubmit = () => {
-    onSubmit(tratamiento);
-    onClose();
-  };
+    const handleSubmit = () => {
+      const formattedTratamiento = { ...tratamiento };
+
+      if (isEditing) {
+        formattedTratamiento.id = tratamientoProp.id;
+      }
+
+      if (formattedTratamiento.id_epa === '' || formattedTratamiento.id_epa === null) {
+        formattedTratamiento.id_epa = undefined;
+      }
+
+      formattedTratamiento.insumos = formattedTratamiento.insumos
+        .map(insumo => {
+          const id_insumo_num = Number(insumo.id_insumo);
+          const cantidad_usada_num = Number(insumo.cantidad_usada);
+
+          if (!isNaN(id_insumo_num) && id_insumo_num > 0) {
+            return {
+              ...insumo,
+              id_insumo: id_insumo_num,
+              cantidad_usada: isNaN(cantidad_usada_num) ? 0 : cantidad_usada_num,
+            };
+          }
+          return null; 
+        })
+        .filter(insumo => insumo !== null); 
+
+      onSubmit(formattedTratamiento);
+      onClose();
+    };
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
@@ -91,6 +117,7 @@ const TratamientoForm = ({ open, onClose, onSubmit, tratamiento: tratamientoProp
         <TextField
           autoFocus
           margin="dense"
+          id="descripcion"
           name="descripcion"
           label="Descripción"
           type="text"
@@ -103,6 +130,7 @@ const TratamientoForm = ({ open, onClose, onSubmit, tratamiento: tratamientoProp
         />
         <TextField
           margin="dense"
+          id="dosis"
           name="dosis"
           label="Dosis"
           type="text"
@@ -113,6 +141,7 @@ const TratamientoForm = ({ open, onClose, onSubmit, tratamiento: tratamientoProp
         />
         <TextField
           margin="dense"
+          id="frecuencia"
           name="frecuencia"
           label="Frecuencia"
           type="text"
@@ -122,11 +151,13 @@ const TratamientoForm = ({ open, onClose, onSubmit, tratamiento: tratamientoProp
           onChange={handleChange}
         />
         <FormControl fullWidth margin="dense">
-          <InputLabel>Tipo</InputLabel>
+          <InputLabel id="tipo-label">Tipo</InputLabel>
           <Select
+            id="tipo"
             name="tipo"
             value={tratamiento.tipo}
             label="Tipo"
+            labelId="tipo-label"
             onChange={handleChange}
           >
             <MenuItem value="Biologico">Biológico</MenuItem>
@@ -135,13 +166,14 @@ const TratamientoForm = ({ open, onClose, onSubmit, tratamiento: tratamientoProp
         </FormControl>
 
         <FormControl fullWidth margin="dense">
-          <InputLabel>EPA</InputLabel>
+          <InputLabel id="epa-label">EPA</InputLabel>
           <Select
+            id="epa"
             name="id_epa"
             value={tratamiento.id_epa}
             label="EPA"
+            labelId="epa-label"
             onChange={handleChange}
-            disabled={isEditing}
           >
             {epas.map((epa) => (
               <MenuItem key={epa.id} value={epa.id}>
@@ -150,6 +182,8 @@ const TratamientoForm = ({ open, onClose, onSubmit, tratamiento: tratamientoProp
             ))}
           </Select>
         </FormControl>
+
+
 
         {/* Sección de Insumos */}
         <Box mt={3}>

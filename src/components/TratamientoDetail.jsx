@@ -21,12 +21,12 @@ const TratamientoDetail = ({ open, onClose, tratamiento }) => {
   const [insumos, setInsumos] = useState([]);
 
   useEffect(() => {
-    console.log('useEffect triggered - open:', open, 'tratamiento:', tratamiento);
+
     if (tratamiento && open) {
-      console.log('Tratamiento completo:', tratamiento);
-      console.log('Insumos del tratamiento:', tratamiento.insumos);
-      console.log('tratamientoInsumos:', tratamiento.tratamientoInsumos);
-      console.log('ID del tratamiento:', tratamiento.id);
+
+
+
+
       
       if (tratamiento.insumos) {
         setInsumos(tratamiento.insumos);
