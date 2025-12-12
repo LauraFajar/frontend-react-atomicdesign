@@ -7,7 +7,6 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Adjuntar token automáticamente si está disponible
 api.interceptors.request.use((config) => {
   const token = Cookies.get('token') || localStorage.getItem('access_token') || localStorage.getItem('token');
   if (token) {
@@ -61,7 +60,6 @@ const buildReportParams = (params = {}) => {
     normalized.hasta = v;
     normalized.fecha_fin = v;
   }
-  // Incluir topic si fue provisto, para evitar ambigüedad con múltiples topics
   if (params.topic) {
     normalized.topic = params.topic;
   }
@@ -76,7 +74,7 @@ export const getRecomendaciones = (id) => api.get(`/sensores/${id}/recomendacion
 
 export const exportIotPdf = (params = {}) => {
   console.log('Exportando PDF IoT con parámetros:', buildReportParams(params));
-  return api.get('/api/iot/reporte-iot/pdf', {
+  return api.get('/sensores/export/pdf', {
     params: buildReportParams(params),
     responseType: 'blob',
     timeout: 30000 // 30 segundos timeout
@@ -93,7 +91,7 @@ export const exportIotPdf = (params = {}) => {
 
 export const exportIotExcel = (params = {}) => {
   console.log('Exportando Excel IoT con parámetros:', buildReportParams(params));
-  return api.get('/api/iot/reporte-iot/excel', {
+  return api.get('/sensores/export/excel', {
     params: buildReportParams(params),
     responseType: 'blob',
     timeout: 30000 

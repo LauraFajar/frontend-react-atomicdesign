@@ -6,6 +6,7 @@ import { ResponsiveContainer, LineChart, CartesianGrid, XAxis, YAxis, Tooltip, L
 import { useAlert } from '../../../contexts/AlertContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import sensoresService from '../../../services/sensoresService';
+import cropService from '../../../services/cropService';
 import useMQTT from '../../../hooks/useMQTT';
 import AlertPanel from '../../../components/widgets/AlertPanel';
 import ReportExportButtons from '../../../components/iot/ReportExportButtons';
@@ -181,6 +182,7 @@ const IotPage = () => {
   const [endDate, setEndDate] = useState(new Date());
   const [showManagement, setShowManagement] = useState(false);
   const [selectedSensorForReport, setSelectedSensorForReport] = useState(''); // Para reportes
+  const [selectedCrop, setSelectedCrop] = useState(''); // Para filtrar por cultivo
   const alert = useAlert();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -270,6 +272,15 @@ const IotPage = () => {
     retry: 0,
     onError: (err) => {
       console.warn('Topics API not available, using default topic:', err.message);
+    }
+  });
+
+  const { data: crops = [] } = useQuery({
+    queryKey: ['crops'],
+    queryFn: () => cropService.getCrops(1, 100),
+    staleTime: 60 * 1000,
+    onError: (err) => {
+      console.warn('Crops API not available:', err.message);
     }
   });
 
@@ -579,6 +590,26 @@ const IotPage = () => {
             <div className="container-header">
               <h1 className="page-title">Dashboard de Sensores IoT</h1>
               <div className="header-actions">
+                <FormControl sx={{ minWidth: 200, mr: 1 }}>
+                  <InputLabel id="crop-select-label">Filtrar por Cultivo</InputLabel>
+                  <Select
+                    labelId="crop-select-label"
+                    label="Filtrar por Cultivo"
+                    value={selectedCrop}
+                    onChange={(e) => setSelectedCrop(e.target.value)}
+                    displayEmpty
+                    size="small"
+                  >
+                    <MenuItem value="">
+                      <em>Todos los cultivos</em>
+                    </MenuItem>
+                    {crops.map((crop) => (
+                      <MenuItem key={crop.id} value={crop.id}>
+                        {crop.nombre_cultivo}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
                 <Button variant="outlined" onClick={() => setShowManagement(!showManagement)} sx={{ mr: 1 }}>
                   {showManagement ? 'Ocultar Gestión' : 'Mostrar Gestión'}
                 </Button>

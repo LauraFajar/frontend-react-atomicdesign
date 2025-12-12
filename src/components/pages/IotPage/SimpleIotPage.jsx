@@ -20,10 +20,14 @@ import {
   IconButton
 } from '@mui/material';
 import { Wifi, WifiOff, PictureAsPdf, TableChart, Download, DeviceThermostat, WaterDrop, Grass, ShowChart, PowerSettingsNew, ChevronLeft, ChevronRight, Settings } from '@mui/icons-material';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import iotService from '../../../services/iotService';
+import cropService from '../../../services/cropService';
+import activityService from '../../../services/activityService';
+import inventoryService from '../../../services/inventoryService';
 import useIotSocket from '../../../hooks/useIotSocket';
 import ChangeBrokerModal from '../../../components/molecules/ChangeBrokerModal/ChangeBrokerModal';
+import ComprehensiveReportExport from '../../../components/iot/ComprehensiveReportExport';
 
 const SimpleIotPage = () => {
   const [selectedSensor, setSelectedSensor] = useState(null);
@@ -42,6 +46,16 @@ const SimpleIotPage = () => {
   
   const [selectedSensors, setSelectedSensors] = useState(['temperatura', 'humedad_aire', 'humedad_suelo_adc']); // Default all selected
   const [pumpState, setPumpState] = useState(false); 
+  const [selectedCrop, setSelectedCrop] = useState(''); // Para filtrar por cultivo
+  const [crops, setCrops] = useState([]); 
+  
+  // Estados para reporte integral
+  const [cropData, setCropData] = useState(null);
+  const [cropActivities, setCropActivities] = useState([]);
+  const [cropInventory, setCropInventory] = useState([]);
+  const [cropSensorData, setCropSensorData] = useState([]);
+  const [loadingReport, setLoadingReport] = useState(false);
+  const [reportError, setReportError] = useState(null); 
   
   const [openChangeBrokerModal, setOpenChangeBrokerModal] = useState(false);
   const [currentBrokerConfig, setCurrentBrokerConfig] = useState({
@@ -49,7 +63,7 @@ const SimpleIotPage = () => {
     topic: 'luixxa/dht11'
   });
   
-  const { connected, latestReading } = useIotSocket();
+  const { connected, latestReading, emitMessage } = useIotSocket();
 
   const sensorConfigs = useMemo(() => ({
     temperatura: {
@@ -82,11 +96,136 @@ const SimpleIotPage = () => {
     }
   }), []);
 
+  const loadCropReportData = async () => {
+    if (!selectedCrop) {
+      setCropData(null);
+      setCropActivities([]);
+      setCropInventory([]);
+      setCropSensorData([]);
+      return;
+    }
+
+    setLoadingReport(true);
+    setReportError(null);
+
+    try {
+      // Cargar datos básicos del cultivo
+      const cropResponse = await cropService.getCropById(selectedCrop);
+      setCropData(cropResponse);
+
+      // Cargar actividades del cultivo
+      const activitiesResponse = await activityService.getActivities(1, 1000);
+      const cropActivities = activitiesResponse.items?.filter(activity => 
+        activity.id_cultivo === parseInt(selectedCrop)
+      ) || [];
+      setCropActivities(cropActivities);
+
+      // Cargar movimientos de inventario relacionados
+      const inventoryResponse = await inventoryService.getMovements(1, 1000);
+      const cropInventory = inventoryResponse.items?.filter(movement => 
+        movement.id_cultivo === parseInt(selectedCrop)
+      ) || [];
+      setCropInventory(cropInventory);
+
+      // Cargar datos de sensores filtrados por cultivo
+      const sensorDataResponse = await iotService.getSensorData({
+        fecha_desde: fechaInicio || undefined,
+        fecha_hasta: fechaFin || undefined,
+        crop_id: selectedCrop
+      });
+      setCropSensorData(sensorDataResponse || []);
+
+    } catch (error) {
+      console.error('Error loading crop report data:', error);
+      setReportError('Error al cargar datos del reporte del cultivo');
+    } finally {
+      setLoadingReport(false);
+    }
+  };
+
   useEffect(() => {
     setLoading(false); 
     setError(null);
     console.log('SimpleIotPage initialized - will use data from MQTT topics only');
+    
+    const loadCrops = async () => {
+      try {
+        const cropsData = await cropService.getCrops(1, 100);
+        setCrops(cropsData.items || []);
+      } catch (error) {
+        console.error('Error loading crops:', error);
+      }
+    };
+    loadCrops();
   }, []);
+
+  const processSensorDataByPeriod = () => {
+    if (!cropSensorData.length) return [];
+
+    const periods = { mañana: [], tarde: [], noche: [] };
+    
+    cropSensorData.forEach(reading => {
+      const hour = new Date(reading.fecha).getHours();
+      let period;
+      
+      if (hour >= 6 && hour < 12) period = 'mañana';
+      else if (hour >= 12 && hour < 18) period = 'tarde';
+      else period = 'noche';
+      
+      periods[period].push(reading);
+    });
+
+    return Object.entries(periods).map(([period, data]) => ({
+      period: period.charAt(0).toUpperCase() + period.slice(1),
+      temperatura: data.filter(d => d.tipo_sensor === 'temperatura').reduce((acc, d) => acc + parseFloat(d.valor || 0), 0) / data.filter(d => d.tipo_sensor === 'temperatura').length || 0,
+      humedad_aire: data.filter(d => d.tipo_sensor === 'humedad aire').reduce((acc, d) => acc + parseFloat(d.valor || 0), 0) / data.filter(d => d.tipo_sensor === 'humedad aire').length || 0,
+      humedad_suelo: data.filter(d => d.tipo_sensor === 'humedad suelo').reduce((acc, d) => acc + parseFloat(d.valor || 0), 0) / data.filter(d => d.tipo_sensor === 'humedad suelo').length || 0,
+      lecturas: data.length
+    }));
+  };
+
+  const calculateCropProfitability = () => {
+    if (!cropActivities.length) return { totalCosts: 0, totalRevenue: 0, profitability: 0, roi: 0 };
+
+    const totalCosts = cropActivities.reduce((sum, activity) => {
+      return sum + (parseFloat(activity.costo_mano_obra) || 0) + 
+                 (activity.recursos?.reduce((recSum, rec) => recSum + (parseFloat(rec.costo_unitario) * parseFloat(rec.cantidad || 0)), 0) || 0);
+    }, 0);
+1
+    const estimatedRevenuePerActivity = 500; 
+    const totalRevenue = cropActivities.length * estimatedRevenuePerActivity;
+
+    const profitability = totalRevenue - totalCosts;
+    const roi = totalCosts > 0 ? (profitability / totalCosts) * 100 : 0;
+
+    return {
+      totalCosts,
+      totalRevenue,
+      profitability,
+      roi
+    };
+  };
+
+  const getInventoryMovementsByType = () => {
+    const movements = { entrada: 0, salida: 0, ajuste: 0 };
+    
+    cropInventory.forEach(movement => {
+      const type = movement.tipo_movimiento?.toLowerCase();
+      if (movements[type] !== undefined) {
+        movements[type] += parseFloat(movement.cantidad || 0);
+      }
+    });
+
+    return Object.entries(movements).map(([type, quantity]) => ({
+      name: type.charAt(0).toUpperCase() + type.slice(1),
+      value: quantity,
+      color: type === 'entrada' ? '#4caf50' : type === 'salida' ? '#f44336' : '#ff9800'
+    }));
+  };
+
+  useEffect(() => {
+    loadCropReportData();
+  }, [selectedCrop, fechaInicio, fechaFin]);
 
   const processRealSensorData = useCallback((reading) => {
     const newSensors = [];
@@ -136,7 +275,7 @@ const SimpleIotPage = () => {
     if (newSensors.length > 0) {
       setSensors(newSensors);
       setError(null);
-      console.log(`🔄 Updated ${newSensors.length} sensors from MQTT data`);
+      console.log(`Updated ${newSensors.length} sensors from MQTT data`);
       
       if (!selectedSensor && newSensors.length > 0) {
         setSelectedSensor(newSensors[0]);
@@ -145,14 +284,14 @@ const SimpleIotPage = () => {
   }, [selectedSensor, sensorConfigs]);
   useEffect(() => {
     if (latestReading && Object.keys(latestReading).length > 0) {
-      console.log('✅ Real WebSocket data received from IoT gateway:', latestReading);
+      console.log('Real WebSocket data received from IoT gateway:', latestReading);
       
       processRealSensorData(latestReading);
     }
   }, [latestReading, processRealSensorData]);
 
   useEffect(() => {
-    console.log(`🔌 WebSocket connection status: ${connected ? 'CONNECTED' : 'DISCONNECTED'}`);
+    console.log(`WebSocket connection status: ${connected ? 'CONNECTED' : 'DISCONNECTED'}`);
   }, [connected]);
 
   const getUnifiedChartData = () => {
@@ -182,7 +321,24 @@ const SimpleIotPage = () => {
           );
           if (historyItem) {
             const sensorName = sensorConfigs[sensorKey]?.name || sensorKey;
-            point[sensorName] = historyItem.value;
+            let value = historyItem.value;
+            
+            // Convertir ADC a porcentaje para humedad del suelo
+            if (sensorKey === 'humedad_suelo_adc' && typeof value === 'number') {
+              let adcMax;
+              if (value > 4095) {
+                adcMax = 65535; // 16 bits
+              } else if (value > 1023) {
+                adcMax = 4095; // 12 bits
+              } else {
+                adcMax = 1023; // 10 bits
+              }
+              
+              const porcentaje = ((adcMax - value) / adcMax) * 100;
+              value = Math.max(0, Math.min(100, Math.round(porcentaje * 10) / 10));
+            }
+            
+            point[sensorName] = value;
           }
         }
       });
@@ -219,28 +375,66 @@ const SimpleIotPage = () => {
   };
 
   const handleToggleSensor = (sensorKey) => {
+    const newState = !sensorStates[sensorKey];
+    
+    // Actualizar estado local
     setSensorStates(prev => ({
       ...prev,
-      [sensorKey]: !prev[sensorKey]
+      [sensorKey]: newState
     }));
-    console.log(`Sensor ${sensorKey} toggled to: ${!sensorStates[sensorKey]}`);
+    
+    if (connected && emitMessage) {
+      const controlMessage = {
+        topic: 'luixxa/control',
+        payload: {
+          device: 'dht11',
+          sensor: sensorKey,
+          action: newState ? 'ON' : 'OFF',
+          timestamp: new Date().toISOString()
+        }
+      };
+      
+      console.log(`Enviando comando MQTT:`, controlMessage);
+      emitMessage('mqttControl', controlMessage);
+    } else {
+      console.warn('No conectado al WebSocket para enviar control MQTT');
+    }
+    
+    console.log(`Sensor ${sensorKey} toggled to: ${newState}`);
   };
 
   const getSensorValue = (sensorKey) => {
     const sensor = sensors.find(s => s._id === sensorKey);
-    return sensor?.valor_actual ?? '--';
+    let value = sensor?.valor_actual ?? '--';
+    
+    // Convertir ADC a porcentaje para humedad del suelo
+    if (sensorKey === 'humedad_suelo_adc' && value !== '--' && typeof value === 'number') {
+      let adcMax;
+      if (value > 4095) {
+        adcMax = 65535; // 16 bits
+      } else if (value > 1023) {
+        adcMax = 4095; // 12 bits
+      } else {
+        adcMax = 1023; // 10 bits
+      }
+      
+      const porcentaje = ((adcMax - value) / adcMax) * 100;
+      value = Math.max(0, Math.min(100, Math.round(porcentaje * 10) / 10));
+    }
+    
+    return value;
   };
 
   const handleBrokerChange = async (newConfig) => {
     try {
-      console.log('🔧 Updating broker configuration:', newConfig);
+      console.log('Updating broker configuration:', newConfig);
       setCurrentBrokerConfig(newConfig);
       
-      alert(`✅ Configuración actualizada exitosamente:\n\nBroker: ${newConfig.brokerUrl}\nTopic: ${newConfig.topic}\n\n⚠️ Nota: La reconexión al nuevo broker requiere implementación del backend.`);
+      alert(`Configuración actualizada exitosamente:\n\nBroker: ${newConfig.brokerUrl}\nTopic: ${newConfig.topic}\n\n⚠️ Nota: La reconexión al nuevo broker requiere implementación del backend.`);
       
       
     } catch (error) {
-      console.error('❌ Error updating broker configuration:', error);
+      console.error('Error updating broker configuration:', error);
       throw error; 
     }
   };
@@ -258,7 +452,7 @@ const SimpleIotPage = () => {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      console.log(`✅ Archivo descargado: ${filename}`);
+      console.log(`Archivo descargado: ${filename}`);
     } catch (error) {
       console.error('Error downloading file:', error);
       throw new Error('No se pudo descargar el archivo');
@@ -276,7 +470,7 @@ const SimpleIotPage = () => {
         fecha_hasta: fechaFin || undefined,
       };
       
-      console.log('📤 Exportando PDF con parámetros:', params);
+      console.log('Exportando PDF con parámetros:', params);
       
       const response = await iotService.exportToPdf(params);
       
@@ -291,10 +485,10 @@ const SimpleIotPage = () => {
       
       downloadBlob(blob, filename);
       
-      console.log('✅ PDF exportado exitosamente');
+      console.log('PDF exportado exitosamente');
       
     } catch (err) {
-      console.error('❌ Error exporting PDF:', err);
+      console.error('Error exporting PDF:', err);
       const errorMessage = err.response?.status === 404 
         ? 'No se encontraron datos para el rango seleccionado'
         : err.response?.status === 500
@@ -318,7 +512,7 @@ const SimpleIotPage = () => {
         fecha_hasta: fechaFin || undefined,
       };
       
-      console.log('📤 Exportando Excel con parámetros:', params);
+      console.log('Exportando Excel con parámetros:', params);
       
       const response = await iotService.exportToExcel(params);
       
@@ -335,10 +529,10 @@ const SimpleIotPage = () => {
       
       downloadBlob(blob, filename);
       
-      console.log('✅ Excel exportado exitosamente');
+      console.log('Excel exportado exitosamente');
       
     } catch (err) {
-      console.error('❌ Error exporting Excel:', err);
+      console.error('Error exporting Excel:', err);
       const errorMessage = err.response?.status === 404 
         ? 'No se encontraron datos para el rango seleccionado'
         : err.response?.status === 500
@@ -361,10 +555,9 @@ const SimpleIotPage = () => {
         width: '100%',
         maxWidth: 'none'
       }}>
-        {/* Header */}
         <Paper elevation={2} sx={{ p: 1.5, borderRadius: 2, mb: 2 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+            <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#4caf50' }}>
               Dashboard IoT
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -397,15 +590,12 @@ const SimpleIotPage = () => {
             </Box>
           </Box>
         </Paper>
-
-        {/* Alert */}
         {error && (
           <Alert severity="warning" sx={{ mb: 2 }}>
             {error}
           </Alert>
         )}
 
-        {/* Dashboard Grid Layout */}
         <Box sx={{ 
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
@@ -413,7 +603,6 @@ const SimpleIotPage = () => {
           width: '100%'
         }}>
           
-          {/* Fila 1: Sensores - Tiempo Real (Carrusel) */}
           <Card sx={{ 
             height: "320px",
             borderRadius: "16px",
@@ -422,9 +611,8 @@ const SimpleIotPage = () => {
             flexDirection: "column"
           }}>
             <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 2 }}>
-              {/* Header con navegación */}
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#4caf50' }}>
                   Sensores – Tiempo Real
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -482,7 +670,6 @@ const SimpleIotPage = () => {
                             textAlign: 'center'
                           }}
                         >
-                          {/* Icono del sensor */}
                           <Box
                             sx={{
                               width: 60,
@@ -500,12 +687,10 @@ const SimpleIotPage = () => {
                             {config.icon}
                           </Box>
                           
-                          {/* Nombre del sensor */}
                           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
                             {config.name}
                           </Typography>
                           
-                          {/* Valor */}
                           <Typography variant="h3" sx={{ fontWeight: 'bold', color: config.color, mb: 1 }}>
                             {sensorKey === 'bomba_estado' 
                               ? (value === 'ENCENDIDA' ? 'ON' : value === 'APAGADA' ? 'OFF' : '--')
@@ -513,7 +698,6 @@ const SimpleIotPage = () => {
                             }
                           </Typography>
                           
-                          {/* Estado */}
                           <Chip
                             label={value !== '--' ? 'ACTIVO' : 'INACTIVO'}
                             color={value !== '--' ? 'success' : 'error'}
@@ -541,22 +725,16 @@ const SimpleIotPage = () => {
             </CardContent>
           </Card>
 
-
-
-          {/* Gráficas de Sensores (unificada con filtros) */}
           <Card sx={{ 
             height: "320px",
             borderRadius: "16px",
             boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
             display: "flex",
-            flexDirection: "column",
-            gridColumn: "2"
+            flexDirection: "column"
           }}>
             <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 2 }}>
-              
-              {/* Título principal */}
-              <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1976d2', mb: 2, textAlign: 'center' }}>
-                📈 Gráficas de Sensores
+              <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#4caf50', mb: 2 }}>
+                Gráficas de Sensores
               </Typography>
 
               {/* Botones de filtro */}
@@ -707,139 +885,62 @@ const SimpleIotPage = () => {
           </Card>
         </Box>
 
-        {/* Estado de la Bomba  */}
-        <Box sx={{ mt: 2 }}>
-          <Card sx={{ 
-            height: "150px",
-            borderRadius: "16px",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-            display: "flex",
-            flexDirection: "column"
-          }}>
-            <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 2, textAlign: 'center' }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#1976d2', mb: 1 }}>
-                💧 Estado de la Bomba
-              </Typography>
-              
-              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: '50%',
-                    backgroundColor: pumpState ? '#4caf50' : '#f44336',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    margin: '0 auto 12px',
-                    color: 'white',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-                    transition: 'all 0.3s ease'
-                  }}
-                >
-                  <PowerSettingsNew sx={{ fontSize: 20 }} />
+        <Box sx={{ 
+          display: 'grid', 
+          gridTemplateColumns: '1fr 1fr', 
+          gap: '16px',
+          mt: 2
+        }}>
+          {/* Estado de la Bomba */}
+          <Box sx={{ maxWidth: '600px' }}>
+            <Card sx={{ 
+              height: "185px",
+              borderRadius: "16px",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+              display: "flex",
+              flexDirection: "column"
+            }}>
+              <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 2, textAlign: 'center' }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#4caf50', mb: 1 }}>
+                  Estado de la Bomba
+                </Typography>
+                
+                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <Box
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: '50%',
+                      backgroundColor: pumpState ? '#4caf50' : '#f44336',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto 12px',
+                      color: 'white',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                      transition: 'all 0.3s ease'
+                    }}
+                  >
+                    <PowerSettingsNew sx={{ fontSize: 20 }} />
+                  </Box>
+                  
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', color: pumpState ? '#4caf50' : '#f44336', mb: 0.5 }}>
+                    {pumpState ? 'ENCENDIDA' : 'APAGADA'}
+                  </Typography>
+                  
+                  <Typography variant="body2" color="text.secondary">
+                    {pumpState ? 'Irrigando' : 'Listo para operar'}
+                  </Typography>
                 </Box>
-                
-                <Typography variant="h6" sx={{ fontWeight: 'bold', color: pumpState ? '#4caf50' : '#f44336', mb: 0.5 }}>
-                  {pumpState ? 'ENCENDIDA' : 'APAGADA'}
-                </Typography>
-                
-                <Typography variant="body2" color="text.secondary">
-                  {pumpState ? 'Irrigando' : 'Listo para operar'}
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </Box>
+
+          {/* Reporte Integral del Proyecto */}
+          <Box sx={{ maxWidth: '600px' }}>
+            <ComprehensiveReportExport />
+          </Box>
         </Box>
-
-        <Card sx={{ borderRadius: 2, boxShadow: 3, mt: 2 }}>
-          <CardContent sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <Download sx={{ mr: 1, color: '#1976d2', fontSize: '1.2rem' }} />
-              <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                Exportar Reportes
-              </Typography>
-            </Box>
-            <Divider sx={{ mb: 2 }} />
-            
-            <Grid container spacing={2} alignItems="center">
-        
-              <Grid item xs={12} md={3}>
-                <FormControl fullWidth size="small">
-                  <InputLabel sx={{ fontSize: '0.7rem' }}>Sensor</InputLabel>
-                  <Select
-                    value={reportSensor}
-                    label="Sensor"
-                    onChange={(e) => setReportSensor(e.target.value)}
-                  >
-                    <MenuItem value="all" sx={{ fontSize: '0.7rem' }}>Todos</MenuItem>
-                    {sensors.map((sensor) => (
-                      <MenuItem key={sensor._id} value={sensor._id} sx={{ fontSize: '0.7rem' }}>
-                        {sensor.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              <Grid item xs={12} md={3}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="Fecha Inicio"
-                  type="date"
-                  value={fechaInicio}
-                  onChange={(e) => setFechaInicio(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                  sx={{ '& .MuiInputLabel-root': { fontSize: '0.7rem' } }}
-                />
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="Fecha Fin"
-                  type="date"
-                  value={fechaFin}
-                  onChange={(e) => setFechaFin(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                  sx={{ '& .MuiInputLabel-root': { fontSize: '0.7rem' } }}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={3}>
-                <Stack direction="row" spacing={0.5}>
-                  <Button
-                    variant="contained"
-                    color="error"
-                    size="small"
-                    startIcon={exporting ? <CircularProgress size={12} color="inherit" /> : <PictureAsPdf />}
-                    onClick={handleExportPdf}
-                    disabled={exporting}
-                    sx={{ flex: 1, py: 0.5, fontSize: '0.7rem', fontWeight: 'bold' }}
-                  >
-                    PDF
-                  </Button>
-                  <Button
-                    variant="contained"
-                    color="success"
-                    size="small"
-                    startIcon={exporting ? <CircularProgress size={12} color="inherit" /> : <TableChart />}
-                    onClick={handleExportExcel}
-                    disabled={exporting}
-                    sx={{ flex: 1, py: 0.5, fontSize: '0.7rem', fontWeight: 'bold' }}
-                  >
-                    Excel
-                  </Button>
-                </Stack>
-              </Grid>
-            </Grid>
-
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-              * Fechas vacías = todos los datos disponibles
-            </Typography>
-          </CardContent>
-        </Card>
       </Box>
 
       <ChangeBrokerModal

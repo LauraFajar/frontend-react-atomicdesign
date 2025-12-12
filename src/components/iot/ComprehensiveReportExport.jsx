@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Button,
   Box,
@@ -39,18 +39,23 @@ import {
 } from '@mui/icons-material';
 import { useAlert } from '../../contexts/AlertContext';
 import sensoresService from '../../services/sensoresService';
+import cropService from '../../services/cropService';
+import activityService from '../../services/activityService';
+import inventoryService from '../../services/inventoryService';
 
 const ComprehensiveReportExport = () => {
   const alert = useAlert();
   const [openDialog, setOpenDialog] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [cultivosDisponibles, setCultivosDisponibles] = useState([]);
+  const [loadingCultivos, setLoadingCultivos] = useState(false);
 
-  // Report configuration
   const [reportConfig, setReportConfig] = useState({
     formato: 'pdf',
     fecha_desde: '',
     fecha_hasta: '',
     cultivos: [],
+    metrica: 'temperatura',
     incluir_actividades: true,
     incluir_finanzas: true,
     incluir_inventario: true,
@@ -60,13 +65,31 @@ const ComprehensiveReportExport = () => {
     incluir_trazabilidad: true
   });
 
-  // Mock available crops (in real app, this would come from API)
-  const cultivosDisponibles = [
-    { id: 1, nombre: 'Tomate' },
-    { id: 2, nombre: 'Lechuga' },
-    { id: 3, nombre: 'Cebolla' },
-    { id: 4, nombre: 'Zanahoria' }
-  ];
+  useEffect(() => {
+    const loadCultivos = async () => {
+      setLoadingCultivos(true);
+      try {
+        const response = await cropService.getCrops(1, 100);
+        const cultivos = response.items || [];
+        setCultivosDisponibles(cultivos.map(crop => ({
+          id: crop.id,
+          nombre: crop.nombre_cultivo || crop.displayName || crop.nombre
+        })));
+      } catch (error) {
+        console.error('Error loading cultivos:', error);
+        setCultivosDisponibles([
+          { id: 1, nombre: 'Tomate' },
+          { id: 2, nombre: 'Lechuga' },
+          { id: 3, nombre: 'Cebolla' },
+          { id: 4, nombre: 'Zanahoria' }
+        ]);
+      } finally {
+        setLoadingCultivos(false);
+      }
+    };
+
+    loadCultivos();
+  }, []);
 
   const reportComponents = [
     {
@@ -121,8 +144,8 @@ const ComprehensiveReportExport = () => {
   ];
 
   const reportFormats = [
-    { value: 'pdf', label: 'PDF - Reporte Completo', icon: <PictureAsPdf />, description: 'Documento profesional con diseño corporativo' },
-    { value: 'excel', label: 'Excel - Múltiples Pestañas', icon: <TableChart />, description: 'Organizado por categorías en hojas separadas' }
+    { value: 'pdf', label: 'PDF', icon: <PictureAsPdf />},
+    { value: 'excel', label: 'Excel', icon: <TableChart />}
   ];
 
   const handleConfigChange = (key, value) => {
@@ -158,13 +181,64 @@ const ComprehensiveReportExport = () => {
     window.URL.revokeObjectURL(url);
   };
 
+  const generateSimpleReport = async (format) => {
+    setIsExporting(true);
+
+    try {
+      const params = {
+        topic: 'luixxa/dht11',
+        metric: reportConfig.metrica || 'temperatura',
+        desde: reportConfig.fecha_desde || undefined,
+        hasta: reportConfig.fecha_hasta || undefined
+      };
+      
+      const endpoint = format === 'excel' ? '/sensores/export/excel' : '/sensores/export/pdf';
+      const response = await sensoresService.makeRequest(endpoint, 'GET', params);
+      
+      const filename = `reporte-sensores-${new Date().toISOString().split('T')[0]}.${format}`;
+      downloadBlobResponse(response, filename);
+      
+      alert.success('Éxito', `Reporte de sensores generado en formato ${format.toUpperCase()}`);
+      setOpenDialog(false);
+    } catch (error) {
+      console.error('Error generating simple report:', error);
+      alert.error('Error', 'No se pudo generar el reporte. Intente nuevamente.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handlePreviewReport = async () => {
+    try {
+      const params = {
+        topic: 'luixxa/dht11',
+        metric: reportConfig.metrica || 'temperatura',
+        desde: reportConfig.fecha_desde || undefined,
+        hasta: reportConfig.fecha_hasta || undefined
+      };
+      
+      const response = await sensoresService.makeRequest('/sensores/export/pdf', 'GET', params);
+      
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      
+      alert.info('Previsualización', 'El reporte se ha abierto en una nueva ventana');
+    } catch (error) {
+      console.error('Error previewing report:', error);
+      alert.error('Error', 'No se pudo generar la previsualización');
+    }
+  };
+
   const generateComprehensiveReport = async (format) => {
     setIsExporting(true);
 
     try {
       const params = {
-        fecha_desde: reportConfig.fecha_desde || undefined,
-        fecha_hasta: reportConfig.fecha_hasta || undefined,
+        topic: 'luixxa/dht11', 
+        metric: reportConfig.metrica, 
+        desde: reportConfig.fecha_desde || undefined,
+        hasta: reportConfig.fecha_hasta || undefined,
         cultivos: reportConfig.cultivos.length > 0 ? reportConfig.cultivos.join(',') : undefined,
         incluir_actividades: reportConfig.incluir_actividades,
         incluir_finanzas: reportConfig.incluir_finanzas,
@@ -176,10 +250,9 @@ const ComprehensiveReportExport = () => {
       };
 
       const endpoint = format === 'excel'
-        ? '/api/iot/report/comprehensive/excel'
-        : '/api/iot/report/comprehensive/pdf';
+        ? '/sensores/export/excel'
+        : '/sensores/export/pdf';
 
-      // Make request to backend
       const response = await sensoresService.makeRequest(endpoint, 'GET', params);
 
       const filename = `reporte-completo-agrotic-${new Date().toISOString().split('T')[0]}.${format}`;
@@ -203,11 +276,13 @@ const ComprehensiveReportExport = () => {
     }
   };
 
-  const handlePreviewReport = async () => {
+  const handlePreviewComprehensiveReport = async () => {
     try {
       const params = {
-        fecha_desde: reportConfig.fecha_desde || undefined,
-        fecha_hasta: reportConfig.fecha_hasta || undefined,
+        topic: 'luixxa/dht11', // Topic por defecto para sensores
+        metric: reportConfig.metrica, 
+        desde: reportConfig.fecha_desde || undefined,
+        hasta: reportConfig.fecha_hasta || undefined,
         cultivos: reportConfig.cultivos.length > 0 ? reportConfig.cultivos.join(',') : undefined,
         incluir_actividades: reportConfig.incluir_actividades,
         incluir_finanzas: reportConfig.incluir_finanzas,
@@ -219,9 +294,8 @@ const ComprehensiveReportExport = () => {
         formato: 'pdf'
       };
 
-      const response = await sensoresService.makeRequest('/api/iot/report/comprehensive', 'GET', params);
+      const response = await sensoresService.makeRequest('/sensores/export/pdf', 'GET', params);
 
-      // Open preview in new window
       const blob = new Blob([response.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
       window.open(url, '_blank');
@@ -235,17 +309,15 @@ const ComprehensiveReportExport = () => {
 
   return (
     <>
-      <Card sx={{ mt: 3 }}>
+      <Card sx={{ mt: 0, height: '185px' }}>
         <CardContent>
           <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
             <Assessment color="primary" />
-            Reporte Completo del Proyecto
+            Reporte del Proyecto
           </Typography>
 
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Genera un reporte integral que incluye datos de todas las áreas del proyecto:
-            actividades, trazabilidad de cultivos, control financiero, costos de mano de obra,
-            inventario de insumos y datos de sensores IoT.
+            Genera un reporte integral que incluye datos de todos los módulos del proyecto.
           </Typography>
 
           <Button
@@ -255,13 +327,8 @@ const ComprehensiveReportExport = () => {
             onClick={() => setOpenDialog(true)}
             sx={{ mb: 2 }}
           >
-            Generar Reporte Completo
+            Generar Reporte
           </Button>
-
-          <Alert severity="info" sx={{ mt: 2 }}>
-            💡 <strong>Tip:</strong> Los reportes incluyen análisis comparativos, resúmenes ejecutivos
-            y estadísticas detalladas de todas las áreas del proyecto.
-          </Alert>
         </CardContent>
       </Card>
 
@@ -278,10 +345,9 @@ const ComprehensiveReportExport = () => {
 
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            {/* Date Range */}
             <Box>
               <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
-                📅 Período del Reporte
+                Período del Reporte
               </Typography>
               <Box sx={{ display: 'flex', gap: 2 }}>
                 <TextField
@@ -333,10 +399,23 @@ const ComprehensiveReportExport = () => {
               </Select>
             </FormControl>
 
-            {/* Report Components */}
+            <FormControl fullWidth>
+              <InputLabel>Métrica de Sensores IoT</InputLabel>
+              <Select
+                value={reportConfig.metrica}
+                label="Métrica de Sensores IoT"
+                onChange={(e) => handleConfigChange('metrica', e.target.value)}
+              >
+                <MenuItem value="temperatura">Temperatura</MenuItem>
+                <MenuItem value="humedad_aire">Humedad Ambiente</MenuItem>
+                <MenuItem value="humedad_suelo_porcentaje">Humedad del Suelo</MenuItem>
+                <MenuItem value="bomba_estado">Estado de la Bomba</MenuItem>
+              </Select>
+            </FormControl>
+
             <Box>
               <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 'bold' }}>
-                📊 Componentes del Reporte
+                Componentes del Reporte
               </Typography>
               <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 2 }}>
                 {reportComponents.map((component) => (
@@ -380,10 +459,9 @@ const ComprehensiveReportExport = () => {
               </Box>
             </Box>
 
-            {/* Format Selection */}
             <Box>
               <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 'bold' }}>
-                📄 Formato de Exportación
+                 Formato de Exportación
               </Typography>
               <Box sx={{ display: 'flex', gap: 2 }}>
                 {reportFormats.map((format) => (
@@ -414,10 +492,9 @@ const ComprehensiveReportExport = () => {
               </Box>
             </Box>
 
-            {/* Report Summary */}
             <Alert severity="info">
               <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                📋 Resumen del Reporte:
+                Resumen del Reporte:
               </Typography>
               <Typography variant="body2">
                 • {getSelectedComponentsCount()} componentes seleccionados
@@ -436,13 +513,6 @@ const ComprehensiveReportExport = () => {
         </DialogContent>
 
         <DialogActions sx={{ p: 3, gap: 1 }}>
-          <Button
-            onClick={handlePreviewReport}
-            startIcon={<Visibility />}
-            disabled={isExporting || getSelectedComponentsCount() === 0}
-          >
-            Vista Previa
-          </Button>
 
           <Box sx={{ flexGrow: 1 }} />
 
